@@ -309,8 +309,11 @@ fn resolving_picks_the_kept_and_rejects_the_rest_and_undo_gives_every_flag_and_r
         f.series()[0],
         ("burst".to_string(), true, vec![0, 1, 2, 3, 4])
     );
-    let cat = f.engine.read_catalogue().unwrap();
-    let resolved: Vec<_> = cat
+    // (A connection that is still open would keep Windows from replacing the catalogue in the rebuild below.)
+    let resolved: Vec<_> = f
+        .engine
+        .read_catalogue()
+        .unwrap()
         .list_filtered(
             &auroraw_catalogue::Filter {
                 flags: auroraw_catalogue::FlagFilter::All,
