@@ -128,6 +128,22 @@ pub struct Filter {
     pub keyword: Option<KeywordId>,
     /// Photos with this colour label (its text, any case: `Red`, `Yellow`...).
     pub label: Option<String>,
+    /// Photos by series membership.
+    pub series: SeriesFilter,
+}
+
+/// Which photos a listing keeps by series (WP9).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum SeriesFilter {
+    /// Every photo.
+    #[default]
+    Any,
+    /// Photos that are in a series.
+    InSeries,
+    /// Photos of a series that is not resolved.
+    Unresolved,
+    /// Photos of a resolved series.
+    Resolved,
 }
 
 /// One keyword of the vocabulary, with how many photos carry it directly.
@@ -199,6 +215,16 @@ impl Catalogue {
             FlagFilter::All => {}
             FlagFilter::Picked => conditions.push("p.effective_flag = 1".into()),
             FlagFilter::Rejected => conditions.push("p.effective_flag = 2".into()),
+        }
+        match filter.series {
+            SeriesFilter::Any => {}
+            SeriesFilter::InSeries => conditions.push("p.series_id IS NOT NULL".into()),
+            SeriesFilter::Unresolved => {
+                conditions.push("p.series_id IN (SELECT id FROM series WHERE resolved = 0)".into())
+            }
+            SeriesFilter::Resolved => {
+                conditions.push("p.series_id IN (SELECT id FROM series WHERE resolved = 1)".into())
+            }
         }
         if let Some(label) = &filter.label {
             conditions.push("p.label = ? COLLATE NOCASE".into());

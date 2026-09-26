@@ -62,6 +62,9 @@ pub enum Event {
         /// How many sidecars it will touch.
         affected: usize,
     },
+    /// A series was made, changed or dissolved (by a step, an undo or a redo, or by detection): the grid lists
+    /// photos in series differently now.
+    SeriesChanged,
     /// A keyword and its branch were moved (the catalogue already reflects it; the sidecars' path
     /// snapshots follow in a background job).
     KeywordMoved(KeywordId),

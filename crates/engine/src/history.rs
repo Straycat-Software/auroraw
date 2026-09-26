@@ -14,8 +14,8 @@
 use std::collections::VecDeque;
 
 use auroraw_format::sidecar::{Flag, Metadata};
-use auroraw_format::state::KeywordEntry;
-use auroraw_types::{KeywordId, PhotoId};
+use auroraw_format::state::{KeywordEntry, Series};
+use auroraw_types::{KeywordId, PhotoId, SeriesId};
 
 /// How many steps the history keeps before it forgets the oldest.
 pub const DEFAULT_LIMIT: usize = 500;
@@ -50,6 +50,19 @@ pub enum VocabularyAction {
     Move,
     /// A keyword and its branch were deleted.
     Delete,
+}
+
+/// What was done to a series (it names the step).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeriesAction {
+    /// Photos were grouped into a new series.
+    Group,
+    /// Photos left their series, or a series was dissolved.
+    Ungroup,
+    /// A series was resolved (the others rejected, the kept ones picked).
+    Resolve,
+    /// A resolved series was reopened.
+    Reopen,
 }
 
 /// One keyword of the vocabulary, as it was and as it became (`None`: it did not exist).
@@ -103,6 +116,18 @@ pub enum Change {
         /// The keywords after.
         after: KeywordSet,
     },
+    /// A series, as its state file was and as it became (`None`: there was none). Applied by the coordinator
+    /// (the file and the catalogue's rows), not by [`Change::apply`].
+    Series {
+        /// What was done.
+        action: SeriesAction,
+        /// The series.
+        id: SeriesId,
+        /// Its state before.
+        before: Option<Series>,
+        /// Its state after.
+        after: Option<Series>,
+    },
     /// The vocabulary: only the entries that changed. Applied by the coordinator (it also brings the
     /// catalogue and the sidecars' path snapshots in line), not by [`Change::apply`].
     Vocabulary {
@@ -121,7 +146,7 @@ impl Change {
             | Change::Flag { photo, .. }
             | Change::Label { photo, .. }
             | Change::Keywords { photo, .. } => Some(*photo),
-            Change::Vocabulary { .. } => None,
+            Change::Vocabulary { .. } | Change::Series { .. } => None,
         }
     }
 
@@ -131,6 +156,12 @@ impl Change {
             Change::Flag { .. } => LabelKind::Flag,
             Change::Label { .. } => LabelKind::ColourLabel,
             Change::Keywords { .. } => LabelKind::Keywords,
+            Change::Series { action, .. } => match action {
+                SeriesAction::Group => LabelKind::SeriesGroup,
+                SeriesAction::Ungroup => LabelKind::SeriesUngroup,
+                SeriesAction::Resolve => LabelKind::SeriesResolve,
+                SeriesAction::Reopen => LabelKind::SeriesReopen,
+            },
             Change::Vocabulary { action, .. } => match action {
                 VocabularyAction::Create => LabelKind::KeywordCreate,
                 VocabularyAction::Rename => LabelKind::KeywordRename,
@@ -156,7 +187,7 @@ impl Change {
                 meta.keyword_ids = set.ids.clone();
                 meta.keyword_paths = set.paths.clone();
             }
-            Change::Vocabulary { .. } => {}
+            Change::Vocabulary { .. } | Change::Series { .. } => {}
         }
     }
 }
@@ -182,6 +213,14 @@ pub enum LabelKind {
     KeywordMove,
     /// A keyword and its branch were deleted.
     KeywordDelete,
+    /// Photos were grouped into a series.
+    SeriesGroup,
+    /// Photos left their series, or a series was dissolved.
+    SeriesUngroup,
+    /// A series was resolved.
+    SeriesResolve,
+    /// A series was reopened.
+    SeriesReopen,
 }
 
 impl LabelKind {
@@ -197,6 +236,10 @@ impl LabelKind {
             LabelKind::KeywordRename => "keyword-rename",
             LabelKind::KeywordMove => "keyword-move",
             LabelKind::KeywordDelete => "keyword-delete",
+            LabelKind::SeriesGroup => "series-group",
+            LabelKind::SeriesUngroup => "series-ungroup",
+            LabelKind::SeriesResolve => "series-resolve",
+            LabelKind::SeriesReopen => "series-reopen",
         }
     }
 }
@@ -229,8 +272,35 @@ impl Entry {
             Change::Vocabulary { keywords, .. } => Some((c.kind(), keywords.len())),
             _ => None,
         });
+        // A series step is named by its series change and counts the photos the series involves.
+        let series = changes.iter().find_map(|c| match c {
+            Change::Series { .. } => Some(c.kind()),
+            _ => None,
+        });
         let label = match vocabulary {
             Some((kind, count)) => Label { kind, count },
+            None if series.is_some() => {
+                // The photos of the series the step is about: the new one for a grouping, else the first one.
+                let primary = if series == Some(LabelKind::SeriesGroup) {
+                    changes
+                        .iter()
+                        .rev()
+                        .find(|c| matches!(c, Change::Series { .. }))
+                } else {
+                    changes.iter().find(|c| matches!(c, Change::Series { .. }))
+                };
+                let count = match primary {
+                    Some(Change::Series { before, after, .. }) => after
+                        .as_ref()
+                        .or(before.as_ref())
+                        .map_or(0, |state| state.members.len()),
+                    _ => 0,
+                };
+                Label {
+                    kind: series.expect("checked"),
+                    count,
+                }
+            }
             None => {
                 let kind = match changes.first().map(Change::kind) {
                     Some(first) if changes.iter().all(|c| c.kind() == first) => first,
@@ -253,6 +323,19 @@ impl Entry {
         self.changes
             .iter()
             .any(|c| matches!(c, Change::Vocabulary { .. }))
+    }
+
+    /// Whether the entry changed a series.
+    pub fn has_series(&self) -> bool {
+        self.changes
+            .iter()
+            .any(|c| matches!(c, Change::Series { .. }))
+    }
+
+    /// Whether the entry changed a state that is not a photo's (the vocabulary, a series): undoing it does what it
+    /// can for the photos that are still there rather than failing when one has gone.
+    pub fn has_state_change(&self) -> bool {
+        self.has_vocabulary() || self.has_series()
     }
 
     /// The photos the entry touches, each once, in the order of the changes.
@@ -339,19 +422,45 @@ impl History {
     pub fn forget_photo(&mut self, photo: PhotoId) -> bool {
         let mut forgot = false;
         for entry in self.undo.iter_mut().chain(self.redo.iter_mut()) {
-            if entry.has_vocabulary() {
+            if entry.has_state_change() {
                 let before = entry.changes.len();
                 entry.changes.retain(|c| c.photo() != Some(photo));
                 forgot |= entry.changes.len() != before;
+                // A series' snapshots forget the photo too, so that an undo does not put it back.
+                for change in &mut entry.changes {
+                    if let Change::Series { before, after, .. } = change {
+                        for state in [before, after].into_iter().flatten() {
+                            let members = state.members.len() + state.kept.len();
+                            state.members.retain(|m| *m != photo);
+                            state.kept.retain(|m| *m != photo);
+                            forgot |= state.members.len() + state.kept.len() != members;
+                        }
+                    }
+                }
             }
         }
         let before = self.undo.len() + self.redo.len();
         let keep = |entry: &Entry| {
-            entry.has_vocabulary() || entry.changes.iter().all(|c| c.photo() != Some(photo))
+            entry.has_state_change() || entry.changes.iter().all(|c| c.photo() != Some(photo))
         };
         self.undo.retain(keep);
         self.redo.retain(keep);
         forgot || self.undo.len() + self.redo.len() != before
+    }
+
+    /// Forgets every step that changed one of these series (they were dissolved by something that is not a step:
+    /// the automatic regrouping): whether anything went.
+    pub fn forget_series(&mut self, series: &std::collections::HashSet<SeriesId>) -> bool {
+        let before = self.undo.len() + self.redo.len();
+        let touches = |entry: &Entry| {
+            entry
+                .changes
+                .iter()
+                .any(|c| matches!(c, Change::Series { id, .. } if series.contains(id)))
+        };
+        self.undo.retain(|e| !touches(e));
+        self.redo.retain(|e| !touches(e));
+        self.undo.len() + self.redo.len() != before
     }
 
     /// What Undo and Redo would do.

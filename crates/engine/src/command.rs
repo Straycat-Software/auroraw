@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use auroraw_format::sidecar::{ColourLabel, Flag};
 use auroraw_import::Profile;
-use auroraw_types::{KeywordId, PhotoId, SourceId};
+use auroraw_types::{KeywordId, PhotoId, SeriesId, SourceId};
 
 /// A change the engine's single writer applies, in the order it receives them (architecture
 /// §4.3). Sent with [`crate::Engine::submit`] (fire and forget) or
@@ -104,6 +104,52 @@ pub enum Command {
     DeleteKeyword {
         /// The keyword at the top of the branch.
         keyword_id: KeywordId,
+    },
+    /// Groups these photos into a new **manual** series (a step of the history, D-101): they leave the series they
+    /// were in (one left with fewer than two photos is dissolved). Merging two series is grouping all their photos;
+    /// splitting one is grouping some of its members. Reports [`crate::Outcome::SeriesGrouped`].
+    GroupPhotos {
+        /// The photos, at least two.
+        photos: Vec<PhotoId>,
+    },
+    /// Takes these photos out of their series (a step of the history); a series left with fewer than two photos is
+    /// dissolved.
+    RemoveFromSeries {
+        /// The photos.
+        photos: Vec<PhotoId>,
+    },
+    /// Dissolves a series (a step of the history): its photos belong to none, and keep their flags.
+    DissolveSeries {
+        /// The series.
+        series: SeriesId,
+    },
+    /// Resolves a series (spec §5.3, D-035; one step of the history): the photos in `keep` are Picked, the others
+    /// of the series Rejected, and the series remembers that it is resolved and what was kept. Undoing it gives
+    /// every flag back.
+    ResolveSeries {
+        /// The series.
+        series: SeriesId,
+        /// The photos to keep, members of the series (at least one).
+        keep: Vec<PhotoId>,
+    },
+    /// Reopens a resolved series (a step of the history): it is no longer resolved; the flags are left as they are.
+    ReopenSeries {
+        /// The series.
+        series: SeriesId,
+    },
+    /// Sets the largest gap, in seconds, between two photos of one series when series are formed by themselves
+    /// (D-101). Not a step of the history.
+    SetSeriesGap {
+        /// The gap, in seconds.
+        seconds: u32,
+    },
+    /// Forms series among the photos that are in none (what the coordinator also does when a scan or an import
+    /// finishes). With `regroup`, the series that were formed by themselves and are not resolved are dissolved
+    /// first, so that a new gap applies to them; series made by hand or resolved are never touched. Not a step of
+    /// the history.
+    DetectSeries {
+        /// Whether to dissolve the automatic, unresolved series first.
+        regroup: bool,
     },
     /// Cancels a background job (a keyword rename's sidecar refresh) started earlier.
     CancelJob {

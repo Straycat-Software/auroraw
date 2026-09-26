@@ -16,7 +16,7 @@ use auroraw_import::Profile;
 use auroraw_plugin_api::source::{Source, SourceState};
 use auroraw_sources::filesystem::FilesystemSource;
 use auroraw_sources::relink::{self, FoundFile, KnownFile, ScanOutcome};
-use auroraw_types::{ContentHash, KeywordId, PhotoId, SourceId, Timestamp};
+use auroraw_types::{ContentHash, KeywordId, PhotoId, SeriesId, SourceId, Timestamp};
 use auroraw_workspace::{FileStat, Workspace};
 
 use crate::command::Command;
@@ -82,6 +82,15 @@ pub enum Outcome {
         /// Keywords moved or deleted (with their branch).
         keywords: usize,
         /// Photos changed.
+        photos: usize,
+    },
+    /// `GroupPhotos`'s new series.
+    SeriesGrouped(SeriesId),
+    /// `DetectSeries`'s report: how many series were formed and how many photos they hold.
+    SeriesDetected {
+        /// Series formed.
+        series: usize,
+        /// Photos in them.
         photos: usize,
     },
     /// `RemoveSource`'s background job.
@@ -166,6 +175,9 @@ fn stat_from(size: u64, modified: Option<SystemTime>) -> SidecarStat {
     SidecarStat { size, modified }
 }
 
+#[path = "series_ops.rs"]
+mod series_ops;
+
 pub(crate) struct Coordinator {
     workspace: Arc<Workspace>,
     catalogue: Catalogue,
@@ -181,6 +193,8 @@ pub(crate) struct Coordinator {
     /// run one at a time, in the order asked, so that the last vocabulary wins.
     refresh_queue: VecDeque<RefreshRequest>,
     refresh_running: bool,
+    /// The largest gap between two photos of one series, in seconds (D-101).
+    series_gap: u32,
 }
 
 /// A path refresh waiting for its turn.
@@ -215,6 +229,7 @@ impl Coordinator {
             history: History::default(),
             refresh_queue: VecDeque::new(),
             refresh_running: false,
+            series_gap: crate::series_detect::DEFAULT_GAP,
         }
     }
 
@@ -229,9 +244,19 @@ impl Coordinator {
                     break;
                 }
                 Inbound::Report(event) => {
+                    // Photos arrived: the ones that belong together form series (D-101).
+                    let arrived = matches!(
+                        event,
+                        Event::IndexFinished { .. } | Event::ImportFinished { .. }
+                    );
                     let _ = self.events.send(event);
+                    if arrived {
+                        let _ = self.detect_series(false);
+                    }
                 }
                 Inbound::Removed { photo_id } => {
+                    // A photo that leaves a series shrinks it.
+                    self.leave_series_on_removal(photo_id);
                     let _ = self.catalogue.remove_photo(&photo_id);
                     // What was done to a photo that has left cannot be undone.
                     if self.history.forget_photo(photo_id) {
@@ -329,6 +354,16 @@ impl Coordinator {
                 new_parent,
             } => self.move_keyword(keyword_id, new_parent),
             Command::DeleteKeyword { keyword_id } => self.delete_keyword(keyword_id),
+            Command::GroupPhotos { photos } => self.group_photos(photos),
+            Command::RemoveFromSeries { photos } => self.remove_from_series(photos),
+            Command::DissolveSeries { series } => self.dissolve_series(series),
+            Command::ResolveSeries { series, keep } => self.resolve_series(series, keep),
+            Command::ReopenSeries { series } => self.reopen_series(series),
+            Command::SetSeriesGap { seconds } => {
+                self.series_gap = seconds;
+                Ok(Outcome::Applied)
+            }
+            Command::DetectSeries { regroup } => self.detect_series(regroup),
             Command::CancelJob { job_id } => self.cancel_job(job_id),
             Command::AddSource { name, root, kind } => self.add_source(name, root, kind),
             Command::ScanSource { source_id } => self.scan_source(source_id),
@@ -547,11 +582,12 @@ impl Coordinator {
         // that changed the vocabulary is done for the photos that remain instead: a keyword that was
         // deleted must be able to come back even if some of its photos left with a source meanwhile.
         let vocabulary = entry.has_vocabulary();
+        let stateful = entry.has_state_change();
         if let Some(missing) = entry
             .changes
             .iter()
             .filter_map(Change::photo)
-            .find(|photo| !vocabulary && self.read_photo(photo).is_err())
+            .find(|photo| !stateful && self.read_photo(photo).is_err())
         {
             self.report_history();
             return Err(EngineError::NotFound {
@@ -564,7 +600,7 @@ impl Coordinator {
             Direction::Redo => entry.changes.iter().collect(),
         };
         for change in ordered {
-            if vocabulary
+            if stateful
                 && let Some(photo) = change.photo()
                 && self.read_photo(&photo).is_err()
             {
@@ -598,6 +634,16 @@ impl Coordinator {
         if let Change::Vocabulary { keywords, .. } = change {
             self.apply_vocabulary(keywords, direction, false)?;
             return Ok(());
+        }
+        if let Change::Series {
+            id, before, after, ..
+        } = change
+        {
+            let state = match direction {
+                Direction::Undo => before,
+                Direction::Redo => after,
+            };
+            return self.write_series_state(*id, state);
         }
         let photo_id = change
             .photo()

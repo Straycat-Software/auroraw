@@ -26,6 +26,7 @@ mod job;
 pub mod paths;
 mod refresh;
 mod remove_job;
+mod series_detect;
 mod sources_api;
 mod thumbnails;
 mod viewer;
@@ -40,7 +41,8 @@ pub use coordinator::Outcome;
 pub use error::{EngineError, Result};
 pub use event::Event;
 pub use history::{
-    Change, HistoryState, KeywordDelta, KeywordSet, Label, LabelKind, VocabularyAction,
+    Change, HistoryState, KeywordDelta, KeywordSet, Label, LabelKind, SeriesAction,
+    VocabularyAction,
 };
 pub use import_flow::{
     DestinationKind, ImportRequest, ImportSourceInfo, ImportStarted, VolumeInfo,

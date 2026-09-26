@@ -26,6 +26,7 @@ mod query;
 mod rebuild;
 mod reconcile;
 mod registry;
+mod series;
 mod write;
 
 pub mod dataset;
@@ -33,10 +34,13 @@ pub mod dataset;
 pub use effective::{effective_flag, effective_rating};
 pub use error::CatalogueError;
 pub use open::{CURRENT_SCHEMA, Catalogue};
-pub use query::{Cursor, Filter, FlagFilter, KeywordRow, PhotoRow, SourceCounts, SourceRow};
+pub use query::{
+    Cursor, Filter, FlagFilter, KeywordRow, PhotoRow, SeriesFilter, SourceCounts, SourceRow,
+};
 pub use rebuild::{RebuildInput, keyword_paths, rebuild_to_file};
 pub use reconcile::ReconcileReport;
 pub use registry::{Registry, RegistryEntry};
+pub use series::{SeriesCandidate, SeriesInfo};
 
 /// A file's size and modification time, as the catalogue last saw them (design note 004 §6.2).
 /// Local to this machine: never written into the workspace. The caller (the workspace scan)
