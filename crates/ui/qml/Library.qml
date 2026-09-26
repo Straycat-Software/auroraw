@@ -738,7 +738,7 @@ FocusScope {
 
     AppSubMenu {
         id: cellMenu
-        MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; onTriggered: root.openView(-1) }
+        MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; enabled: !root.viewing; onTriggered: root.openView(-1) }
         MenuSeparator {}
         MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
         MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }

@@ -179,6 +179,18 @@ FocusScope {
         color: "#141414"
     }
 
+    // The view is over the grid: what it does not take itself (a click on the dark around the picture, a right click
+    // anywhere) must not reach the grid under it. A right click opens the photo's menu, the grid's own.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onPressed: mouse => {
+            view.forceActiveFocus()
+            if (mouse.button === Qt.RightButton)
+                view.library.cellMenu.popup()
+        }
+    }
+
     // The picture. The grid's thumbnail stands in until the big one arrives.
     Image {
         id: thumb

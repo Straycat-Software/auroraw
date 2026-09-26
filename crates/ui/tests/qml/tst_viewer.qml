@@ -90,6 +90,25 @@ AppTestCase {
         verify(grid.activeFocus)
     }
 
+    function test_a_right_click_in_the_view_opens_the_menu_of_its_photo_and_does_not_reach_the_grid() {
+        openOn(7)
+        const menu = app.library.cellMenu
+        // Where a cell of the grid under the view would be, and on the picture itself.
+        for (const point of [[60, 100], [view.width / 2, view.height / 3]]) {
+            mouseClick(view, point[0], point[1], Qt.RightButton)
+            tryVerify(() => menu.visible)
+            compare(grid.currentIndex, 7, "the photo shown is still the cursor")
+            compare(app.photos.selectedCount, 1)
+            verify(app.library.viewing)
+            menu.close()
+            tryVerify(() => !menu.visible)
+        }
+        // A left click on the dark around the picture does not select a photo of the grid either.
+        mouseClick(view, 60, 100)
+        compare(grid.currentIndex, 7)
+        keyClick(Qt.Key_Escape)
+    }
+
     function test_a_double_click_opens_the_photo_under_it() {
         const item = cell(5)
         mouseDoubleClickSequence(item, item.width / 2, item.height / 2)
