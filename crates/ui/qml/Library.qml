@@ -32,6 +32,7 @@ FocusScope {
     property alias keywords: keywordList
     property alias viewer: viewer
     property alias cellMenu: cellMenu
+    property alias viewMenu: viewMenu
     property alias labelFilterButtons: labelFilterButtons
     // The image view (one photo at a time) is open over the grid.
     property bool viewing: false
@@ -509,7 +510,7 @@ FocusScope {
                             if (under >= 0) {
                                 if (!root.photoGrid.isSelected(under))
                                     root.goTo(under, 0)
-                                cellMenu.popup()
+                                cellMenu.popup(pointer, mouse.x, mouse.y)
                             }
                             banding = false
                             onEmpty = false
@@ -736,11 +737,27 @@ FocusScope {
         }
     }
 
+    // The grid's menu: the same rows as the view's, and one to open the photo in the view.
     AppSubMenu {
         id: cellMenu
-        // (Not in the image view itself: there is nothing to open, so the row is not there.)
-        MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; visible: !root.viewing; onTriggered: root.openView(-1) }
-        MenuSeparator { visible: !root.viewing }
+        MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; onTriggered: root.openView(-1) }
+        MenuSeparator {}
+        MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
+        MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }
+        MarkItem { text: root.colourTitle("green"); colour: "green"; keyHint: "8"; onTriggered: root.label("green") }
+        MarkItem { text: root.colourTitle("blue"); colour: "blue"; keyHint: "9"; onTriggered: root.label("blue") }
+        MarkItem { text: root.colourTitle("purple"); colour: "purple"; onTriggered: root.label("purple") }
+        MarkItem { text: root.colourTitle("none"); onTriggered: root.label("none") }
+        MenuSeparator {}
+        MarkItem { text: qsTr("Pick"); keyHint: "P"; onTriggered: root.flag("pick") }
+        MarkItem { text: qsTr("Reject"); keyHint: "X"; onTriggered: root.flag("reject") }
+        MarkItem { text: qsTr("Clear the flag"); keyHint: "U"; onTriggered: root.flag("clear") }
+    }
+
+    // The image view's menu: the same rows without the one that opens the view (a menu of its own rather than a
+    // hidden row, which leaves a gap).
+    AppSubMenu {
+        id: viewMenu
         MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
         MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }
         MarkItem { text: root.colourTitle("green"); colour: "green"; keyHint: "8"; onTriggered: root.label("green") }

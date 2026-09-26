@@ -92,18 +92,19 @@ AppTestCase {
 
     function test_a_right_click_in_the_view_opens_the_menu_of_its_photo_and_does_not_reach_the_grid() {
         openOn(7)
-        const menu = app.library.cellMenu
-        // (Nothing to open from inside the view: that row is gone, and the separator after it.)
-        let openRow = null
+        const menu = app.library.viewMenu
+        // Nothing to open from inside the view: that menu has no such row (the grid's has).
         for (let i = 0; i < menu.count; i++)
-            if (menu.itemAt(i).text === "Open in the image view")
-                openRow = menu.itemAt(i)
-        verify(openRow && !openRow.visible, "the Open row is not shown in the view")
-        verify(!menu.itemAt(1).visible, "nor the separator that follows it")
+            verify(menu.itemAt(i).text !== "Open in the image view", "no Open row in the view's menu")
+        let inGrid = false
+        for (let i = 0; i < app.library.cellMenu.count; i++)
+            inGrid = inGrid || app.library.cellMenu.itemAt(i).text === "Open in the image view"
+        verify(inGrid, "the grid's menu has it")
         // Where a cell of the grid under the view would be, and on the picture itself.
         for (const point of [[60, 100], [view.width / 2, view.height / 3]]) {
             mouseClick(view, point[0], point[1], Qt.RightButton)
             tryVerify(() => menu.visible)
+            wait(150)
             snapshot("viewer-menu-en")
             compare(grid.currentIndex, 7, "the photo shown is still the cursor")
             compare(app.photos.selectedCount, 1)
@@ -275,6 +276,7 @@ AppTestCase {
             if (row && row.text === "Reject") reject = row
         }
         verify(purple && reject, "the menu has Purple and Reject")
+        wait(150)
         snapshot("grid-menu-en")
         purple.triggered()
         reject.triggered()

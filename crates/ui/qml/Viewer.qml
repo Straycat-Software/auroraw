@@ -180,14 +180,14 @@ FocusScope {
     }
 
     // The view is over the grid: what it does not take itself (a click on the dark around the picture, a right click
-    // anywhere) must not reach the grid under it. A right click opens the photo's menu, the grid's own.
+    // anywhere) must not reach the grid under it. A right click opens the photo's menu (the grid's, without the row that opens the view).
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         onPressed: mouse => {
             view.forceActiveFocus()
             if (mouse.button === Qt.RightButton)
-                view.library.cellMenu.popup()
+                view.library.viewMenu.popup(parent, mouse.x, mouse.y)
         }
     }
 

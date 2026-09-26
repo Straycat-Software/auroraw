@@ -10,7 +10,7 @@ Menu {
         let widest = 0
         for (let i = 0; i < count; i++) {
             const row = itemAt(i)
-            if (row && row.visible)
+            if (row)
                 widest = Math.max(widest, row.implicitWidth)
         }
         return widest + leftPadding + rightPadding
