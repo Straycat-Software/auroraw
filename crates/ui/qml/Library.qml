@@ -738,8 +738,9 @@ FocusScope {
 
     AppSubMenu {
         id: cellMenu
-        MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; enabled: !root.viewing; onTriggered: root.openView(-1) }
-        MenuSeparator {}
+        // (Not in the image view itself: there is nothing to open, so the row is not there.)
+        MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; visible: !root.viewing; onTriggered: root.openView(-1) }
+        MenuSeparator { visible: !root.viewing }
         MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
         MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }
         MarkItem { text: root.colourTitle("green"); colour: "green"; keyHint: "8"; onTriggered: root.label("green") }

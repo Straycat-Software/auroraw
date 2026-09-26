@@ -93,10 +93,18 @@ AppTestCase {
     function test_a_right_click_in_the_view_opens_the_menu_of_its_photo_and_does_not_reach_the_grid() {
         openOn(7)
         const menu = app.library.cellMenu
+        // (Nothing to open from inside the view: that row is gone, and the separator after it.)
+        let openRow = null
+        for (let i = 0; i < menu.count; i++)
+            if (menu.itemAt(i).text === "Open in the image view")
+                openRow = menu.itemAt(i)
+        verify(openRow && !openRow.visible, "the Open row is not shown in the view")
+        verify(!menu.itemAt(1).visible, "nor the separator that follows it")
         // Where a cell of the grid under the view would be, and on the picture itself.
         for (const point of [[60, 100], [view.width / 2, view.height / 3]]) {
             mouseClick(view, point[0], point[1], Qt.RightButton)
             tryVerify(() => menu.visible)
+            snapshot("viewer-menu-en")
             compare(grid.currentIndex, 7, "the photo shown is still the cursor")
             compare(app.photos.selectedCount, 1)
             verify(app.library.viewing)
