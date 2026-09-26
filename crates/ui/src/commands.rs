@@ -52,6 +52,20 @@ pub const COMMANDS: &[CommandSpec] = &[
     command("grid.label-green", "Green label", "8", false),
     command("grid.label-blue", "Blue label", "9", false),
     command("grid.open", "Open in the image view", "Return", false),
+    command("grid.series-toggle", "Open or close the series", "E", false),
+    command("grid.resolve", "Resolve the series", "R", false),
+    command(
+        "grid.group",
+        "Group the selection as a series",
+        "Ctrl+G",
+        false,
+    ),
+    command(
+        "grid.ungroup",
+        "Take out of the series",
+        "Ctrl+Shift+G",
+        false,
+    ),
     command("view.zoom", "Fit, or 100 %", "Z", false),
     command("view.full-screen", "Full screen", "F", false),
     command("view.info", "Show or hide the information", "I", false),
@@ -249,6 +263,26 @@ mod tests {
                 );
                 assert_ne!(a.id, b.id);
             }
+        }
+    }
+
+    /// The keyboard page of the user manual (`docs/manual/keyboard-shortcuts.md`) mentions every shortcut of the
+    /// table, so that a key cannot be added in silence: whoever adds a command adds its line to the manual (D-102).
+    #[test]
+    fn the_manual_lists_every_shortcut_of_the_table() {
+        let page = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../docs/manual/keyboard-shortcuts.md"),
+        )
+        .expect("the manual has a keyboard page");
+        for command in COMMANDS {
+            assert!(
+                page.contains(&format!("`{}`", command.shortcut)),
+                "{} ({}): docs/manual/keyboard-shortcuts.md does not mention `{}`",
+                command.id,
+                command.name,
+                command.shortcut
+            );
         }
     }
 }

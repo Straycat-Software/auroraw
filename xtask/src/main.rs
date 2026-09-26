@@ -7,6 +7,7 @@
 //!   dev-dependency (test-only, never linked into a shipped artifact) is unrestricted: a crate's
 //!   tests may set up fixtures with any sibling crate.
 //! - `check`: both of the above.
+//! - `manual-images`: redraws the pictures of the user manual (`docs/manual/images/`) from the interface's own tests.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -88,8 +89,9 @@ fn main() -> ExitCode {
             let b = layers();
             a && b
         }
+        Some("manual-images") => manual_images(),
         _ => {
-            eprintln!("usage: cargo xtask <spdx|layers|check>");
+            eprintln!("usage: cargo xtask <spdx|layers|check|manual-images>");
             return ExitCode::from(2);
         }
     };
@@ -98,6 +100,63 @@ fn main() -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+/// The pictures of the user manual: the name the interface's tests draw a view under (in English, under
+/// `views/` of the folder `AUR_SNAPSHOT_DIR` names), and the name it has in `docs/manual/images/`.
+const MANUAL_IMAGES: &[(&str, &str)] = &[
+    ("welcome-empty-en", "welcome"),
+    ("new-workspace-dialog-en", "new-workspace"),
+    ("menu-file-en", "menu-file"),
+    ("settings-dialog-en", "settings"),
+    ("catalogue-with-a-source", "catalogue"),
+    ("add-source-dialog", "add-source"),
+    ("remove-source-dialog-en", "remove-source"),
+    ("import-dialog", "import"),
+    ("grid-en", "grid"),
+    ("grid-menu-en", "grid-menu"),
+    ("viewer-en", "viewer"),
+    ("viewer-state-en", "viewer-state"),
+    ("series-collapsed-en", "series-collapsed"),
+    ("series-open-en", "series-open"),
+    ("keywords-add-en", "keywords-add"),
+    ("keywords-drag-en", "keywords-drag"),
+];
+
+/// Runs the interface's QML suites with `AUR_SNAPSHOT_DIR` set (they draw every view to a PNG) and copies the
+/// pictures the manual shows to `docs/manual/images/`. The pictures are the current interface, drawn with the
+/// tests' generated photographs.
+fn manual_images() -> bool {
+    let root = root();
+    let scratch = root.join("target").join("manual-images");
+    let _ = std::fs::remove_dir_all(&scratch);
+    if std::fs::create_dir_all(&scratch).is_err() {
+        eprintln!("cannot create {}", scratch.display());
+        return false;
+    }
+    let status = Command::new("cargo")
+        .args(["test", "-p", "auroraw-ui", "--test", "qml"])
+        .env("AUR_SNAPSHOT_DIR", &scratch)
+        .current_dir(&root)
+        .status();
+    if !status.is_ok_and(|s| s.success()) {
+        eprintln!("the interface's tests failed: no pictures were copied");
+        return false;
+    }
+    let target = root.join("docs").join("manual").join("images");
+    let _ = std::fs::create_dir_all(&target);
+    let mut ok = true;
+    for (from, to) in MANUAL_IMAGES {
+        let source = scratch.join("views").join(format!("{from}.png"));
+        match std::fs::copy(&source, target.join(format!("{to}.png"))) {
+            Ok(_) => println!("{from} -> docs/manual/images/{to}.png"),
+            Err(e) => {
+                eprintln!("{}: {e}", source.display());
+                ok = false;
+            }
+        }
+    }
+    ok
 }
 
 fn root() -> PathBuf {

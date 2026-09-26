@@ -83,7 +83,9 @@ substantial part of a change, say so in the pull request; you remain responsible
 The pull request template lists what "ready" means. In short: it builds without warnings on
 Linux, Windows and macOS; it has tests (a bug fix has a regression test); a format change carries
 a fixture and a migration; new strings are translatable and new controls are keyboard-reachable
-and named for screen readers. The reasons are in [docs/testing-strategy.md](docs/testing-strategy.md) §9.
+and named for screen readers; a change a photographer can see is described in the
+[user manual](docs/manual/README.md) (a page, a line in the keyboard shortcuts, a picture if a view changed:
+`cargo xtask manual-images`). The reasons are in [docs/testing-strategy.md](docs/testing-strategy.md) §9.
 
 ## Translations
 

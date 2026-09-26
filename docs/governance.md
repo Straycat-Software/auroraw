@@ -132,7 +132,8 @@ Files to add at the root of the repository, all short:
   its own quality.
 - **The checklist decides "ready".** The change builds without warnings on three platforms, has
   tests, carries fixtures for a format change, has translatable strings and accessible controls,
-  and justifies a new dependency (testing strategy §9).
+  **describes in the user manual (`docs/manual/`) any change a photographer can see** (D-102), and
+  justifies a new dependency (testing strategy §9).
 - **Reviews** are by a maintainer other than the author; the owner reviews changes to formats,
   the plugin API, the pipeline definition, the write path and the sandbox.
 - **Language.** Code, comments, commit messages, documents, issues, pull requests and

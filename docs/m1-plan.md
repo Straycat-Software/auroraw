@@ -801,7 +801,10 @@ shows a full page of thumbnails in the time spike 3 measured.
 `release.yml` (CI §3.3), the Flatpak, AppImage, Windows installer and zip, macOS `.dmg`, signing
 as ready (CI §6.3), the launch test on the built artifacts, the release checklist of the testing
 strategy §11, the user documentation for M1 features, and the changelog. Packaging is exercised
-**at every increment**, not only at the end.
+**at every increment**, not only at the end. **The user manual has started** (2026-09-26, D-102): `docs/manual/`,
+in English, one page per task (first steps, bringing photos in, browsing, culling, series, keywords, your files and
+their safety), the keyboard shortcuts and a glossary, with pictures drawn by the interface's own tests
+(`cargo xtask manual-images`). Each visible feature adds to it; French follows once the English is stable.
 
 Done when: `0.1.0` installs, runs, upgrades from the previous pre-release and uninstalls on the three platforms.
 

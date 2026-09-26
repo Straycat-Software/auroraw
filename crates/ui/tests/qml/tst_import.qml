@@ -47,7 +47,7 @@ AppTestCase {
         const m = begin("Template3")
         openImport()
         fill(m)
-        d.creatorField.text = "Patrick Fournier"
+        d.creatorField.text = "Alex Photographer"
         snapshot("import-dialog")
         click(d.importButton)
         waitForTheImport()
@@ -136,8 +136,8 @@ AppTestCase {
         const m = begin("Template2")
         openImport()
         fill(m)
-        d.creatorField.text = "Patrick Fournier"
-        d.rightsField.text = "© Patrick Fournier"
+        d.creatorField.text = "Alex Photographer"
+        d.rightsField.text = "© Alex Photographer"
         click(d.importButton)
         waitForTheImport()
 
@@ -145,8 +145,8 @@ AppTestCase {
         compare(app.launcher.screen, "workspace")
         compare(d.destinationField.text, files.canonical(m.archive))
         compare(d.sourceField.text, files.canonical(m.card))
-        compare(d.creatorField.text, "Patrick Fournier")
-        compare(d.rightsField.text, "© Patrick Fournier")
+        compare(d.creatorField.text, "Alex Photographer")
+        compare(d.rightsField.text, "© Alex Photographer")
     }
 
     function test_the_dialog_says_what_the_destination_is_to_the_catalogue() {

@@ -8,6 +8,7 @@ negative scans, non-destructively), convert, edit metadata and deliver galleries
 
 ## Documents
 
+- **[User manual](docs/manual/README.md)**: how to use what the application does today
 - [Functional specification](docs/functional-specification.md)
 - [Decision log](docs/decisions.md)
 - [Architecture](docs/architecture.md)
