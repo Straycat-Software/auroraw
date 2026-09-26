@@ -175,6 +175,10 @@ runs in a separate helper process, so that its crash or corruption stays out of 
   one of them (D-099): `Change::Vocabulary` holds the keyword entries that changed, before and after, and an
   action that deletes a keyword records the photos that lost it and then the vocabulary change, so that undo
   brings the vocabulary back before the photos.
+- **Series** (D-101) are state files like the vocabulary: a `Change::Series` holds the file before and after, so
+  grouping, taking out, dissolving, resolving (with the flag changes of the photos, in one entry) and reopening are
+  undone and redone as one operation. Detection (`series_detect`, pure) runs on the coordinator when an index or an
+  import finishes and forms series among the photos that are in none; it is not a step.
 - **Sidecar edits are serialised** (D-099): every read-modify-write of one photo's files, from the coordinator or
   from a background job (the path refresh after a keyword edit, the removal of a source, an index merge), holds
   `Workspace::sidecar_guard()`; refresh jobs run one at a time, in the order asked.

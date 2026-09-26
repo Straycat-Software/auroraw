@@ -203,3 +203,11 @@ fn the_image_view_and_cull_mode() {
     support::machine_with_photos(home.path(), 40);
     run_suite("viewer", home.path(), None);
 }
+
+/// Series: a burst and a bracket collapsed in the grid, opened in place, acted on as one, resolved, made by hand.
+#[test]
+fn series_in_the_grid() {
+    let home = temp_dir();
+    support::machine_with_series(home.path(), 40, 5);
+    run_suite("series", home.path(), None);
+}

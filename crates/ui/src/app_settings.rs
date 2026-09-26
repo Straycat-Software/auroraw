@@ -25,6 +25,8 @@ pub struct AppSettings {
     pub show_filmstrip: bool,
     /// The image view shows the line about the photo.
     pub show_info: bool,
+    /// The largest gap, in seconds, between two photos of one series (D-101).
+    pub series_gap: u32,
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
@@ -40,6 +42,7 @@ impl Default for AppSettings {
             auto_advance: false,
             show_filmstrip: true,
             show_info: true,
+            series_gap: 2,
         }
     }
 }
@@ -109,6 +112,7 @@ mod tests {
             auto_advance: true,
             show_filmstrip: false,
             show_info: false,
+            series_gap: 5,
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);

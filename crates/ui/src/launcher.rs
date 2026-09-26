@@ -90,6 +90,22 @@ pub mod qobject {
         #[cxx_name = "setViewOption"]
         fn set_view_option(self: &Launcher, name: &QString, on: bool);
 
+        /// The largest gap, in seconds, between two photos of one series.
+        #[qinvokable]
+        #[cxx_name = "seriesGap"]
+        fn series_gap(self: &Launcher) -> i32;
+
+        /// Remembers the series gap and tells the engine (series formed later use it).
+        #[qinvokable]
+        #[cxx_name = "setSeriesGap"]
+        fn set_series_gap(self: &Launcher, seconds: i32);
+
+        /// Dissolves the series that were formed by themselves and are not resolved, and forms them again with
+        /// the gap (series made by hand or resolved stay).
+        #[qinvokable]
+        #[cxx_name = "regroupSeries"]
+        fn regroup_series(self: &Launcher);
+
         /// Remembers the width of the keyword panel.
         #[qinvokable]
         #[cxx_name = "setKeywordPanelWidth"]
@@ -179,6 +195,10 @@ impl qobject::Launcher {
         let service = engine
             .start_thumbnails(&previews_path, 4)
             .expect("the previews database opens");
+        // The gap the person chose applies to the series formed from now on.
+        let _ = engine.submit(auroraw_engine::Command::SetSeriesGap {
+            seconds: AppSettings::load(&self.settings_path()).series_gap,
+        });
         let previews = engine
             .start_previews(2)
             .expect("the preview service starts");
@@ -374,6 +394,36 @@ impl qobject::Launcher {
             _ => return,
         }
         settings.save(&path);
+    }
+
+    pub fn series_gap(&self) -> i32 {
+        match &self.dirs {
+            Some(_) => AppSettings::load(&self.settings_path()).series_gap as i32,
+            None => AppSettings::default().series_gap as i32,
+        }
+    }
+
+    pub fn set_series_gap(&self, seconds: i32) {
+        let seconds = seconds.clamp(0, 600) as u32;
+        if self.dirs.is_some() {
+            let path = self.settings_path();
+            let mut settings = AppSettings::load(&path);
+            settings.series_gap = seconds;
+            settings.save(&path);
+        }
+        if let Some(session) = crate::session::current() {
+            let _ = session
+                .engine
+                .submit(auroraw_engine::Command::SetSeriesGap { seconds });
+        }
+    }
+
+    pub fn regroup_series(&self) {
+        if let Some(session) = crate::session::current() {
+            let _ = session
+                .engine
+                .submit(auroraw_engine::Command::DetectSeries { regroup: true });
+        }
     }
 
     pub fn set_keyword_panel_width(&self, width: i32) {

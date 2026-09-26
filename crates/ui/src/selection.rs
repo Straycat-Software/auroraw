@@ -18,6 +18,7 @@ pub struct Selection {
 
 impl Selection {
     /// How many photos are selected.
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.ids.len()
     }

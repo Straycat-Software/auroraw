@@ -18,6 +18,7 @@ mod files;
 mod folders;
 #[allow(unsafe_code)]
 mod glue;
+mod grid_items;
 mod gridmath;
 #[allow(unsafe_code)]
 mod history;

@@ -140,6 +140,29 @@
     </message>
     <message numerus="yes">
         <location filename="../qml/AppActions.qml" line="60"/>
+        <source>Undo grouping %n photo(s)</source>
+        <translation>
+            <numerusform>Annuler le regroupement de %n photo</numerusform>
+            <numerusform>Annuler le regroupement de %n photos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="61"/>
+        <source>Undo taking photos out of a series</source>
+        <translation>Annuler la sortie de photos d’une série</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="62"/>
+        <source>Undo resolving the series</source>
+        <translation>Annuler la résolution de la série</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="63"/>
+        <source>Undo reopening the series</source>
+        <translation>Annuler la réouverture de la série</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="64"/>
         <source>Undo keywords of %n photo(s)</source>
         <translation>
             <numerusform>Annuler les mots-clés de la photo</numerusform>
@@ -147,22 +170,22 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="61"/>
+        <location filename="../qml/AppActions.qml" line="65"/>
         <source>Undo creating the keyword</source>
         <translation>Annuler la création du mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="62"/>
+        <location filename="../qml/AppActions.qml" line="66"/>
         <source>Undo renaming the keyword</source>
         <translation>Annuler le renommage du mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="63"/>
+        <location filename="../qml/AppActions.qml" line="67"/>
         <source>Undo moving the keyword</source>
         <translation>Annuler le déplacement du mot-clé</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="64"/>
+        <location filename="../qml/AppActions.qml" line="68"/>
         <source>Undo deleting %n keyword(s)</source>
         <translation>
             <numerusform>Annuler la suppression de %n mot-clé</numerusform>
@@ -170,7 +193,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="65"/>
+        <location filename="../qml/AppActions.qml" line="69"/>
         <source>Undo the change to %n photo(s)</source>
         <translation>
             <numerusform>Annuler la modification de la photo</numerusform>
@@ -178,13 +201,13 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="67"/>
-        <location filename="../qml/AppActions.qml" line="87"/>
+        <location filename="../qml/AppActions.qml" line="71"/>
+        <location filename="../qml/AppActions.qml" line="95"/>
         <source>Undo</source>
         <translation>Annuler</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="72"/>
+        <location filename="../qml/AppActions.qml" line="76"/>
         <source>Redo %n rating(s)</source>
         <translation>
             <numerusform>Rétablir la note</numerusform>
@@ -192,7 +215,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="73"/>
+        <location filename="../qml/AppActions.qml" line="77"/>
         <source>Redo %n flag(s)</source>
         <translation>
             <numerusform>Rétablir le drapeau</numerusform>
@@ -200,7 +223,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="74"/>
+        <location filename="../qml/AppActions.qml" line="78"/>
         <source>Redo %n label(s)</source>
         <translation>
             <numerusform>Rétablir l’étiquette</numerusform>
@@ -208,7 +231,30 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="75"/>
+        <location filename="../qml/AppActions.qml" line="79"/>
+        <source>Redo grouping %n photo(s)</source>
+        <translation>
+            <numerusform>Rétablir le regroupement de %n photo</numerusform>
+            <numerusform>Rétablir le regroupement de %n photos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="80"/>
+        <source>Redo taking photos out of a series</source>
+        <translation>Rétablir la sortie de photos d’une série</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="81"/>
+        <source>Redo resolving the series</source>
+        <translation>Rétablir la résolution de la série</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="82"/>
+        <source>Redo reopening the series</source>
+        <translation>Rétablir la réouverture de la série</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="83"/>
         <source>Redo keywords of %n photo(s)</source>
         <translation>
             <numerusform>Rétablir les mots-clés de la photo</numerusform>
@@ -216,22 +262,22 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="76"/>
+        <location filename="../qml/AppActions.qml" line="84"/>
         <source>Redo creating the keyword</source>
         <translation>Rétablir la création du mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="77"/>
+        <location filename="../qml/AppActions.qml" line="85"/>
         <source>Redo renaming the keyword</source>
         <translation>Rétablir le renommage du mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="78"/>
+        <location filename="../qml/AppActions.qml" line="86"/>
         <source>Redo moving the keyword</source>
         <translation>Rétablir le déplacement du mot-clé</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="79"/>
+        <location filename="../qml/AppActions.qml" line="87"/>
         <source>Redo deleting %n keyword(s)</source>
         <translation>
             <numerusform>Rétablir la suppression de %n mot-clé</numerusform>
@@ -239,7 +285,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/AppActions.qml" line="80"/>
+        <location filename="../qml/AppActions.qml" line="88"/>
         <source>Redo the change to %n photo(s)</source>
         <translation>
             <numerusform>Rétablir la modification de la photo</numerusform>
@@ -247,53 +293,53 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="82"/>
-        <location filename="../qml/AppActions.qml" line="94"/>
+        <location filename="../qml/AppActions.qml" line="90"/>
+        <location filename="../qml/AppActions.qml" line="102"/>
         <source>Redo</source>
         <translation>Rétablir</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="101"/>
+        <location filename="../qml/AppActions.qml" line="109"/>
         <source>Cut</source>
         <translation>Couper</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="108"/>
+        <location filename="../qml/AppActions.qml" line="116"/>
         <source>Copy</source>
         <translation>Copier</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="115"/>
+        <location filename="../qml/AppActions.qml" line="123"/>
         <source>Paste</source>
         <translation>Coller</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="122"/>
+        <location filename="../qml/AppActions.qml" line="130"/>
         <source>Delete</source>
         <translation>Supprimer</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="140"/>
+        <location filename="../qml/AppActions.qml" line="148"/>
         <source>Select all</source>
         <translation>Tout sélectionner</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="147"/>
+        <location filename="../qml/AppActions.qml" line="155"/>
         <source>Select none</source>
         <translation>Ne rien sélectionner</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="154"/>
+        <location filename="../qml/AppActions.qml" line="162"/>
         <source>Keywords</source>
         <translation>Mots-clés</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="161"/>
+        <location filename="../qml/AppActions.qml" line="169"/>
         <source>Invert selection</source>
         <translation>Inverser la sélection</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="169"/>
+        <location filename="../qml/AppActions.qml" line="177"/>
         <source>About Auroraw</source>
         <translation>À propos d&apos;Auroraw</translation>
     </message>
@@ -831,22 +877,22 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="93"/>
+        <location filename="../qml/Library.qml" line="108"/>
         <source>Not rejected</source>
         <translation>Non refusées</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="93"/>
+        <location filename="../qml/Library.qml" line="108"/>
         <source>All photos</source>
         <translation>Toutes les photos</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="94"/>
+        <location filename="../qml/Library.qml" line="109"/>
         <source>Picked</source>
         <translation>Retenues</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="94"/>
+        <location filename="../qml/Library.qml" line="109"/>
         <source>Rejected</source>
         <translation>Refusées</translation>
     </message>
@@ -859,87 +905,127 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="75"/>
+        <location filename="../qml/Library.qml" line="78"/>
         <source>Red</source>
         <translation>Rouge</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="76"/>
+        <location filename="../qml/Library.qml" line="79"/>
         <source>Yellow</source>
         <translation>Jaune</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="77"/>
+        <location filename="../qml/Library.qml" line="80"/>
         <source>Green</source>
         <translation>Vert</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="78"/>
+        <location filename="../qml/Library.qml" line="81"/>
         <source>Blue</source>
         <translation>Bleu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="79"/>
+        <location filename="../qml/Library.qml" line="82"/>
         <source>Purple</source>
         <translation>Violet</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="81"/>
+        <location filename="../qml/Library.qml" line="84"/>
         <source>No colour</source>
         <translation>Aucune couleur</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="288"/>
+        <location filename="../qml/Library.qml" line="96"/>
+        <source>Series</source>
+        <translation>Séries</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="96"/>
+        <source>In a series</source>
+        <translation>Dans une série</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="97"/>
+        <source>Unresolved series</source>
+        <translation>Séries non résolues</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="97"/>
+        <source>Resolved series</source>
+        <translation>Séries résolues</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="351"/>
         <source>All</source>
         <translation>Tout</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="288"/>
+        <location filename="../qml/Library.qml" line="351"/>
         <source>1+</source>
         <translation>1+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="288"/>
+        <location filename="../qml/Library.qml" line="351"/>
         <source>2+</source>
         <translation>2+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="289"/>
+        <location filename="../qml/Library.qml" line="352"/>
         <source>3+</source>
         <translation>3+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="289"/>
+        <location filename="../qml/Library.qml" line="352"/>
         <source>4+</source>
         <translation>4+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="289"/>
+        <location filename="../qml/Library.qml" line="352"/>
         <source>5</source>
         <translation>5</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="306"/>
+        <location filename="../qml/Library.qml" line="369"/>
         <source>Show photos by flag</source>
         <translation>Afficher les photos selon le drapeau</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="329"/>
+        <location filename="../qml/Library.qml" line="392"/>
         <source>Only the photos labelled %1</source>
         <translation>Seulement les photos étiquetées %1</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="346"/>
+        <location filename="../qml/Library.qml" line="415"/>
+        <source>Show photos by series</source>
+        <translation>Afficher les photos selon les séries</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="430"/>
+        <source>Close all</source>
+        <translation>Tout fermer</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="430"/>
+        <source>Open all</source>
+        <translation>Tout ouvrir</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="433"/>
+        <source>Open or close every series (E for the one under the cursor)</source>
+        <translation>Ouvrir ou fermer toutes les séries (E pour celle sous le curseur)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="441"/>
         <source>Keyword: %1</source>
         <translation>Mot-clé : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="361"/>
+        <location filename="../qml/Library.qml" line="456"/>
         <source>Refresh</source>
         <translation>Actualiser</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="594"/>
+        <location filename="../qml/Library.qml" line="710"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n étoile</numerusform>
@@ -947,32 +1033,60 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="594"/>
+        <location filename="../qml/Library.qml" line="710"/>
         <source>Photo</source>
         <translation>Photo</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="615"/>
+        <location filename="../qml/Library.qml" line="757"/>
         <source>No preview</source>
         <translation>Aucun aperçu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="741"/>
+        <location filename="../qml/Library.qml" line="909"/>
         <source>Open in the image view</source>
         <translation>Ouvrir dans la vue image</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="750"/>
+        <location filename="../qml/Library.qml" line="911"/>
+        <source>Open or close the series</source>
+        <translation>Ouvrir ou fermer la série</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="912"/>
+        <source>Group as a series</source>
+        <translation>Grouper en série</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="913"/>
+        <source>Take out of the series</source>
+        <translation>Sortir de la série</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="914"/>
+        <source>Resolve the series</source>
+        <translation>Résoudre la série</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="915"/>
+        <source>Reopen the series</source>
+        <translation>Rouvrir la série</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="924"/>
+        <location filename="../qml/Library.qml" line="940"/>
         <source>Pick</source>
         <translation>Retenir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="751"/>
+        <location filename="../qml/Library.qml" line="925"/>
+        <location filename="../qml/Library.qml" line="941"/>
         <source>Reject</source>
         <translation>Refuser</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="752"/>
+        <location filename="../qml/Library.qml" line="926"/>
+        <location filename="../qml/Library.qml" line="942"/>
         <source>Clear the flag</source>
         <translation>Effacer le drapeau</translation>
     </message>
@@ -985,37 +1099,37 @@
         <translation>Impossible d&apos;ouvrir le workspace : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="251"/>
+        <location filename="../qml/Main.qml" line="252"/>
         <source>Menu</source>
         <translation>Menu</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="266"/>
+        <location filename="../qml/Main.qml" line="267"/>
         <source>Catalogue</source>
         <translation>Catalogue</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="272"/>
+        <location filename="../qml/Main.qml" line="273"/>
         <source>Cull</source>
         <translation>Trier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="277"/>
+        <location filename="../qml/Main.qml" line="278"/>
         <source>Develop</source>
         <translation>Développer</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="278"/>
+        <location filename="../qml/Main.qml" line="279"/>
         <source>Publish</source>
         <translation>Publier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="365"/>
+        <location filename="../qml/Main.qml" line="366"/>
         <source>Choose a folder in the folder dialog…</source>
         <translation>Choisissez un dossier dans la fenêtre de sélection…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="376"/>
+        <location filename="../qml/Main.qml" line="377"/>
         <source>Open a workspace</source>
         <translation>Ouvrir un workspace</translation>
     </message>
@@ -1161,17 +1275,42 @@
         <translation>Paramètres</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="18"/>
+        <location filename="../qml/SettingsDialog.qml" line="20"/>
         <source>Language</source>
         <translation>Langue</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="30"/>
+        <location filename="../qml/SettingsDialog.qml" line="32"/>
         <source>System</source>
         <translation>Système</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="43"/>
+        <location filename="../qml/SettingsDialog.qml" line="42"/>
+        <source>Series</source>
+        <translation>Séries</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="49"/>
+        <source>Photos of one camera at most this many seconds apart form a series:</source>
+        <translation>Les photos d’un même appareil espacées d’au plus ce nombre de secondes forment une série :</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="59"/>
+        <source>Series gap in seconds</source>
+        <translation>Écart des séries en secondes</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="65"/>
+        <source>Regroup the series now</source>
+        <translation>Regrouper les séries maintenant</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="68"/>
+        <source>Forms the series that were made by themselves again with this gap. Series made by hand or resolved stay.</source>
+        <translation>Refait avec cet écart les séries formées automatiquement. Les séries faites à la main ou résolues restent.</translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="75"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -1179,107 +1318,107 @@
 <context>
     <name>Viewer</name>
     <message>
-        <location filename="../qml/Viewer.qml" line="233"/>
+        <location filename="../qml/Viewer.qml" line="245"/>
         <source>The original is not available</source>
         <translation>L’original n’est pas disponible</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="260"/>
+        <location filename="../qml/Viewer.qml" line="272"/>
         <source>Rating</source>
         <translation>Note</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="262"/>
+        <location filename="../qml/Viewer.qml" line="274"/>
         <source>Rating: click to change it (0 to 5)</source>
-        <translation>Note : cliquer pour la changer (0 à 5)</translation>
+        <translation>Note&#xa0;: cliquer pour la changer (0 à 5)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="271"/>
+        <location filename="../qml/Viewer.qml" line="283"/>
         <source>Flag</source>
         <translation>Drapeau</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="273"/>
+        <location filename="../qml/Viewer.qml" line="285"/>
         <source>Flag: click for picked, rejected, none (P, X, U)</source>
-        <translation>Drapeau : cliquer pour retenu, refusé, aucun (P, X, U)</translation>
+        <translation>Drapeau&#xa0;: cliquer pour retenu, refusé, aucun (P, X, U)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="279"/>
+        <location filename="../qml/Viewer.qml" line="291"/>
         <source>Colour label</source>
         <translation>Étiquette de couleur</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="281"/>
+        <location filename="../qml/Viewer.qml" line="293"/>
         <source>Colour label: click to go through the colours (6 to 9)</source>
-        <translation>Étiquette de couleur : cliquer pour parcourir les couleurs (6 à 9)</translation>
+        <translation>Étiquette de couleur&#xa0;: cliquer pour parcourir les couleurs (6 à 9)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="303"/>
+        <location filename="../qml/Viewer.qml" line="315"/>
         <source>100 %</source>
         <translation>100&#xa0;%</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="303"/>
+        <location filename="../qml/Viewer.qml" line="315"/>
         <source>Fit</source>
         <translation>Ajuster</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="306"/>
+        <location filename="../qml/Viewer.qml" line="318"/>
         <source>Fit or 100 % (Z)</source>
         <translation>Ajuster ou 100&#xa0;% (Z)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="310"/>
+        <location filename="../qml/Viewer.qml" line="322"/>
         <source>Info</source>
         <translation>Infos</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="315"/>
+        <location filename="../qml/Viewer.qml" line="327"/>
         <source>Information (I)</source>
         <translation>Informations (I)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="322"/>
+        <location filename="../qml/Viewer.qml" line="334"/>
         <source>Filmstrip</source>
         <translation>Pellicule</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="327"/>
+        <location filename="../qml/Viewer.qml" line="339"/>
         <source>Filmstrip (T)</source>
         <translation>Pellicule (T)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="334"/>
+        <location filename="../qml/Viewer.qml" line="346"/>
         <source>Auto-advance</source>
         <translation>Avance auto</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="339"/>
+        <location filename="../qml/Viewer.qml" line="351"/>
         <source>Move on after a rating, flag or label (A)</source>
         <translation>Passer à la suivante après une note, un drapeau ou une étiquette (A)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="346"/>
+        <location filename="../qml/Viewer.qml" line="358"/>
         <source>Full screen</source>
         <translation>Plein écran</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="349"/>
+        <location filename="../qml/Viewer.qml" line="361"/>
         <source>Full screen (F)</source>
         <translation>Plein écran (F)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="355"/>
+        <location filename="../qml/Viewer.qml" line="367"/>
         <source>Back to the grid</source>
         <translation>Retour à la grille</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="357"/>
+        <location filename="../qml/Viewer.qml" line="369"/>
         <source>Back to the grid (Esc)</source>
         <translation>Retour à la grille (Échap)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="378"/>
+        <location filename="../qml/Viewer.qml" line="390"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
     </message>

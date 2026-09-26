@@ -38,6 +38,12 @@ pub mod qobject {
         #[cxx_name = "historyApplied"]
         fn history_applied(self: Pin<&mut Bus>, photo_ids: &QString);
 
+        /// A series was made, changed or dissolved (a step, an undo, or the detection that follows photos arriving):
+        /// the grid lists photos differently now.
+        #[qsignal]
+        #[cxx_name = "seriesChanged"]
+        fn series_changed(self: Pin<&mut Bus>);
+
         /// A background job made progress.
         #[qsignal]
         #[cxx_name = "jobProgress"]
@@ -180,6 +186,7 @@ fn dispatch(event: Event, session: &Session) {
                 )
             });
         }
+        Event::SeriesChanged => on_gui(|bus| bus.series_changed()),
         Event::HistoryApplied { photos, .. } => {
             let ids: Vec<String> = photos.iter().map(ToString::to_string).collect();
             let ids = ids.join(",");

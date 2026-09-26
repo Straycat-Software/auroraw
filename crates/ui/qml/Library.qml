@@ -27,7 +27,7 @@ FocusScope {
     property string single: ""
     readonly property string summary: photoGrid.selectedCount > 1
         ? qsTr("%n photo(s) selected", "", photoGrid.selectedCount) : single
-    readonly property string status: qsTr("%n photo(s)", "", photoGrid.count)
+    readonly property string status: qsTr("%n photo(s)", "", photoGrid.total)
     readonly property int selectedCount: photoGrid.selectedCount
     property alias keywords: keywordList
     property alias viewer: viewer
@@ -36,6 +36,8 @@ FocusScope {
     property alias labelFilterButtons: labelFilterButtons
     // The image view (one photo at a time) is open over the grid.
     property bool viewing: false
+    // Every series is shown open (the button of the filter bar says which way it goes next).
+    property bool allOpen: false
     // Asked to make the window full screen or back (the window's business).
     signal fullScreenToggled()
     property alias keywordPanel: keywordPanel
@@ -85,6 +87,18 @@ FocusScope {
     // Lists only the photos with this colour label; the same colour again lists them all.
     function filterLabel(name) {
         photoGrid.filterLabel(photoGrid.labelFilter === name ? "" : name)
+        grid.currentIndex = -1
+        grid.contentY = 0
+        updateSummary()
+    }
+
+    function seriesName(index) {
+        return index === 0 ? qsTr("Series") : index === 1 ? qsTr("In a series")
+               : index === 2 ? qsTr("Unresolved series") : qsTr("Resolved series")
+    }
+
+    function filterSeries(kind) {
+        photoGrid.filterSeries(kind)
         grid.currentIndex = -1
         grid.contentY = 0
         updateSummary()
@@ -164,11 +178,51 @@ FocusScope {
         updateSummary()
     }
 
-    // Opens the image view on `index` (the cursor's photo when it is -1).
+    // Opens or closes the series of the photo in `index` (the cursor's when it is -1); the cursor stays on its photo.
+    function toggleSeries(index) {
+        const row = index >= 0 ? index : grid.currentIndex
+        const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
+        if (!photoGrid.toggleSeries(row))
+            return
+        grid.currentIndex = cursor !== "" ? photoGrid.rowOf(cursor) : -1
+        updateSummary()
+    }
+
+    // Opens or closes every series.
+    function expandAll(open) {
+        const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
+        photoGrid.expandAll(open)
+        grid.currentIndex = cursor !== "" ? photoGrid.rowOf(cursor) : -1
+        allOpen = open
+        updateSummary()
+    }
+
+    // Groups what is selected into a series (one step), or takes it out of its series.
+    function group() { photoGrid.groupSelection() }
+    function ungroup() { photoGrid.ungroupSelection() }
+    function reopen() { photoGrid.reopenSeries() }
+
+    // Resolves the series of the selection, keeping the selected photos: the others are rejected, the kept picked. A
+    // collapsed series has nothing to choose from: it is opened for the person to select what to keep.
+    function resolve() {
+        if (photoGrid.selectedCount === 0 && grid.currentIndex >= 0)
+            photoGrid.selectOnly(grid.currentIndex)
+        if (photoGrid.resolveSeries() === -1)
+            toggleSeries(-1)
+        updateSummary()
+    }
+
+    // Opens the image view on `index` (the cursor's photo when it is -1). A collapsed series is opened first: the
+    // view walks its members, from its cover.
     function openView(index) {
-        const row = index >= 0 ? index : Math.max(grid.currentIndex, 0)
+        let row = index >= 0 ? index : Math.max(grid.currentIndex, 0)
         if (photoGrid.count === 0 || row >= photoGrid.count)
             return
+        if (photoGrid.isCollapsed(row)) {
+            const id = photoGrid.idAt(row)
+            photoGrid.toggleSeries(row)
+            row = photoGrid.rowOf(id)
+        }
         goTo(row, 0)
         viewing = true
         viewer.opened()
@@ -251,6 +305,14 @@ FocusScope {
         photoGrid.selectPhotos(photoIds.join(","))
         showCursor(photoGrid.rowOf(photoIds[0]))
         updateSummary()
+    }
+
+    // A series changed (a step, an undo, the detection after a scan): the list is read again, once for a run of them.
+    function seriesChanged() { seriesTimer.restart() }
+    Timer {
+        id: seriesTimer
+        interval: 80
+        onTriggered: root.reload()
     }
 
     // The engine says a photo changed: its cell and, when it is what the strip describes, the strip follow.
@@ -342,6 +404,38 @@ FocusScope {
                             }
                         }
                     }
+                    // Series (WP9): which photos by series, and every series open or closed.
+                    ComboBox {
+                        id: seriesBox
+                        visible: root.photoGrid.seriesCount > 0
+                        model: 4
+                        focusPolicy: Qt.NoFocus
+                        currentIndex: root.photoGrid.seriesFilter
+                        displayText: root.seriesName(currentIndex)
+                        Accessible.name: qsTr("Show photos by series")
+                        delegate: ItemDelegate {
+                            required property int index
+                            width: seriesBox.width
+                            text: root.seriesName(index)
+                            highlighted: seriesBox.highlightedIndex === index
+                        }
+                        onActivated: index => {
+                            root.filterSeries(index)
+                            grid.forceActiveFocus()
+                        }
+                    }
+                    ToolButton {
+                        id: expandButton
+                        visible: root.photoGrid.seriesCount > 0
+                        text: root.allOpen ? qsTr("Close all") : qsTr("Open all")
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Open or close every series (E for the one under the cursor)")
+                        onClicked: {
+                            root.expandAll(!root.allOpen)
+                            grid.forceActiveFocus()
+                        }
+                    }
                     AppButton {
                         visible: root.photoGrid.keywordFilter !== ""
                         text: qsTr("Keyword: %1").arg(root.keywordFilterName) + " ×"
@@ -427,6 +521,18 @@ FocusScope {
                         if (ctrlOrShift)
                             return
                         root.label(["red", "yellow", "green", "blue"][event.key - Qt.Key_6])
+                    } else if (event.key === Qt.Key_G && (event.modifiers & Qt.ControlModifier)) {
+                        if (event.modifiers & Qt.ShiftModifier)
+                            root.ungroup()
+                        else
+                            root.group()
+                    } else if (event.key === Qt.Key_E || event.key === Qt.Key_R) {
+                        if (ctrlOrShift)
+                            return
+                        if (event.key === Qt.Key_E)
+                            root.toggleSeries(-1)
+                        else
+                            root.resolve()
                     } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                         if (ctrlOrShift)
                             return
@@ -585,6 +691,15 @@ FocusScope {
                     required property bool selected
                     required property int flag
                     required property string colourLabel
+                    required property string seriesId
+                    required property int seriesSize
+                    required property int seriesTotal
+                    required property bool seriesResolved
+                    required property bool seriesOpen
+                    required property int seriesEdge
+                    // A series is one thumbnail with a count, that opens in place.
+                    readonly property bool inSeries: cell.seriesId !== "" && cell.seriesTotal > 1
+                    readonly property bool collapsed: cell.inSeries && cell.seriesSize > 1 && !cell.seriesOpen
                     // No thumbnail can be made for this photo (it says so instead of staying empty).
                     readonly property bool unavailable: thumbnail.status === Image.Error
                     readonly property bool shown: thumbnail.status === Image.Ready
@@ -594,6 +709,32 @@ FocusScope {
                     Accessible.selected: cell.selected
                     Accessible.name: cell.rating > 0 ? qsTr("Photo, %n star(s)", "", cell.rating) : qsTr("Photo")
 
+                    // A collapsed series looks like a pile: two edges under the picture.
+                    Rectangle {
+                        x: 9
+                        y: 121
+                        width: 150
+                        height: 2
+                        visible: cell.collapsed
+                        color: Theme.grey.light
+                    }
+                    Rectangle {
+                        x: 14
+                        y: 123
+                        width: 140
+                        height: 1
+                        visible: cell.collapsed
+                        color: Theme.grey.light
+                    }
+                    // The members of an open series are joined by a line under them.
+                    Rectangle {
+                        x: cell.seriesEdge === 1 ? 4 : 0
+                        y: 121
+                        width: cell.seriesEdge === 1 ? 160 : cell.seriesEdge === 3 ? 164 : 164
+                        height: 3
+                        visible: cell.seriesOpen && cell.seriesEdge !== 0
+                        color: cell.seriesResolved ? Theme.picked : Theme.accent
+                    }
                     Rectangle {
                         x: 4
                         width: 160
@@ -654,6 +795,31 @@ FocusScope {
                                 anchors.centerIn: parent
                                 text: cell.flag === 1 ? "✔" : "✖"
                                 color: cell.flag === 1 ? Theme.picked : Theme.danger
+                            }
+                        }
+                        // The series' badge: how many photos, a tick once it is resolved; a click opens or closes it.
+                        Rectangle {
+                            id: badge
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 4
+                            anchors.bottomMargin: 9
+                            visible: cell.inSeries && (cell.collapsed || cell.seriesEdge <= 1)
+                            width: badgeText.implicitWidth + 10
+                            height: badgeText.implicitHeight + 2
+                            radius: 3
+                            color: "#c0000000"
+                            Text {
+                                id: badgeText
+                                anchors.centerIn: parent
+                                text: (cell.seriesResolved ? "✓ " : "") + (cell.seriesOpen ? "▾ " : "▣ ")
+                                      + (cell.collapsed ? cell.seriesSize : cell.seriesTotal)
+                                color: cell.seriesResolved ? Theme.picked : "white"
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                anchors.margins: -3
+                                onClicked: root.toggleSeries(cell.index)
                             }
                         }
                         // The colour label, a bar along the bottom of the picture.
@@ -741,6 +907,12 @@ FocusScope {
     AppSubMenu {
         id: cellMenu
         MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; onTriggered: root.openView(-1) }
+        MenuSeparator {}
+        MarkItem { text: qsTr("Open or close the series"); keyHint: "E"; onTriggered: root.toggleSeries(-1) }
+        MarkItem { text: qsTr("Group as a series"); keyHint: "Ctrl+G"; onTriggered: root.group() }
+        MarkItem { text: qsTr("Take out of the series"); keyHint: "Ctrl+Shift+G"; onTriggered: root.ungroup() }
+        MarkItem { text: qsTr("Resolve the series"); keyHint: "R"; onTriggered: root.resolve() }
+        MarkItem { text: qsTr("Reopen the series"); onTriggered: root.reopen() }
         MenuSeparator {}
         MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
         MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }

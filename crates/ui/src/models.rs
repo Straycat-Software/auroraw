@@ -39,6 +39,9 @@ pub mod qobject {
         #[qproperty(i32, flag_filter, cxx_name = "flagFilter")]
         #[qproperty(QString, keyword_filter, cxx_name = "keywordFilter")]
         #[qproperty(QString, label_filter, cxx_name = "labelFilter")]
+        #[qproperty(i32, total)]
+        #[qproperty(i32, series_count, cxx_name = "seriesCount")]
+        #[qproperty(i32, series_filter, cxx_name = "seriesFilter")]
         type PhotoGrid = super::PhotoGridRust;
 
         /// Loads the open workspace's photos, newest first, those rated `minRating` or more (the
@@ -62,6 +65,53 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "filterKeyword"]
         fn filter_keyword(self: Pin<&mut PhotoGrid>, keyword: &QString);
+
+        /// Lists photos by series: 0 all, 1 those in a series, 2 those of an unresolved series, 3 those of a resolved
+        /// one. The other filters stay; nothing is selected any more.
+        #[qinvokable]
+        #[cxx_name = "filterSeries"]
+        fn filter_series(self: Pin<&mut PhotoGrid>, kind: i32);
+
+        /// Opens or closes the series of the photo in `row` (a click on its badge, the key `E`); whether it
+        /// was a series that could be.
+        #[qinvokable]
+        #[cxx_name = "toggleSeries"]
+        fn toggle_series(self: Pin<&mut PhotoGrid>, row: i32) -> bool;
+
+        /// Opens (or closes) every series.
+        #[qinvokable]
+        #[cxx_name = "expandAll"]
+        fn expand_all(self: Pin<&mut PhotoGrid>, open: bool);
+
+        /// The series of the photo in `row` (an identifier, empty for none) and whether the row is a collapsed
+        /// series.
+        #[qinvokable]
+        #[cxx_name = "seriesAt"]
+        fn series_at(self: &PhotoGrid, row: i32) -> QString;
+        #[qinvokable]
+        #[cxx_name = "isCollapsed"]
+        fn is_collapsed(self: &PhotoGrid, row: i32) -> bool;
+
+        /// Groups the selected photos into a new series (one step of the history); how many photos.
+        #[qinvokable]
+        #[cxx_name = "groupSelection"]
+        fn group_selection(self: Pin<&mut PhotoGrid>) -> i32;
+
+        /// Takes the selected photos out of their series, and dissolves the series whose collapsed row is selected.
+        #[qinvokable]
+        #[cxx_name = "ungroupSelection"]
+        fn ungroup_selection(self: Pin<&mut PhotoGrid>) -> i32;
+
+        /// Resolves the series the selection is in, keeping the selected photos (D-035): 1 done, 0 when the
+        /// selection is not in exactly one series, -1 when that series is collapsed (open it first).
+        #[qinvokable]
+        #[cxx_name = "resolveSeries"]
+        fn resolve_series(self: Pin<&mut PhotoGrid>) -> i32;
+
+        /// Reopens the resolved series the selection is in; how many.
+        #[qinvokable]
+        #[cxx_name = "reopenSeries"]
+        fn reopen_series(self: Pin<&mut PhotoGrid>) -> i32;
 
         /// Lists only the photos with this colour label (`red`, `yellow`, `green`, `blue`, `purple`; empty for
         /// any). The other filters stay; nothing is selected any more.
@@ -560,12 +610,13 @@ use std::time::{Duration, Instant};
 
 use auroraw_catalogue::{Cursor, Filter, FlagFilter};
 use auroraw_engine::{Command, Engine, KnownWorkspace};
-use auroraw_types::PhotoId;
+use auroraw_types::{PhotoId, SeriesId};
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::{
     QByteArray, QHash, QHashPair_i32_QByteArray, QModelIndex, QString, QVariant, QVector,
 };
 
+use crate::grid_items::{self, Item};
 use crate::keyword_list::KeywordListRust;
 use crate::selection::Selection;
 use crate::session;
@@ -577,15 +628,12 @@ const ROLE_RATING: i32 = 0x0101;
 const ROLE_SELECTED: i32 = 0x0102;
 const ROLE_FLAG: i32 = 0x0103;
 const ROLE_LABEL: i32 = 0x0104;
-
-struct Item {
-    id: PhotoId,
-    rating: u8,
-    /// The effective flag: 0 none, 1 picked, 2 rejected.
-    flag: u8,
-    /// The colour label: 0 none, else the colour's place in `ColourLabel::ALL` plus one.
-    label: u8,
-}
+const ROLE_SERIES_ID: i32 = 0x0105;
+const ROLE_SERIES_SIZE: i32 = 0x0106;
+const ROLE_SERIES_TOTAL: i32 = 0x0107;
+const ROLE_SERIES_RESOLVED: i32 = 0x0108;
+const ROLE_SERIES_OPEN: i32 = 0x0109;
+const ROLE_SERIES_EDGE: i32 = 0x010A;
 
 /// A label's code: 0 for none, or a label that is not one of the five (another program's).
 fn label_code(label: Option<&str>) -> u8 {
@@ -621,9 +669,20 @@ pub struct PhotoGridRust {
     flag_filter: i32,
     keyword_filter: QString,
     label_filter: QString,
+    /// Everything the filters list, in order (the rows are derived from it: a collapsed series is one of them).
+    all: Vec<Item>,
+    series_info: HashMap<SeriesId, auroraw_catalogue::SeriesInfo>,
+    /// The series shown expanded.
+    open: std::collections::HashSet<SeriesId>,
+    /// The rows: photos, and collapsed series that stand for their members.
     items: Vec<Item>,
     /// Where each listed photo is.
     rows: HashMap<PhotoId, usize>,
+    /// A photo that a collapsed series' row hides, and the row's photo.
+    hidden: HashMap<PhotoId, PhotoId>,
+    series_filter: i32,
+    total: i32,
+    series_count: i32,
     /// The ratings and flags asked for and not yet confirmed (a quick series of keys must not flicker back).
     pending: HashMap<PhotoId, Pending>,
     selected_count: i32,
@@ -638,12 +697,12 @@ const PENDING_FOR: Duration = Duration::from_secs(2);
 
 /// Every photo the catalogue lists in the grid's own order (spike 3: the whole ordered list is cheap
 /// even at 100,000 photos; only thumbnails are lazy), rated `min_rating` or more.
-fn load_items(filter: &Filter) -> Vec<Item> {
+fn load_items(filter: &Filter) -> (Vec<Item>, HashMap<SeriesId, auroraw_catalogue::SeriesInfo>) {
     let Some(session) = session::current() else {
-        return Vec::new();
+        return (Vec::new(), HashMap::new());
     };
     let Ok(catalogue) = session.engine.read_catalogue() else {
-        return Vec::new();
+        return (Vec::new(), HashMap::new());
     };
     let mut items = Vec::new();
     let mut after = None;
@@ -658,32 +717,72 @@ fn load_items(filter: &Filter) -> Vec<Item> {
             capture_time: row.capture_time,
             id: row.id,
         });
-        items.extend(page.into_iter().map(|row| Item {
-            id: row.id,
-            rating: row.effective_rating,
-            flag: row.effective_flag,
-            label: label_code(row.label.as_deref()),
+        items.extend(page.into_iter().map(|row| {
+            Item::photo(
+                row.id,
+                row.effective_rating,
+                row.effective_flag,
+                label_code(row.label.as_deref()),
+                row.series_id,
+            )
         }));
     }
-    items
+    let info = catalogue
+        .series_infos()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|s| (s.id, s))
+        .collect();
+    (items, info)
+}
+
+impl PhotoGridRust {
+    /// Opening a collapsed series selects its members when its row was selected (it stood for them).
+    fn open_series(&mut self, series: SeriesId) {
+        if !self.open.insert(series) {
+            return;
+        }
+        let rep = self
+            .items
+            .iter()
+            .find(|i| i.series == Some(series) && !i.members.is_empty())
+            .cloned();
+        if let Some(rep) = rep
+            && self.selection.contains(&rep.id)
+        {
+            let mut selected = self.selection.snapshot();
+            selected.remove(&rep.id);
+            selected.extend(rep.members.iter().copied());
+            self.selection.set(selected.into_iter().collect::<Vec<_>>());
+        }
+    }
 }
 
 impl qobject::PhotoGrid {
     pub fn load(mut self: Pin<&mut Self>) {
-        let mut items = load_items(&self.filter());
+        let (mut all, info) = load_items(&self.filter());
         // A rating or a flag asked for a moment ago may not be in the catalogue yet: it stays what was asked.
         self.as_mut()
             .rust_mut()
             .pending
             .retain(|_, pending| pending.at.elapsed() < PENDING_FOR);
-        for item in &mut items {
+        for item in &mut all {
             if let Some(pending) = self.pending.get(&item.id) {
                 item.rating = pending.rating.unwrap_or(item.rating);
                 item.flag = pending.flag.unwrap_or(item.flag);
                 item.label = pending.label.unwrap_or(item.label);
             }
         }
+        self.as_mut().rust_mut().all = all;
+        self.as_mut().rust_mut().series_info = info;
+        self.rebuild();
+    }
+
+    /// Makes the rows from what the filters list and which series are open, and tells the views.
+    fn rebuild(mut self: Pin<&mut Self>) {
+        let (items, hidden) = grid_items::view(&self.all, &self.series_info, &self.open);
         let count = items.len() as i32;
+        let total = self.all.len() as i32;
         let rows = items
             .iter()
             .enumerate()
@@ -694,14 +793,47 @@ impl qobject::PhotoGrid {
             self.as_mut().begin_reset_model();
             self.as_mut().rust_mut().items = items;
             self.as_mut().rust_mut().rows = rows;
+            self.as_mut().rust_mut().hidden = hidden;
             self.as_mut().end_reset_model();
         }
         self.as_mut().set_count(count);
-        // What was selected and is still listed stays selected.
+        self.as_mut().set_total(total);
+        let series = self.series_info.len() as i32;
+        self.as_mut().set_series_count(series);
+        // What was selected and is still listed stays selected; a photo a collapsed series hides is its row.
+        let mapped: Vec<PhotoId> = self
+            .selection
+            .snapshot()
+            .into_iter()
+            .map(|id| self.hidden.get(&id).copied().unwrap_or(id))
+            .collect();
         let listed = self.ids();
+        self.as_mut().rust_mut().selection.set(mapped);
         self.as_mut().rust_mut().selection.retain(&listed);
-        let selected = self.selection.len() as i32;
+        let selected = self.selected_photo_count();
         self.set_selected_count(selected);
+    }
+
+    /// How many photos are selected (a collapsed series' row counts its members).
+    fn selected_photo_count(&self) -> i32 {
+        self.items
+            .iter()
+            .filter(|item| self.selection.contains(&item.id))
+            .map(|item| item.members.len().max(1) as i32)
+            .sum()
+    }
+
+    /// The photos the rows stand for, each once.
+    fn photos_of(&self, rows: &[usize]) -> Vec<PhotoId> {
+        let mut out: Vec<PhotoId> = Vec::new();
+        for row in rows {
+            for id in self.items[*row].photos() {
+                if !out.contains(&id) {
+                    out.push(id);
+                }
+            }
+        }
+        out
     }
 
     pub fn filter_by(mut self: Pin<&mut Self>, min_rating: i32) {
@@ -722,6 +854,12 @@ impl qobject::PhotoGrid {
                 _ => FlagFilter::NotRejected,
             },
             keyword: auroraw_types::KeywordId::from_str(&self.keyword_filter.to_string()).ok(),
+            series: match self.series_filter {
+                1 => auroraw_catalogue::SeriesFilter::InSeries,
+                2 => auroraw_catalogue::SeriesFilter::Unresolved,
+                3 => auroraw_catalogue::SeriesFilter::Resolved,
+                _ => auroraw_catalogue::SeriesFilter::Any,
+            },
             label: self
                 .label_filter
                 .to_string()
@@ -741,6 +879,161 @@ impl qobject::PhotoGrid {
         self.as_mut().set_keyword_filter(keyword.clone());
         self.as_mut().rust_mut().selection.none();
         self.load();
+    }
+
+    pub fn filter_series(mut self: Pin<&mut Self>, kind: i32) {
+        self.as_mut().set_series_filter(kind.clamp(0, 3));
+        self.as_mut().rust_mut().selection.none();
+        self.load();
+    }
+
+    /// The listed members of a series that could be shown open: at least two.
+    fn openable(&self, series: &SeriesId) -> bool {
+        self.all
+            .iter()
+            .filter(|i| i.series.as_ref() == Some(series))
+            .count()
+            >= 2
+    }
+
+    pub fn toggle_series(mut self: Pin<&mut Self>, row: i32) -> bool {
+        let Some(series) = usize::try_from(row)
+            .ok()
+            .and_then(|row| self.items.get(row))
+            .and_then(|item| item.series)
+        else {
+            return false;
+        };
+        if !self.openable(&series) {
+            return false;
+        }
+        if self.open.contains(&series) {
+            self.as_mut().rust_mut().open.remove(&series);
+        } else {
+            self.as_mut().rust_mut().open_series(series);
+        }
+        self.rebuild();
+        true
+    }
+
+    pub fn expand_all(mut self: Pin<&mut Self>, open: bool) {
+        if open {
+            let all: Vec<SeriesId> = self.series_info.keys().copied().collect();
+            for series in all {
+                if self.openable(&series) {
+                    self.as_mut().rust_mut().open_series(series);
+                }
+            }
+        } else {
+            self.as_mut().rust_mut().open.clear();
+        }
+        self.rebuild();
+    }
+
+    pub fn series_at(&self, row: i32) -> QString {
+        self.item_at(row)
+            .and_then(|item| item.series)
+            .map(|s| QString::from(s.to_string().as_str()))
+            .unwrap_or_default()
+    }
+
+    pub fn is_collapsed(&self, row: i32) -> bool {
+        self.item_at(row)
+            .is_some_and(|item| !item.members.is_empty())
+    }
+
+    pub fn group_selection(self: Pin<&mut Self>) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let photos = self.photos_of(&self.selected_rows());
+        if photos.len() < 2 {
+            return 0;
+        }
+        let count = photos.len() as i32;
+        let _ = session.engine.submit(Command::GroupPhotos { photos });
+        count
+    }
+
+    pub fn ungroup_selection(self: Pin<&mut Self>) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let mut dissolve: Vec<SeriesId> = Vec::new();
+        let mut leave: Vec<PhotoId> = Vec::new();
+        for row in self.selected_rows() {
+            let item = &self.items[row];
+            let Some(series) = item.series else {
+                continue;
+            };
+            if item.members.is_empty() {
+                leave.push(item.id);
+            } else if !dissolve.contains(&series) {
+                dissolve.push(series);
+            }
+        }
+        let count = (leave.len() + dissolve.len()) as i32;
+        if !leave.is_empty() {
+            let _ = session
+                .engine
+                .submit(Command::RemoveFromSeries { photos: leave });
+        }
+        for series in dissolve {
+            let _ = session.engine.submit(Command::DissolveSeries { series });
+        }
+        count
+    }
+
+    pub fn resolve_series(self: Pin<&mut Self>) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let mut series: Option<SeriesId> = None;
+        let mut keep: Vec<PhotoId> = Vec::new();
+        let mut collapsed = false;
+        for row in self.selected_rows() {
+            let item = &self.items[row];
+            let Some(s) = item.series else {
+                continue;
+            };
+            if series.is_some_and(|other| other != s) {
+                return 0;
+            }
+            series = Some(s);
+            collapsed |= !item.members.is_empty();
+            keep.push(item.id);
+        }
+        let Some(series) = series else {
+            return 0;
+        };
+        if collapsed {
+            return -1;
+        }
+        let _ = session
+            .engine
+            .submit(Command::ResolveSeries { series, keep });
+        1
+    }
+
+    pub fn reopen_series(self: Pin<&mut Self>) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let mut series: Vec<SeriesId> = Vec::new();
+        for row in self.selected_rows() {
+            let item = &self.items[row];
+            if let Some(s) = item.series
+                && item.series_resolved
+                && !series.contains(&s)
+            {
+                series.push(s);
+            }
+        }
+        let count = series.len() as i32;
+        for series in series {
+            let _ = session.engine.submit(Command::ReopenSeries { series });
+        }
+        count
     }
 
     pub fn filter_label(mut self: Pin<&mut Self>, name: &QString) {
@@ -772,7 +1065,7 @@ impl qobject::PhotoGrid {
             roles.append(ROLE_SELECTED);
             self.as_mut().data_changed(&first, &end, &roles);
         }
-        let selected = self.selection.len() as i32;
+        let selected = self.selected_photo_count();
         self.set_selected_count(selected);
     }
 
@@ -829,6 +1122,8 @@ impl qobject::PhotoGrid {
             .to_string()
             .split(',')
             .filter_map(|text| PhotoId::from_str(text).ok())
+            // A photo that a collapsed series hides is selected through its row.
+            .map(|id| self.hidden.get(&id).copied().unwrap_or(id))
             .filter(|id| self.rows.contains_key(id))
             .collect();
         self.as_mut().rust_mut().selection.set(listed);
@@ -883,12 +1178,10 @@ impl qobject::PhotoGrid {
             2 => Some(Flag::Rejected),
             _ => None,
         };
-        let mut commands: Vec<Command> = rows
-            .iter()
-            .map(|row| Command::SetFlag {
-                photo_id: self.items[*row].id,
-                flag,
-            })
+        let mut commands: Vec<Command> = self
+            .photos_of(&rows)
+            .into_iter()
+            .map(|photo_id| Command::SetFlag { photo_id, flag })
             .collect();
         let command = if commands.len() == 1 {
             commands.remove(0)
@@ -898,9 +1191,11 @@ impl qobject::PhotoGrid {
         let _ = session.engine.submit(command);
         // The cells show it at once (a rejected one stays, dimmed, until the list is read again).
         for row in &rows {
-            let id = self.items[*row].id;
             self.as_mut().rust_mut().items[*row].flag = new;
-            self.as_mut().ask(id, None, Some(new), None);
+            // (A collapsed series' row stands for all its members.)
+            for id in self.items[*row].photos() {
+                self.as_mut().ask(id, None, Some(new), None);
+            }
         }
         self.as_mut().redraw_all();
         rows.len() as i32
@@ -945,12 +1240,10 @@ impl qobject::PhotoGrid {
         let all_have = rows.iter().all(|row| self.items[*row].label == target);
         let new = if target != 0 && all_have { 0 } else { target };
         let label = (new != 0).then(|| ColourLabel::ALL[usize::from(new) - 1]);
-        let mut commands: Vec<Command> = rows
-            .iter()
-            .map(|row| Command::SetLabel {
-                photo_id: self.items[*row].id,
-                label,
-            })
+        let mut commands: Vec<Command> = self
+            .photos_of(&rows)
+            .into_iter()
+            .map(|photo_id| Command::SetLabel { photo_id, label })
             .collect();
         let command = if commands.len() == 1 {
             commands.remove(0)
@@ -959,9 +1252,11 @@ impl qobject::PhotoGrid {
         };
         let _ = session.engine.submit(command);
         for row in &rows {
-            let id = self.items[*row].id;
             self.as_mut().rust_mut().items[*row].label = new;
-            self.as_mut().ask(id, None, None, Some(new));
+            // (A collapsed series' row stands for all its members.)
+            for id in self.items[*row].photos() {
+                self.as_mut().ask(id, None, None, Some(new));
+            }
         }
         self.as_mut().redraw_all();
         rows.len() as i32
@@ -990,11 +1285,7 @@ impl qobject::PhotoGrid {
         let Some(session) = session::current() else {
             return QString::from("{}");
         };
-        let selected: Vec<PhotoId> = self
-            .selected_rows()
-            .iter()
-            .map(|row| self.items[*row].id)
-            .collect();
+        let selected: Vec<PhotoId> = self.photos_of(&self.selected_rows());
         let usage = session
             .engine
             .read_catalogue()
@@ -1019,10 +1310,10 @@ impl qobject::PhotoGrid {
         if rows.is_empty() {
             return 0;
         }
-        let mut commands: Vec<Command> = rows
-            .iter()
-            .map(|row| {
-                let photo_id = self.items[*row].id;
+        let mut commands: Vec<Command> = self
+            .photos_of(&rows)
+            .into_iter()
+            .map(|photo_id| {
                 if add {
                     Command::AddKeyword {
                         photo_id,
@@ -1061,10 +1352,14 @@ impl qobject::PhotoGrid {
             parent,
             id: Some(keyword_id),
         }];
-        commands.extend(rows.iter().map(|row| Command::AddKeyword {
-            photo_id: self.items[*row].id,
-            keyword_id,
-        }));
+        commands.extend(
+            self.photos_of(&rows)
+                .into_iter()
+                .map(|photo_id| Command::AddKeyword {
+                    photo_id,
+                    keyword_id,
+                }),
+        );
         let command = if commands.len() == 1 {
             commands.remove(0)
         } else {
@@ -1141,12 +1436,10 @@ impl qobject::PhotoGrid {
         if rows.is_empty() {
             return 0;
         }
-        let mut commands: Vec<Command> = rows
-            .iter()
-            .map(|row| Command::SetRating {
-                photo_id: self.items[*row].id,
-                rating,
-            })
+        let mut commands: Vec<Command> = self
+            .photos_of(&rows)
+            .into_iter()
+            .map(|photo_id| Command::SetRating { photo_id, rating })
             .collect();
         // One photo is a plain edit; several are one action, one step of the history (D-096).
         let command = if commands.len() == 1 {
@@ -1157,9 +1450,11 @@ impl qobject::PhotoGrid {
         let _ = session.engine.submit(command);
         // The cells show the new rating at once; the engine's own events confirm it.
         for row in &rows {
-            let id = self.items[*row].id;
             self.as_mut().rust_mut().items[*row].rating = rating;
-            self.as_mut().ask(id, Some(rating), None, None);
+            // (A collapsed series' row stands for all its members.)
+            for id in self.items[*row].photos() {
+                self.as_mut().ask(id, Some(rating), None, None);
+            }
         }
         self.as_mut().redraw_all();
         rows.len() as i32
@@ -1176,7 +1471,12 @@ impl qobject::PhotoGrid {
     pub fn row_of(&self, id: &QString) -> i32 {
         PhotoId::from_str(&id.to_string())
             .ok()
-            .and_then(|id| self.rows.get(&id).copied())
+            .and_then(|id| {
+                self.rows
+                    .get(&id)
+                    .or_else(|| self.hidden.get(&id).and_then(|rep| self.rows.get(rep)))
+                    .copied()
+            })
             .map_or(-1, |row| row as i32)
     }
 
@@ -1363,6 +1663,17 @@ impl qobject::PhotoGrid {
             ROLE_SELECTED => QVariant::from(&self.selection.contains(&item.id)),
             ROLE_FLAG => QVariant::from(&i32::from(item.flag)),
             ROLE_LABEL => QVariant::from(&QString::from(label_name(item.label))),
+            ROLE_SERIES_ID => QVariant::from(&QString::from(
+                item.series
+                    .map(|s| s.to_string())
+                    .unwrap_or_default()
+                    .as_str(),
+            )),
+            ROLE_SERIES_SIZE => QVariant::from(&(item.series_size as i32)),
+            ROLE_SERIES_TOTAL => QVariant::from(&(item.series_total as i32)),
+            ROLE_SERIES_RESOLVED => QVariant::from(&item.series_resolved),
+            ROLE_SERIES_OPEN => QVariant::from(&item.series_open),
+            ROLE_SERIES_EDGE => QVariant::from(&i32::from(item.series_edge)),
             _ => QVariant::default(),
         }
     }
@@ -1374,6 +1685,12 @@ impl qobject::PhotoGrid {
         roles.insert(ROLE_SELECTED, QByteArray::from("selected"));
         roles.insert(ROLE_FLAG, QByteArray::from("flag"));
         roles.insert(ROLE_LABEL, QByteArray::from("colourLabel"));
+        roles.insert(ROLE_SERIES_ID, QByteArray::from("seriesId"));
+        roles.insert(ROLE_SERIES_SIZE, QByteArray::from("seriesSize"));
+        roles.insert(ROLE_SERIES_TOTAL, QByteArray::from("seriesTotal"));
+        roles.insert(ROLE_SERIES_RESOLVED, QByteArray::from("seriesResolved"));
+        roles.insert(ROLE_SERIES_OPEN, QByteArray::from("seriesOpen"));
+        roles.insert(ROLE_SERIES_EDGE, QByteArray::from("seriesEdge"));
         roles
     }
 

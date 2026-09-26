@@ -207,7 +207,7 @@ fn photos_of_one_camera_close_together_form_series_and_the_gap_can_change() {
     );
     // Detecting again forms nothing new.
     assert_eq!(f.detect(false), (0, 0));
-    // A wider gap, applied by regrouping: 60 s joins the 4 s photo? No: 56 s apart. 60 s does.
+    // A wider gap, applied by regrouping: with 60 s, hops of 56, 59 and 59 s join everything of camera A up to 122 s.
     f.engine
         .submit_and_wait(Command::SetSeriesGap { seconds: 60 })
         .unwrap();
@@ -334,7 +334,7 @@ fn resolving_picks_the_kept_and_rejects_the_rest_and_undo_gives_every_flag_and_r
         (0..5).map(|i| f.rating(i)).collect::<Vec<_>>(),
         ratings_before
     );
-    assert_eq!(f.series()[0].1, false);
+    assert!(!f.series()[0].1);
     f.engine.redo().unwrap();
     assert_eq!(
         (0..5).map(|i| f.flag(i)).collect::<Vec<_>>(),
@@ -354,7 +354,7 @@ fn resolving_picks_the_kept_and_rejects_the_rest_and_undo_gives_every_flag_and_r
     f.engine
         .submit_and_wait(Command::ReopenSeries { series })
         .unwrap();
-    assert_eq!(f.series()[0].1, false);
+    assert!(!f.series()[0].1);
     assert_eq!(f.flag(0), 2);
     let none_kept = f.engine.submit_and_wait(Command::ResolveSeries {
         series,
