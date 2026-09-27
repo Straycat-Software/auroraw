@@ -239,6 +239,15 @@ AppTestCase {
         keyClick(Qt.Key_Escape)
     }
 
+    // The cell is where the grid's own arithmetic puts it (a slow machine lays the cells out a frame late).
+    function settled(index) {
+        grid.positionViewAtIndex(index, GridView.Contain)
+        tryVerify(() => {
+            const item = grid.itemAtIndex(index)
+            return item && item.x === (index % grid.columns) * grid.cellWidth
+        }, 5000, "the cell " + index + " is laid out")
+    }
+
     function test_the_size_of_the_thumbnails_is_a_slider_and_the_pointer_still_finds_the_photo() {
         const slider = app.library.sizeSlider
         compare(app.library.thumbW, 160)
@@ -249,11 +258,13 @@ AppTestCase {
         compare(grid.cellWidth, 100)
         verify(grid.columns > wide, "smaller thumbnails, more of them in a row")
         compare(app.launcher.intOption("thumbSize"), 96, "remembered")
+        settled(7)
         click(7)
         compare(grid.currentIndex, 7)
         slider.value = 256
         slider.moved()
         compare(grid.cellWidth, 260)
+        settled(3)
         click(3)
         compare(grid.currentIndex, 3)
         snapshot("grid-large-en")
