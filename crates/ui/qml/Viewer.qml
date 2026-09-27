@@ -28,6 +28,14 @@ FocusScope {
     property bool autoAdvance: false
     property bool showFilmstrip: true
     property bool showInfo: true
+    // The quality aids (D-103): overlays and histogram, remembered.
+    property bool showPeaking: false
+    property bool showClipping: false
+    property bool showHistogram: false
+    // What was measured on the picture shown (null until it arrives), and its sharpness among the frames of its series.
+    property var aids: null
+    property string sharpness: ""
+    property bool measuring: false
     // What is shown of the photo.
     property int rating: 0
     property int flag: 0
@@ -38,6 +46,7 @@ FocusScope {
     property alias picture: big
     property alias strip: strip
     property alias infoBar: infoBar
+    property alias histogram: histogram
     property alias ratingButton: ratingButton
     property alias flagButton: flagButton
     property alias colourButton: colourButton
@@ -52,6 +61,9 @@ FocusScope {
         autoAdvance = launcher.viewOption("autoAdvance")
         showFilmstrip = launcher.viewOption("filmstrip")
         showInfo = launcher.viewOption("info")
+        showPeaking = launcher.viewOption("peaking")
+        showClipping = launcher.viewOption("clipping")
+        showHistogram = launcher.viewOption("histogram")
         refresh()
         forceActiveFocus()
     }
@@ -62,6 +74,37 @@ FocusScope {
         photos.prefetchAround(row)
     }
 
+    // What was measured on the picture, once it is there; the sharpness among the frames of its series, as they are measured.
+    function loadAids() {
+        const text = photos.aidsOf(photoId)
+        aids = text === "" ? null : JSON.parse(text)
+        refreshSharpness()
+    }
+
+    function refreshSharpness() {
+        const members = photoId === "" ? "" : photos.seriesMembersOf(photoId)
+        if (members === "") {
+            sharpness = ""
+            measuring = false
+            return
+        }
+        photos.analyse(members)
+        const ids = members.split(",")
+        const ranks = JSON.parse(photos.sharpnessRanks(members))
+        const rank = ranks[ids.indexOf(photoId)]
+        measuring = rank === undefined || rank < 0
+        sharpness = measuring ? qsTr("Sharpness: measuring…")
+                    : rank >= 100 ? qsTr("Sharpest of the series") : qsTr("Sharpness: %1 % of the series' best").arg(rank)
+    }
+
+    Timer {
+        // A series' frames are measured in the background: the figure is asked for again until it is there.
+        interval: 600
+        repeat: true
+        running: view.visible && view.measuring
+        onTriggered: view.refreshSharpness()
+    }
+
     function refreshInfo() {
         rating = photos.ratingAt(row)
         flag = photos.flagAt(row)
@@ -70,6 +113,7 @@ FocusScope {
     }
 
     onRowChanged: {
+        aids = null
         refresh()
         Qt.callLater(centre)
     }
@@ -163,6 +207,19 @@ FocusScope {
         } else if (key === Qt.Key_T) {
             showFilmstrip = !showFilmstrip
             setOption("filmstrip", showFilmstrip)
+        } else if (key === Qt.Key_S) {
+            showPeaking = !showPeaking
+            setOption("peaking", showPeaking)
+        } else if (key === Qt.Key_O) {
+            showClipping = !showClipping
+            setOption("clipping", showClipping)
+        } else if (key === Qt.Key_H) {
+            showHistogram = !showHistogram
+            setOption("histogram", showHistogram)
+        } else if (key === Qt.Key_K) {
+            photos.toggleMark(photoId)
+        } else if (key === Qt.Key_C) {
+            library.openCompare()
         } else if (key === Qt.Key_A) {
             autoAdvance = !autoAdvance
             setOption("autoAdvance", autoAdvance)
@@ -227,6 +284,28 @@ FocusScope {
             visible: status === Image.Ready
         }
 
+        // The quality aids lie exactly over the picture: made only once asked for.
+        Image {
+            x: big.x
+            y: big.y
+            width: big.width
+            height: big.height
+            visible: view.showPeaking && big.status === Image.Ready
+            source: view.showPeaking && view.photoId !== "" ? "image://peaking/" + view.photoId : ""
+            asynchronous: true
+            cache: false
+        }
+        Image {
+            x: big.x
+            y: big.y
+            width: big.width
+            height: big.height
+            visible: view.showClipping && big.status === Image.Ready
+            source: view.showClipping && view.photoId !== "" ? "image://clipping/" + view.photoId : ""
+            asynchronous: true
+            cache: false
+        }
+
         WheelHandler {
             acceptedModifiers: Qt.NoModifier
             onWheel: event => view.zoomAt(point.position.x, point.position.y, Math.pow(1.15, event.angleDelta.y / 120))
@@ -234,6 +313,24 @@ FocusScope {
         TapHandler {
             onDoubleTapped: view.toggleActual()
         }
+    }
+
+    Connections {
+        target: big
+        function onStatusChanged() {
+            if (big.status === Image.Ready)
+                view.loadAids()
+        }
+    }
+    Histogram {
+        id: histogram
+        anchors.left: parent.left
+        anchors.bottom: flick.bottom
+        anchors.margins: 10
+        visible: view.showHistogram && view.aids !== null
+        data: view.aids ? view.aids.histogram : null
+        high: view.aids ? view.aids.high : 0
+        low: view.aids ? view.aids.low : 0
     }
 
     // The photo whose original is not there (a source that is offline, a file that went): its thumbnail stays.
@@ -310,6 +407,59 @@ FocusScope {
                 implicitHeight: 18
                 color: Theme.quiet
                 opacity: 0.5
+            }
+            ToolButton {
+                id: keepButton
+                text: qsTr("Keep")
+                checkable: true
+                checked: (view.photos.markSerial, view.photos.isMarked(view.photoId))
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Mark this photo to keep, for resolving its series (K)")
+                onClicked: view.photos.toggleMark(view.photoId)
+            }
+            ToolButton {
+                text: qsTr("Peaking")
+                checkable: true
+                checked: view.showPeaking
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Focus peaking: what is in focus (S)")
+                onClicked: {
+                    view.showPeaking = checked
+                    view.setOption("peaking", checked)
+                }
+            }
+            ToolButton {
+                text: qsTr("Clipping")
+                checkable: true
+                checked: view.showClipping
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Clipping warnings: highlights in red, shadows in blue (O)")
+                onClicked: {
+                    view.showClipping = checked
+                    view.setOption("clipping", checked)
+                }
+            }
+            ToolButton {
+                text: qsTr("Histogram")
+                checkable: true
+                checked: view.showHistogram
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Histogram (H)")
+                onClicked: {
+                    view.showHistogram = checked
+                    view.setOption("histogram", checked)
+                }
+            }
+            ToolButton {
+                text: qsTr("Compare")
+                focusPolicy: Qt.NoFocus
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Compare with the other frames of the series (C)")
+                onClicked: view.library.openCompare()
             }
             ToolButton {
                 text: view.fit ? qsTr("100 %") : qsTr("Fit")
@@ -396,6 +546,11 @@ FocusScope {
                 color: "#e0e0e0"
                 elide: Text.ElideRight
             }
+            Label {
+                visible: view.sharpness !== ""
+                text: view.sharpness
+                color: Theme.quiet
+            }
         }
     }
 
@@ -427,6 +582,7 @@ FocusScope {
             required property int rating
             required property int flag
             required property string colourLabel
+            required property bool marked
             width: 96
             height: strip.height
             Rectangle {
@@ -442,6 +598,13 @@ FocusScope {
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                     opacity: frame.flag === 2 ? 0.35 : 1
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    visible: frame.marked
+                    color: "transparent"
+                    border.width: 3
+                    border.color: Theme.picked
                 }
                 Rectangle {
                     anchors.left: parent.left

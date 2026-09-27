@@ -57,9 +57,37 @@ is the one shown, and it goes back there when you leave (`Escape` or `Return`).
 
 ![The state buttons and the 100 % view](images/viewer-state.png)
 
+`C` opens the [comparison](05-series.md#comparing-frames) of the series of the photo shown.
+
 Photos are made ahead: while you look at one, the next two and the previous one are prepared, so that moving on
 is immediate. If a photo's original cannot be reached (an offline source), its thumbnail stays and the view says
 *The original is not available*.
+
+## Judging sharpness and exposure
+
+Three aids help you tell a sharp frame from a soft one and a good exposure from a burnt one. Each is a button in
+the image view's toolbar, has a key, and is remembered.
+
+| Key | Aid | What it shows |
+| --- | --- | --- |
+| `S` | **Peaking** | Red on the edges that are in focus |
+| `O` | **Clipping** | Red where the highlights are burnt out, blue where the shadows are blocked |
+| `H` | **Histogram** | The spread of the tones (brightness, and red, green, blue) in a corner of the picture |
+
+The information line also gives a **sharpness** figure. It compares frames with each other (100 % is the sharpest
+of the series); it does not mean much for a single photo, and it is a suggestion, never a decision.
+
+**A limit to know.** These aids are computed on the picture you see: the camera's embedded preview, or the JPEG
+itself, not on the RAW data. A preview has been processed by the camera (contrast, sharpening, tone curve), so
+its clipping and its edges differ somewhat from the RAW file's. For choosing the best frame of a burst this is
+usually enough; for judging the real clipping of a RAW file it is not. Computing the aids on the RAW data is planned
+with the image engine.
+
+## Marking photos to keep
+
+`K` (or the **Keep** button) puts a **keep mark**, a green ring, on the photo; `K` again removes it. Marks are
+drafts, held in memory for the session: they change nothing on disk and are forgotten when you close the
+workspace. They serve to resolve a [series](05-series.md).
 
 ## A fast way through a shoot
 

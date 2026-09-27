@@ -284,6 +284,14 @@ JPEG at quality 90) and, ahead of the key presses, of the photos around it. The 
 (eight, least recently used out), not in a database; the interface asks for them through `image://preview/<id>`,
 served by the same provider code as the thumbnails.
 
+The **quality aids** (D-103) come from the same worker and the same decode: `imaging::aids` measures the picture as the
+view shows it (a sharpness score, a histogram of luma and RGB, the share of clipped pixels) on an analysis copy of at
+most 1024 px, so scores of frames of one series compare. `PreviewService` keeps the score of every photo asked for in a
+small table (so a series is ranked without keeping its pictures) and makes the peaking and clipping masks **lazily**,
+when the interface asks for them (RGBA PNGs at the picture's own size, 24 of them in memory), served as
+`image://peaking|clipping/<id>` by the same provider, which is chosen by kind. The measures read the preview, not the
+RAW data (M1 has no RAW decode); redoing them on RAW data belongs to the image engine, in M2.
+
 ### 5.8 Several catalogues, backup, moving photos [decided, D-017, D-025, D-064, D-067]
 
 Each catalogue is a local database plus one workspace; a small registry in the user's data

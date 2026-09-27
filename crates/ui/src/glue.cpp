@@ -97,7 +97,7 @@ extern "C" void auroraw_thumbnail_ready(unsigned long long token, const unsigned
                                         size_t len) {
     QImage image;
     if (bytes) {
-        image = QImage::fromData(bytes, static_cast<int>(len), "JPEG");
+        image = QImage::fromData(bytes, static_cast<int>(len)); // JPEG, or PNG for an overlay
     }
     std::lock_guard<std::mutex> lock(g_mutex);
     const auto found = g_responses.find(token);
@@ -138,6 +138,13 @@ extern "C" void auroraw_install_thumbnails(QObject *object) {
         }
         if (!engine->imageProvider(QStringLiteral("preview"))) {
             engine->addImageProvider(QStringLiteral("preview"), new ThumbProvider(1));
+        }
+        // The overlays of the image view's picture (quality aids): the focus peaking and the clipping.
+        if (!engine->imageProvider(QStringLiteral("peaking"))) {
+            engine->addImageProvider(QStringLiteral("peaking"), new ThumbProvider(2));
+        }
+        if (!engine->imageProvider(QStringLiteral("clipping"))) {
+            engine->addImageProvider(QStringLiteral("clipping"), new ThumbProvider(3));
         }
     }
 }

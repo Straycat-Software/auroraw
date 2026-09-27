@@ -211,3 +211,11 @@ fn series_in_the_grid() {
     support::machine_with_series(home.path(), 40, 5);
     run_suite("series", home.path(), None);
 }
+
+/// Comparing frames: pages, marks, resolving from the comparison, linked zoom, the aids, the thumbnail size.
+#[test]
+fn comparing_frames_and_the_quality_aids() {
+    let home = temp_dir();
+    support::machine_with_series(home.path(), 40, 5);
+    run_suite("compare", home.path(), None);
+}

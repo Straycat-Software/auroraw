@@ -220,8 +220,12 @@ ApplicationWindow {
                 window.visibility = Window.FullScreen
             }
         }
+        function onComparingChanged() {
+            if (!libraryView.viewing && !libraryView.comparing && window.visibility === Window.FullScreen)
+                window.visibility = window.visibilityBeforeFullScreen
+        }
         function onViewingChanged() {
-            if (!libraryView.viewing && window.visibility === Window.FullScreen)
+            if (!libraryView.viewing && !libraryView.comparing && window.visibility === Window.FullScreen)
                 window.visibility = window.visibilityBeforeFullScreen
         }
     }
@@ -241,7 +245,7 @@ ApplicationWindow {
 
     // The image view in full screen has the whole window: no menu, no tabs.
     header: ToolBar {
-        visible: !(libraryView.viewing && window.visibility === Window.FullScreen)
+        visible: !((libraryView.viewing || libraryView.comparing) && window.visibility === Window.FullScreen)
         RowLayout {
             anchors.fill: parent
             spacing: 0

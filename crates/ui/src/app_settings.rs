@@ -27,6 +27,16 @@ pub struct AppSettings {
     pub show_info: bool,
     /// The largest gap, in seconds, between two photos of one series (D-101).
     pub series_gap: u32,
+    /// The image view and the comparison show the focus peaking overlay (D-103).
+    pub show_peaking: bool,
+    /// ...the clipping overlay.
+    pub show_clipping: bool,
+    /// ...the histogram.
+    pub show_histogram: bool,
+    /// The size of the grid's thumbnails, in pixels on the long side (96 to 256).
+    pub thumb_size: u32,
+    /// How many photos the comparison shows side by side (2 to 4).
+    pub compare_panes: u32,
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
@@ -43,6 +53,11 @@ impl Default for AppSettings {
             show_filmstrip: true,
             show_info: true,
             series_gap: 2,
+            show_peaking: false,
+            show_clipping: false,
+            show_histogram: false,
+            thumb_size: 160,
+            compare_panes: 2,
         }
     }
 }
@@ -58,6 +73,8 @@ impl AppSettings {
                 settings.keyword_panel_width = settings
                     .keyword_panel_width
                     .clamp(KEYWORD_PANEL_MIN, KEYWORD_PANEL_MAX);
+                settings.thumb_size = settings.thumb_size.clamp(96, 256);
+                settings.compare_panes = settings.compare_panes.clamp(2, 4);
                 settings
             })
             .unwrap_or_default()
@@ -113,6 +130,11 @@ mod tests {
             show_filmstrip: false,
             show_info: false,
             series_gap: 5,
+            show_peaking: true,
+            show_clipping: true,
+            show_histogram: true,
+            thumb_size: 200,
+            compare_panes: 3,
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);

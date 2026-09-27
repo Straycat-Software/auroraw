@@ -90,6 +90,16 @@ pub mod qobject {
         #[cxx_name = "setViewOption"]
         fn set_view_option(self: &Launcher, name: &QString, on: bool);
 
+        /// A whole-number option: `thumbSize` (the grid's thumbnails, 96 to 256) or `comparePanes` (2 to 4).
+        #[qinvokable]
+        #[cxx_name = "intOption"]
+        fn int_option(self: &Launcher, name: &QString) -> i32;
+
+        /// Remembers a whole-number option.
+        #[qinvokable]
+        #[cxx_name = "setIntOption"]
+        fn set_int_option(self: &Launcher, name: &QString, value: i32);
+
         /// The largest gap, in seconds, between two photos of one series.
         #[qinvokable]
         #[cxx_name = "seriesGap"]
@@ -377,6 +387,9 @@ impl qobject::Launcher {
             "autoAdvance" => settings.auto_advance,
             "filmstrip" => settings.show_filmstrip,
             "info" => settings.show_info,
+            "peaking" => settings.show_peaking,
+            "clipping" => settings.show_clipping,
+            "histogram" => settings.show_histogram,
             _ => false,
         }
     }
@@ -391,6 +404,39 @@ impl qobject::Launcher {
             "autoAdvance" => settings.auto_advance = on,
             "filmstrip" => settings.show_filmstrip = on,
             "info" => settings.show_info = on,
+            "peaking" => settings.show_peaking = on,
+            "clipping" => settings.show_clipping = on,
+            "histogram" => settings.show_histogram = on,
+            _ => return,
+        }
+        settings.save(&path);
+    }
+
+    fn settings_now(&self) -> AppSettings {
+        match &self.dirs {
+            Some(_) => AppSettings::load(&self.settings_path()),
+            None => AppSettings::default(),
+        }
+    }
+
+    pub fn int_option(&self, name: &QString) -> i32 {
+        let settings = self.settings_now();
+        match name.to_string().as_str() {
+            "thumbSize" => settings.thumb_size as i32,
+            "comparePanes" => settings.compare_panes as i32,
+            _ => 0,
+        }
+    }
+
+    pub fn set_int_option(&self, name: &QString, value: i32) {
+        if self.dirs.is_none() {
+            return;
+        }
+        let path = self.settings_path();
+        let mut settings = AppSettings::load(&path);
+        match name.to_string().as_str() {
+            "thumbSize" => settings.thumb_size = value.clamp(96, 256) as u32,
+            "comparePanes" => settings.compare_panes = value.clamp(2, 4) as u32,
             _ => return,
         }
         settings.save(&path);

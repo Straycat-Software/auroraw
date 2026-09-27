@@ -119,6 +119,9 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("viewer-state-en", "viewer-state"),
     ("series-collapsed-en", "series-collapsed"),
     ("series-open-en", "series-open"),
+    ("compare-en", "compare"),
+    ("compare-aids-en", "compare-aids"),
+    ("grid-large-en", "grid-large"),
     ("keywords-add-en", "keywords-add"),
     ("keywords-drag-en", "keywords-drag"),
 ];

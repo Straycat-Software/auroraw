@@ -31,11 +31,23 @@ FocusScope {
     readonly property int selectedCount: photoGrid.selectedCount
     property alias keywords: keywordList
     property alias viewer: viewer
+    property alias compareView: compareView
+    property alias sizeSlider: sizeSlider
     property alias cellMenu: cellMenu
     property alias viewMenu: viewMenu
     property alias labelFilterButtons: labelFilterButtons
     // The image view (one photo at a time) is open over the grid.
     property bool viewing: false
+    // The comparison of frames is open over the grid.
+    property bool comparing: false
+    // The grid's thumbnails: their width in pixels (96 to 256, remembered), and the height that goes with it.
+    property int thumbW: 160
+    readonly property int thumbH: Math.round(thumbW * 3 / 4)
+    onVisibleChanged: if (visible) {
+        const remembered = launcher.intOption("thumbSize")
+        if (remembered >= 96)
+            thumbW = remembered
+    }
     // Every series is shown open (the button of the filter bar says which way it goes next).
     property bool allOpen: false
     // Asked to make the window full screen or back (the window's business).
@@ -226,6 +238,35 @@ FocusScope {
         goTo(row, 0)
         viewing = true
         viewer.opened()
+    }
+
+    // Opens the comparison: on the 2 to 4 photos selected, else on the frames of the series the cursor's photo is in.
+    // A closed series is opened first (its frames are rows of the grid).
+    function openCompare() {
+        if (photoGrid.count === 0)
+            return
+        const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
+        const chosen = photoGrid.selectedCount
+        let ids = chosen >= 2 && chosen <= 4 ? photoGrid.selectedIds() : (cursor !== "" ? photoGrid.seriesMembersOf(cursor) : "")
+        if (ids === "" || ids.split(",").length < 2)
+            return
+        for (const id of ids.split(",")) {
+            const row = photoGrid.rowOf(id)
+            if (row >= 0 && photoGrid.isCollapsed(row))
+                toggleSeries(row)
+        }
+        viewing = false
+        comparing = true
+        compareView.openOn(ids)
+    }
+
+    // Back to the grid, with the cursor on the frame that had the focus.
+    function closeCompare() {
+        if (!comparing)
+            return
+        comparing = false
+        showCursor(grid.currentIndex)
+        grid.forceActiveFocus()
     }
 
     // Back to the grid, with the cursor on the photo that was shown.
@@ -445,6 +486,22 @@ FocusScope {
                             grid.forceActiveFocus()
                         }
                     }
+                    Slider {
+                        id: sizeSlider
+                        Layout.preferredWidth: 90
+                        from: 96
+                        to: 256
+                        stepSize: 8
+                        value: root.thumbW
+                        focusPolicy: Qt.NoFocus
+                        Accessible.name: qsTr("Thumbnail size")
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Thumbnail size")
+                        onMoved: {
+                            root.thumbW = value
+                            root.launcher.setIntOption("thumbSize", value)
+                        }
+                    }
                     Label {
                         text: root.status
                         color: Theme.quiet
@@ -471,8 +528,8 @@ FocusScope {
                 clip: true
                 focus: true
                 model: root.photoGrid
-                cellWidth: 164
-                cellHeight: 124
+                cellWidth: root.thumbW + 4
+                cellHeight: root.thumbH + 4
                 currentIndex: -1
                 // The arrows are ours, so that a step down from above a short last row lands on its
                 // last photo (`gridmath::step`).
@@ -526,6 +583,13 @@ FocusScope {
                             root.ungroup()
                         else
                             root.group()
+                    } else if (event.key === Qt.Key_C || event.key === Qt.Key_K) {
+                        if (ctrlOrShift)
+                            return
+                        if (event.key === Qt.Key_C)
+                            root.openCompare()
+                        else if (grid.currentIndex >= 0)
+                            root.photoGrid.toggleMark(root.photoGrid.idAt(grid.currentIndex))
                     } else if (event.key === Qt.Key_E || event.key === Qt.Key_R) {
                         if (ctrlOrShift)
                             return
@@ -592,8 +656,8 @@ FocusScope {
                     function photoAt(x, y) {
                         const column = Math.floor(x / grid.cellWidth)
                         const row = Math.floor(y / grid.cellHeight)
-                        const inside = x - column * grid.cellWidth >= 4 && x - column * grid.cellWidth < 164
-                                       && y - row * grid.cellHeight < 120
+                        const inside = x - column * grid.cellWidth >= 4 && x - column * grid.cellWidth < grid.cellWidth
+                                       && y - row * grid.cellHeight < root.thumbH
                         const index = row * grid.columns + column
                         return inside && column < grid.columns && index >= 0 && index < grid.count ? index : -1
                     }
@@ -697,6 +761,7 @@ FocusScope {
                     required property bool seriesResolved
                     required property bool seriesOpen
                     required property int seriesEdge
+                    required property bool marked
                     // A series is one thumbnail with a count, that opens in place.
                     readonly property bool inSeries: cell.seriesId !== "" && cell.seriesTotal > 1
                     readonly property bool collapsed: cell.inSeries && cell.seriesSize > 1 && !cell.seriesOpen
@@ -712,16 +777,16 @@ FocusScope {
                     // A collapsed series looks like a pile: two edges under the picture.
                     Rectangle {
                         x: 9
-                        y: 121
-                        width: 150
+                        y: root.thumbH + 1
+                        width: root.thumbW - 10
                         height: 2
                         visible: cell.collapsed
                         color: Theme.grey.light
                     }
                     Rectangle {
                         x: 14
-                        y: 123
-                        width: 140
+                        y: root.thumbH + 3
+                        width: root.thumbW - 20
                         height: 1
                         visible: cell.collapsed
                         color: Theme.grey.light
@@ -729,16 +794,16 @@ FocusScope {
                     // The members of an open series are joined by a line under them.
                     Rectangle {
                         x: cell.seriesEdge === 1 ? 4 : 0
-                        y: 121
-                        width: cell.seriesEdge === 1 ? 160 : cell.seriesEdge === 3 ? 164 : 164
+                        y: root.thumbH + 1
+                        width: cell.seriesEdge === 1 ? root.thumbW : grid.cellWidth
                         height: 3
                         visible: cell.seriesOpen && cell.seriesEdge !== 0
                         color: cell.seriesResolved ? Theme.picked : Theme.accent
                     }
                     Rectangle {
                         x: 4
-                        width: 160
-                        height: 120
+                        width: root.thumbW
+                        height: root.thumbH
                         color: root.palette.dark
 
                         Image {
@@ -830,6 +895,14 @@ FocusScope {
                             height: 5
                             visible: cell.colourLabel !== ""
                             color: Theme.labelColour(cell.colourLabel)
+                        }
+                        // A frame marked to keep (a draft until the series is resolved): a green ring.
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: cell.marked
+                            color: "transparent"
+                            border.width: 3
+                            border.color: Theme.picked
                         }
                         // The selection's frame, over the picture.
                         Rectangle {
@@ -940,6 +1013,15 @@ FocusScope {
         MarkItem { text: qsTr("Pick"); keyHint: "P"; onTriggered: root.flag("pick") }
         MarkItem { text: qsTr("Reject"); keyHint: "X"; onTriggered: root.flag("reject") }
         MarkItem { text: qsTr("Clear the flag"); keyHint: "U"; onTriggered: root.flag("clear") }
+    }
+
+    // Two to four photos side by side (spec §5.3, D-103).
+    Compare {
+        id: compareView
+        anchors.fill: parent
+        visible: root.comparing
+        library: root
+        launcher: root.launcher
     }
 
     // One photo at a time, over the grid, the keyword panel and the filter bar (spec §5.3).

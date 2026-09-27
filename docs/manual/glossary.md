@@ -18,11 +18,20 @@ from the workspace when needed.
 
 **Keyword.** A word (or a place in a tree of words) that describes a photo; the tree is the **vocabulary**.
 
+**Keep mark.** A green ring you put on a photo with `K` to say it is one to keep; a draft held in memory for the
+session, used when you resolve a series.
+
 **Original.** The photo file as it came from the camera. Auroraw never changes it.
+
+**Peaking** and **clipping.** Aids that overlay the picture: peaking in red on the edges in focus, clipping in
+red on burnt highlights and in blue on blocked shadows. Computed on the preview, not on the RAW data.
 
 **Resolve** (a series). Choose the frames to keep: the kept ones are picked, the others rejected.
 
 **Series.** Photos that belong together, shown as one thumbnail with a count.
+
+**Sharpness.** A figure that says how much fine detail a frame holds; only meaningful to compare frames of one
+series (100 % is the sharpest).
 
 **Sidecar.** The small file in the workspace that holds what Auroraw knows about one photo (rating, flag, label,
 keywords, information from the original).

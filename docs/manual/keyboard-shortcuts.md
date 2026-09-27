@@ -37,7 +37,9 @@ The keys of the grid and of the image view apply to the selected photos, or to t
 | `6`, `7`, `8`, `9` | Red, yellow, green, blue label (again to remove) |
 | `Return` | Open in the image view |
 | `E` | Open or close the series under the cursor |
-| `R` | Resolve the series: keep the selected photos, reject the others |
+| `K` | Mark the photo under the cursor to keep, or unmark it |
+| `C` | Compare the selected photos (2 to 4), or the series under the cursor |
+| `R` | Resolve the series: keep the marked photos (else the selected ones), reject the others |
 | `Ctrl+G` | Group the selection as a series |
 | `Ctrl+Shift+G` | Take the selection out of its series (or dissolve a closed series) |
 
@@ -52,9 +54,29 @@ The keys of the grid and of the image view apply to the selected photos, or to t
 | `+`, `-` | Zoom in, zoom out |
 | `F` | Full screen (`F11` too) |
 | `I` | Show or hide the information line |
+| `S` | Show or hide focus peaking |
+| `O` | Show or hide the clipping warning |
+| `H` | Show or hide the histogram |
+| `K` | Mark the photo to keep, or unmark it |
+| `C` | Compare the series of this photo |
 | `T` | Show or hide the filmstrip |
 | `A` | Auto-advance on or off |
 | `Escape` | Back to the grid (`Return` too) |
+
+## In the comparison
+
+| Key | Action |
+| --- | --- |
+| `Left`, `Right` | Move the focus to the previous, next frame (past an end, the page turns) |
+| `PageUp`, `PageDown` | Previous, next page of frames |
+| `K` | Mark the focused frame to keep, or unmark it (`Return` too) |
+| `R` | Resolve the series: the marked frames are picked, the others rejected |
+| `0` to `5`, `P`, `X`, `U`, `6` to `9` | Rate, flag and label the focused frame |
+| `Z` | Fit every frame, or show them all at 100 % |
+| `+`, `-` | Zoom all frames together |
+| `S`, `O`, `H` | Peaking, clipping warning, histogram |
+| `F` | Full screen (`F11` too) |
+| `Escape` | Back to the grid |
 
 ## In the keyword panel
 
@@ -71,4 +93,6 @@ The keys of the grid and of the image view apply to the selected photos, or to t
   is a rubber band, a **double click** opens the image view, a **right click** opens a photo's menu.
 - In the image view the **wheel** zooms, a **drag** moves a zoomed photo, a **double click** switches between fit and
   100 %, a **right click** opens the menu.
+- In the comparison a **click** focuses a frame, the **wheel** zooms all frames together and a **drag** moves them
+  together.
 - In the keyword panel a **drag** moves a keyword, and dragging its left edge resizes the panel.

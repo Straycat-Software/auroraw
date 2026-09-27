@@ -41,6 +41,7 @@ pub mod qobject {
         #[qproperty(QString, label_filter, cxx_name = "labelFilter")]
         #[qproperty(i32, total)]
         #[qproperty(i32, series_count, cxx_name = "seriesCount")]
+        #[qproperty(i32, mark_serial, cxx_name = "markSerial")]
         #[qproperty(i32, series_filter, cxx_name = "seriesFilter")]
         type PhotoGrid = super::PhotoGridRust;
 
@@ -91,6 +92,45 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "isCollapsed"]
         fn is_collapsed(self: &PhotoGrid, row: i32) -> bool;
+
+        /// The photos selected (a collapsed series counts all its members), identifiers joined by commas, in the
+        /// order they are listed; and the listed members of the series a photo is in, in the order they were taken
+        /// (empty when it is in none).
+        #[qinvokable]
+        #[cxx_name = "selectedIds"]
+        fn selected_ids(self: &PhotoGrid) -> QString;
+        #[qinvokable]
+        #[cxx_name = "seriesMembersOf"]
+        fn series_members_of(self: &PhotoGrid, id: &QString) -> QString;
+
+        /// Marks a photo to keep (a draft, in memory: what `R` keeps when a series is resolved) or takes the mark
+        /// off; whether it is marked now. `markSerial` changes with every mark, for what shows them.
+        #[qinvokable]
+        #[cxx_name = "toggleMark"]
+        fn toggle_mark(self: Pin<&mut PhotoGrid>, id: &QString) -> bool;
+        #[qinvokable]
+        #[cxx_name = "isMarked"]
+        fn is_marked(self: &PhotoGrid, id: &QString) -> bool;
+
+        /// What was measured on the picture of a photo the image view holds (JSON: sharpness, histogram,
+        /// clipped shares), empty until it does.
+        #[qinvokable]
+        #[cxx_name = "aidsOf"]
+        fn aids_of(self: &PhotoGrid, id: &QString) -> QString;
+
+        /// Each photo's sharpness as a percentage of the sharpest of the list (`-1` when not measured yet), for
+        /// the identifiers joined by commas, as a JSON array.
+        #[qinvokable]
+        #[cxx_name = "sharpnessRanks"]
+        fn sharpness_ranks(self: &PhotoGrid, ids: &QString) -> QString;
+
+        /// Has these photos' sharpness measured in the background, and their pictures made ahead (identifiers
+        /// joined by commas).
+        #[qinvokable]
+        fn analyse(self: &PhotoGrid, ids: &QString);
+        #[qinvokable]
+        #[cxx_name = "prefetchIds"]
+        fn prefetch_ids(self: &PhotoGrid, ids: &QString);
 
         /// Groups the selected photos into a new series (one step of the history); how many photos.
         #[qinvokable]
@@ -634,6 +674,7 @@ const ROLE_SERIES_TOTAL: i32 = 0x0107;
 const ROLE_SERIES_RESOLVED: i32 = 0x0108;
 const ROLE_SERIES_OPEN: i32 = 0x0109;
 const ROLE_SERIES_EDGE: i32 = 0x010A;
+const ROLE_MARKED: i32 = 0x010B;
 
 /// A label's code: 0 for none, or a label that is not one of the five (another program's).
 fn label_code(label: Option<&str>) -> u8 {
@@ -681,6 +722,9 @@ pub struct PhotoGridRust {
     /// A photo that a collapsed series' row hides, and the row's photo.
     hidden: HashMap<PhotoId, PhotoId>,
     series_filter: i32,
+    mark_serial: i32,
+    /// The photos marked to keep (drafts, in memory: D-103).
+    marks: std::collections::HashSet<PhotoId>,
     total: i32,
     series_count: i32,
     /// The ratings and flags asked for and not yet confirmed (a quick series of keys must not flicker back).
@@ -984,12 +1028,29 @@ impl qobject::PhotoGrid {
         count
     }
 
-    pub fn resolve_series(self: Pin<&mut Self>) -> i32 {
+    /// The series a photo is in, from everything the filters list.
+    fn series_of_photo(&self, photo: &PhotoId) -> Option<SeriesId> {
+        self.all
+            .iter()
+            .find(|i| i.id == *photo)
+            .and_then(|i| i.series)
+    }
+
+    /// The photos of a series that are marked to keep, in the order they are listed.
+    fn marked_in(&self, series: &SeriesId) -> Vec<PhotoId> {
+        self.all
+            .iter()
+            .filter(|i| i.series.as_ref() == Some(series) && self.marks.contains(&i.id))
+            .map(|i| i.id)
+            .collect()
+    }
+
+    pub fn resolve_series(mut self: Pin<&mut Self>) -> i32 {
         let Some(session) = session::current() else {
             return 0;
         };
         let mut series: Option<SeriesId> = None;
-        let mut keep: Vec<PhotoId> = Vec::new();
+        let mut selected: Vec<PhotoId> = Vec::new();
         let mut collapsed = false;
         for row in self.selected_rows() {
             let item = &self.items[row];
@@ -1001,18 +1062,181 @@ impl qobject::PhotoGrid {
             }
             series = Some(s);
             collapsed |= !item.members.is_empty();
-            keep.push(item.id);
+            selected.push(item.id);
+        }
+        // With nothing selected in a series, the marks say which series it is (when they are all in one).
+        if series.is_none() {
+            let mut of_marks: Vec<SeriesId> = Vec::new();
+            for photo in self.marks.iter() {
+                if let Some(s) = self.series_of_photo(photo)
+                    && !of_marks.contains(&s)
+                {
+                    of_marks.push(s);
+                }
+            }
+            if of_marks.len() == 1 {
+                series = of_marks.pop();
+            }
         }
         let Some(series) = series else {
             return 0;
         };
-        if collapsed {
-            return -1;
-        }
+        // The marks are what to keep; without any, the selection (D-101).
+        let marked = self.marked_in(&series);
+        let keep = if marked.is_empty() {
+            if collapsed {
+                return -1;
+            }
+            selected
+        } else {
+            marked
+        };
         let _ = session
             .engine
             .submit(Command::ResolveSeries { series, keep });
+        self.as_mut().clear_marks_of(&series);
         1
+    }
+
+    /// Takes the marks off every photo of a series.
+    fn clear_marks_of(mut self: Pin<&mut Self>, series: &SeriesId) {
+        let members: Vec<PhotoId> = self
+            .all
+            .iter()
+            .filter(|i| i.series.as_ref() == Some(series))
+            .map(|i| i.id)
+            .collect();
+        let before = self.marks.len();
+        for member in &members {
+            self.as_mut().rust_mut().marks.remove(member);
+        }
+        if self.marks.len() != before {
+            self.marks_changed();
+        }
+    }
+
+    /// Tells the views the marks changed (every row's `marked`, and the serial that what shows them follows).
+    fn marks_changed(mut self: Pin<&mut Self>) {
+        let serial = *self.mark_serial() + 1;
+        self.as_mut().set_mark_serial(serial);
+        let last = self.items.len() as i32 - 1;
+        if last >= 0 {
+            let (first, end) = (
+                self.index(0, 0, &QModelIndex::default()),
+                self.index(last, 0, &QModelIndex::default()),
+            );
+            let mut roles = QVector::<i32>::default();
+            roles.append(ROLE_MARKED);
+            self.as_mut().data_changed(&first, &end, &roles);
+        }
+    }
+
+    pub fn toggle_mark(mut self: Pin<&mut Self>, id: &QString) -> bool {
+        let Ok(photo) = PhotoId::from_str(&id.to_string()) else {
+            return false;
+        };
+        let marked = if self.marks.contains(&photo) {
+            self.as_mut().rust_mut().marks.remove(&photo);
+            false
+        } else {
+            self.as_mut().rust_mut().marks.insert(photo);
+            true
+        };
+        self.marks_changed();
+        marked
+    }
+
+    pub fn selected_ids(&self) -> QString {
+        let ids: Vec<String> = self
+            .photos_of(&self.selected_rows())
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+        QString::from(ids.join(",").as_str())
+    }
+
+    pub fn series_members_of(&self, id: &QString) -> QString {
+        let Some(series) = PhotoId::from_str(&id.to_string())
+            .ok()
+            .and_then(|photo| self.series_of_photo(&photo))
+        else {
+            return QString::default();
+        };
+        // `all` lists the newest first: the frames in the order they were taken are the reverse.
+        let ids: Vec<String> = self
+            .all
+            .iter()
+            .rev()
+            .filter(|i| i.series.as_ref() == Some(&series))
+            .map(|i| i.id.to_string())
+            .collect();
+        QString::from(ids.join(",").as_str())
+    }
+
+    pub fn is_marked(&self, id: &QString) -> bool {
+        PhotoId::from_str(&id.to_string()).is_ok_and(|photo| self.marks.contains(&photo))
+    }
+
+    fn ids_from(text: &QString) -> Vec<PhotoId> {
+        text.to_string()
+            .split(',')
+            .filter_map(|t| PhotoId::from_str(t).ok())
+            .collect()
+    }
+
+    pub fn aids_of(&self, id: &QString) -> QString {
+        let Some(session) = session::current() else {
+            return QString::default();
+        };
+        let Some(aids) = PhotoId::from_str(&id.to_string())
+            .ok()
+            .and_then(|photo| session.previews.service().aids(&photo))
+        else {
+            return QString::default();
+        };
+        QString::from(
+            serde_json::json!({
+                "sharpness": aids.sharpness,
+                "histogram": aids.histogram.iter().map(|c| c.to_vec()).collect::<Vec<_>>(),
+                "high": aids.clipped_high,
+                "low": aids.clipped_low,
+            })
+            .to_string()
+            .as_str(),
+        )
+    }
+
+    pub fn sharpness_ranks(&self, ids: &QString) -> QString {
+        let Some(session) = session::current() else {
+            return QString::from("[]");
+        };
+        let service = session.previews.service();
+        let scores: Vec<Option<f32>> = Self::ids_from(ids)
+            .iter()
+            .map(|id| service.sharpness(id))
+            .collect();
+        let best = scores.iter().flatten().copied().fold(0.0f32, f32::max);
+        let ranks: Vec<i32> = scores
+            .iter()
+            .map(|score| match score {
+                Some(score) if best > 0.0 => (score / best * 100.0).round() as i32,
+                Some(_) => 100,
+                None => -1,
+            })
+            .collect();
+        QString::from(serde_json::json!(ranks).to_string().as_str())
+    }
+
+    pub fn analyse(&self, ids: &QString) {
+        if let Some(session) = session::current() {
+            session.previews.service().analyse(&Self::ids_from(ids));
+        }
+    }
+
+    pub fn prefetch_ids(&self, ids: &QString) {
+        if let Some(session) = session::current() {
+            session.previews.prefetch(&Self::ids_from(ids));
+        }
     }
 
     pub fn reopen_series(self: Pin<&mut Self>) -> i32 {
@@ -1674,6 +1898,9 @@ impl qobject::PhotoGrid {
             ROLE_SERIES_RESOLVED => QVariant::from(&item.series_resolved),
             ROLE_SERIES_OPEN => QVariant::from(&item.series_open),
             ROLE_SERIES_EDGE => QVariant::from(&i32::from(item.series_edge)),
+            ROLE_MARKED => {
+                QVariant::from(&item.photos().iter().any(|photo| self.marks.contains(photo)))
+            }
             _ => QVariant::default(),
         }
     }
@@ -1691,6 +1918,7 @@ impl qobject::PhotoGrid {
         roles.insert(ROLE_SERIES_RESOLVED, QByteArray::from("seriesResolved"));
         roles.insert(ROLE_SERIES_OPEN, QByteArray::from("seriesOpen"));
         roles.insert(ROLE_SERIES_EDGE, QByteArray::from("seriesEdge"));
+        roles.insert(ROLE_MARKED, QByteArray::from("marked"));
         roles
     }
 

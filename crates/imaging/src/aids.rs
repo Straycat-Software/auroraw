@@ -192,7 +192,11 @@ mod tests {
     /// Vertical black and white stripes, `period` pixels wide.
     fn stripes(w: u32, h: u32, period: u32) -> DynamicImage {
         DynamicImage::ImageLuma8(ImageBuffer::from_fn(w, h, |x, _| {
-            Luma([if (x / period) % 2 == 0 { 20 } else { 235 }])
+            Luma([if (x / period).is_multiple_of(2) {
+                20
+            } else {
+                235
+            }])
         }))
     }
 

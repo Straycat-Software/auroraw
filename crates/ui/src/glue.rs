@@ -130,8 +130,9 @@ pub unsafe extern "C" fn auroraw_thumbnail_request(
         .and_then(|text| PhotoId::from_str(text).ok())
         .zip(session::current());
     match asked {
-        Some((id, session)) if kind == 1 => session.previews.request(id, token),
-        Some((id, session)) => session.thumbs.request(id, token),
+        // 1 the picture of the image view, 2 its focus peaking overlay, 3 its clipping overlay.
+        Some((id, session)) if kind >= 1 => session.previews.request(id, (kind - 1) as u8, token),
+        Some((id, session)) => session.thumbs.request(id, 0, token),
         // SAFETY: no bytes (null, 0) is allowed.
         None => unsafe { auroraw_thumbnail_ready(token, std::ptr::null(), 0) },
     }
