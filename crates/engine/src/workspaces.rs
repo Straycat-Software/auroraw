@@ -342,7 +342,15 @@ mod tests {
         let dirs = dirs(dir.path());
         let a = Engine::create_workspace(&dir.path().join("A"), "Alpha", &dirs).unwrap();
         drop(a.engine);
-        std::fs::rename(dir.path().join("A"), dir.path().join("Moved")).unwrap();
+        // (Windows refuses while the closed engine's thread is still letting go of the database.)
+        let started = std::time::Instant::now();
+        while std::fs::rename(dir.path().join("A"), dir.path().join("Moved")).is_err() {
+            assert!(
+                started.elapsed() < Duration::from_secs(10),
+                "the database stayed open"
+            );
+            std::thread::sleep(Duration::from_millis(100));
+        }
 
         let known = Engine::known_workspaces(&dirs);
         assert_eq!(known.len(), 1);
