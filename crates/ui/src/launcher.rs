@@ -301,7 +301,16 @@ impl qobject::Launcher {
     }
 
     pub fn default_parent(&self) -> QString {
-        text(&self.pictures.join("Auroraw").to_string_lossy())
+        // The parent folder chosen last time (issue #9), else `~/Pictures/Auroraw`.
+        let remembered = match &self.dirs {
+            Some(_) => AppSettings::load(&self.settings_path()).last_workspace_folder,
+            None => String::new(),
+        };
+        if remembered.is_empty() {
+            text(&self.pictures.join("Auroraw").to_string_lossy())
+        } else {
+            text(&remembered)
+        }
     }
 
     pub fn free_name(&self, parent: &QString, base: &QString) -> QString {
@@ -335,6 +344,13 @@ impl qobject::Launcher {
         session::set_current(None);
         match Engine::create_workspace(&root, name, &self.dirs()) {
             Ok(opened) => {
+                // Remembered for next time (issue #9), best effort.
+                let path = self.settings_path();
+                let settings = AppSettings {
+                    last_workspace_folder: parent.to_string_lossy().into_owned(),
+                    ..AppSettings::load(&path)
+                };
+                settings.save(&path);
                 self.as_mut().show(opened);
                 QString::default()
             }

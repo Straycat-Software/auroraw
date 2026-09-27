@@ -633,6 +633,11 @@ pub mod qobject {
             merge: bool,
         ) -> QString;
 
+        /// The folder last added (issue #10), for the Add Source dialog to start from; empty for none yet.
+        #[qinvokable]
+        #[cxx_name = "lastFolder"]
+        fn last_folder(self: &SourceList) -> QString;
+
         /// How many photos the source in `row` has, and how many of them have work in them (read
         /// from the catalogue now, not from the list).
         #[qinvokable]

@@ -35,7 +35,7 @@ Item {
         status = qsTr("Reading photos: %1 of %2…").arg(0).arg(0)
     }
 
-    function openAdd() { addDialog.openWith() }
+    function openAdd() { addDialog.openWith(sources.lastFolder()) }
 
     // Scans the folder an import has just made a source of (its other photos, if any).
     function scanFolder(folder) {

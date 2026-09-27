@@ -23,8 +23,9 @@ AppDialog {
 
     title: qsTr("Add a source")
 
-    function openWith() {
-        folderField.text = ""
+    // `folder` is where the field starts (issue #10): the last one added, or empty for none yet.
+    function openWith(folder) {
+        folderField.text = folder === undefined ? "" : folder
         nameField.text = ""
         error = ""
         mergeQuestion = ""

@@ -42,6 +42,18 @@ AppTestCase {
         compare(app.library.status, "3 photos")
     }
 
+    function test_the_add_source_dialog_remembers_the_last_folder_added() {
+        // Issue #10: the folder field used to always start empty.
+        const card = begin("Template2")
+        addSource(card)
+        waitForTheScan()
+
+        click(app.catalogue.addButton)
+        wait(150)
+        compare(files.canonical(app.flow.addDialog.folderField.text), files.canonical(card))
+        app.flow.addDialog.close()
+    }
+
     function test_the_dialog_says_why_a_folder_cannot_be_added() {
         const card = begin("Template2")
         addSource(card)

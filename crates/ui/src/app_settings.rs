@@ -41,6 +41,10 @@ pub struct AppSettings {
     pub similar_distance: u32,
     /// ...and were taken at most this many minutes apart.
     pub similar_minutes: u32,
+    /// The parent folder the New workspace dialog last created one in, empty for none yet (issue #9).
+    pub last_workspace_folder: String,
+    /// The folder the Add Source dialog last added, empty for none yet (issue #10).
+    pub last_source_folder: String,
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
@@ -64,8 +68,16 @@ impl Default for AppSettings {
             compare_panes: 2,
             similar_distance: 10,
             similar_minutes: 30,
+            last_workspace_folder: String::new(),
+            last_source_folder: String::new(),
         }
     }
+}
+
+/// Where the machine keeps `AppSettings`, for anything that needs to read or change one field of it
+/// without going through `Launcher` (`SourceList::add`, for instance).
+pub(crate) fn settings_path() -> std::path::PathBuf {
+    crate::launch().dirs.data.join("app-settings.json")
 }
 
 impl AppSettings {
@@ -145,6 +157,8 @@ mod tests {
             compare_panes: 3,
             similar_distance: 12,
             similar_minutes: 45,
+            last_workspace_folder: "/home/patrick/Pictures".into(),
+            last_source_folder: "/mnt/backup".into(),
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);

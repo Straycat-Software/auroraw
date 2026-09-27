@@ -38,6 +38,22 @@ AppTestCase {
         compare(app.known.count, 1)
     }
 
+    function test_the_new_workspace_dialog_remembers_the_last_folder_chosen() {
+        // Issue #9: the folder proposed used to always be the fixed default.
+        const machine = freshMachine()
+        launch(machine)
+        const custom = machinePath(machine) + "/Elsewhere"
+        app.newDialog.openWith()
+        app.newDialog.folderField.text = custom
+        click(app.newDialog.createButton)
+        wait(200)
+        verify(files.exists(custom + "/Main/workspace.json"))
+
+        // Creating a second workspace proposes the folder just used, not the fixed default.
+        app.newDialog.openWith()
+        compare(files.canonical(app.newDialog.folderField.text), files.canonical(custom))
+    }
+
     function test_the_preview_follows_the_name_and_the_folder_and_the_folder_is_left_alone() {
         const machine = freshMachine()
         launch(machine)

@@ -10,6 +10,7 @@ use auroraw_engine::{AddPlan, AddSourceRequest, Command, Engine, Outcome, Source
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::{QByteArray, QHash, QHashPair_i32_QByteArray, QModelIndex, QString, QVariant};
 
+use crate::app_settings::{self, AppSettings};
 use crate::models::qobject::SourceList;
 use crate::session;
 
@@ -94,17 +95,29 @@ impl SourceList {
         };
         let name = name.to_string().trim().to_string();
         match engine.add_source(AddSourceRequest {
-            root,
+            root: root.clone(),
             name: Some(name).filter(|n| !n.is_empty()),
             merge,
         }) {
             Ok(added) => {
+                // Remembered for next time (issue #10), best effort.
+                let path = app_settings::settings_path();
+                let settings = AppSettings {
+                    last_source_folder: root.to_string_lossy().into_owned(),
+                    ..AppSettings::load(&path)
+                };
+                settings.save(&path);
                 self.as_mut().start(added.job);
                 self.refresh();
                 QString::default()
             }
             Err(e) => text(&e.to_string()),
         }
+    }
+
+    /// The folder last added (issue #10), for the Add Source dialog to start from.
+    pub fn last_folder(&self) -> QString {
+        text(&AppSettings::load(&app_settings::settings_path()).last_source_folder)
     }
 
     fn counts(&self, row: i32) -> Option<auroraw_engine::SourceCounts> {
