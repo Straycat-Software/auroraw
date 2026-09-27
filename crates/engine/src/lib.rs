@@ -34,6 +34,7 @@ mod workspaces;
 
 pub use auroraw_catalogue::SourceCounts;
 pub use auroraw_format::sidecar::{ColourLabel, Flag};
+pub use auroraw_imaging::{Aids, MaskKind};
 pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
 pub use auroraw_types::KeywordId;
 pub use command::Command;

@@ -87,7 +87,7 @@ fn ask(service: &PreviewService, id: PhotoId) -> Option<(u32, u32)> {
     let deadline = Instant::now() + Duration::from_secs(30);
     while Instant::now() < deadline {
         if let Some((_, image)) = service.poll().into_iter().find(|(got, _)| *got == id) {
-            return Some((image.width, image.height));
+            return Some((image.image.width, image.image.height));
         }
         if service.poll_failed().contains(&id) {
             return None;
@@ -198,5 +198,146 @@ fn walking_through_two_hundred_photos_with_the_next_ones_made_ahead_is_fast() {
     assert!(
         median < Duration::from_millis(250),
         "a key press waited {median:?} for its picture at the median"
+    );
+}
+
+/// A folder with a sharp picture (stripes) and the same picture blurred, as `a.jpg` and `b.jpg`.
+fn sharp_and_soft() -> Setup {
+    let dir = temp_dir();
+    let folder = dir.path().join("Trip");
+    std::fs::create_dir_all(&folder).unwrap();
+    let sharp = ImageBuffer::from_fn(240, 160, |x, _| {
+        let v = if (x / 6) % 2 == 0 { 25 } else { 230 };
+        Rgb([v, v, v])
+    });
+    let soft = image::imageops::blur(&sharp, 3.0);
+    for (name, img) in [
+        ("a.jpg", sharp),
+        ("b.jpg", image::imageops::blur(&soft, 0.1)),
+    ] {
+        DynamicImage::ImageRgb8(img)
+            .save_with_format(folder.join(name), ImageFormat::Jpeg)
+            .unwrap();
+    }
+    let (engine, events) = Engine::create(
+        &dir.path().join("Main"),
+        &dir.path().join("main.sqlite"),
+        "Main",
+    )
+    .unwrap();
+    let added = engine
+        .add_source(AddSourceRequest {
+            root: folder.clone(),
+            name: None,
+            merge: false,
+        })
+        .unwrap();
+    wait_for(
+        &events,
+        |e| matches!(e, Event::IndexFinished { job, .. } if *job == added.job),
+    );
+    let mut rows = engine
+        .read_catalogue()
+        .unwrap()
+        .list_recent(None, 10)
+        .unwrap();
+    rows.sort_by(|a, b| a.filename.cmp(&b.filename));
+    Setup {
+        dir,
+        engine,
+        photos: rows.into_iter().map(|r| r.id).collect(),
+        folder,
+    }
+}
+
+#[test]
+fn frames_are_ranked_by_sharpness_without_keeping_their_pictures() {
+    let s = sharp_and_soft();
+    let service = s.engine.start_previews(2).unwrap();
+    assert_eq!(
+        service.sharpness(&s.photos[0]),
+        None,
+        "nothing measured yet"
+    );
+    service.analyse(&s.photos);
+    wait_until("both were measured", || {
+        s.photos.iter().all(|p| service.sharpness(p).is_some())
+    });
+    let (sharp, soft) = (
+        service.sharpness(&s.photos[0]).unwrap(),
+        service.sharpness(&s.photos[1]).unwrap(),
+    );
+    assert!(
+        sharp > 2.0 * soft,
+        "the sharp frame scores higher: {sharp} against {soft}"
+    );
+    assert_eq!(service.kept(), 0, "measuring keeps no picture");
+    assert!(
+        service.aids(&s.photos[0]).is_none(),
+        "and so has no histogram to give"
+    );
+
+    // Asking for the picture gives its aids and masks, and its score is the same one.
+    assert!(ask(&service, s.photos[0]).is_some());
+    let aids = service.aids(&s.photos[0]).unwrap();
+    assert_eq!(aids.histogram[0].iter().sum::<u32>(), 240 * 160);
+    assert!(
+        (service.sharpness(&s.photos[0]).unwrap() - aids.sharpness).abs()
+            < 1e-3 * aids.sharpness.max(1.0)
+    );
+    let picture = service.poll();
+    assert!(picture.is_empty(), "already polled by ask");
+}
+
+#[test]
+fn an_overlay_is_made_when_asked_from_the_picture_and_lies_over_it() {
+    use auroraw_engine::MaskKind;
+    let s = sharp_and_soft();
+    let service = s.engine.start_previews(2).unwrap();
+    let lit = |png: &[u8]| {
+        let mask = image::load_from_memory(png).unwrap().to_rgba8();
+        assert_eq!(mask.dimensions(), (240, 160), "the picture's own size");
+        mask.pixels().filter(|p| p.0[3] > 0).count()
+    };
+    let wait_mask = |id: PhotoId, kind: MaskKind| {
+        service.request_mask(id, kind);
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while Instant::now() < deadline {
+            if let Some((_, _, png)) = service
+                .poll_masks()
+                .into_iter()
+                .find(|(got, k, _)| *got == id && *k == kind)
+            {
+                return png;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        panic!("no overlay");
+    };
+    let sharp = wait_mask(s.photos[0], MaskKind::Peaking);
+    let soft = wait_mask(s.photos[1], MaskKind::Peaking);
+    let (a, b) = (lit(&sharp), lit(&soft));
+    assert!(a > b, "a sharp frame lights up more: {a} against {b}");
+    assert!(
+        service.is_ready(&s.photos[0]),
+        "the picture was made for it and is kept"
+    );
+    // Asked again: from what was made, at once.
+    service.request_mask(s.photos[0], MaskKind::Peaking);
+    assert_eq!(service.poll_masks().len(), 1);
+    let clipping = wait_mask(s.photos[0], MaskKind::Clipping);
+    let _ = lit(&clipping);
+    // No original, no overlay.
+    std::fs::remove_dir_all(&s.folder).unwrap();
+    let mut asked = None;
+    service.request_mask(PhotoId::random(), MaskKind::Peaking);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < deadline && asked.is_none() {
+        asked = service.poll_masks_failed().into_iter().next();
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert!(
+        asked.is_some(),
+        "an overlay that cannot be made is reported"
     );
 }

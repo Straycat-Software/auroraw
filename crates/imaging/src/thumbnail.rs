@@ -60,40 +60,53 @@ pub(crate) fn make_scaled(
     quality: u8,
     path: &Path,
 ) -> Result<Thumbnail> {
+    let resized = scaled_rgb(image, orientation, long_edge, path)?;
+    encode_jpeg(&resized, quality, path)
+}
+
+/// The image upright and at most `long_edge` pixels on its long side (never enlarged).
+pub(crate) fn scaled_rgb(
+    image: DynamicImage,
+    orientation: Option<u32>,
+    long_edge: u32,
+    path: &Path,
+) -> Result<image::RgbImage> {
     let image = apply_orientation(image, orientation);
     let rgb = image.to_rgb8();
     let (src_w, src_h) = rgb.dimensions();
     let scale = (long_edge as f32 / src_w.max(src_h).max(1) as f32).min(1.0);
     let dst_w = ((src_w as f32 * scale).round() as u32).max(1);
     let dst_h = ((src_h as f32 * scale).round() as u32).max(1);
-
-    let resized = if (dst_w, dst_h) == (src_w, src_h) {
-        rgb.into_raw()
-    } else {
-        let src_image =
-            fir::images::Image::from_vec_u8(src_w, src_h, rgb.into_raw(), fir::PixelType::U8x3)
-                .map_err(|e| decode_err(path, e))?;
-        let mut dst_image = fir::images::Image::new(dst_w, dst_h, fir::PixelType::U8x3);
-        fir::Resizer::new()
-            .resize(&src_image, &mut dst_image, None)
+    if (dst_w, dst_h) == (src_w, src_h) {
+        return Ok(rgb);
+    }
+    let src_image =
+        fir::images::Image::from_vec_u8(src_w, src_h, rgb.into_raw(), fir::PixelType::U8x3)
             .map_err(|e| decode_err(path, e))?;
-        dst_image.into_vec()
-    };
+    let mut dst_image = fir::images::Image::new(dst_w, dst_h, fir::PixelType::U8x3);
+    fir::Resizer::new()
+        .resize(&src_image, &mut dst_image, None)
+        .map_err(|e| decode_err(path, e))?;
+    image::RgbImage::from_raw(dst_w, dst_h, dst_image.into_vec())
+        .ok_or_else(|| decode_err(path, "the resized image has the wrong size"))
+}
 
+/// An RGB image as a JPEG at `quality`.
+pub(crate) fn encode_jpeg(rgb: &image::RgbImage, quality: u8, path: &Path) -> Result<Thumbnail> {
+    let (width, height) = rgb.dimensions();
     let mut jpeg = Vec::new();
     jpeg_encoder::Encoder::new(&mut jpeg, quality)
         .encode(
-            &resized,
-            dst_w as u16,
-            dst_h as u16,
+            rgb.as_raw(),
+            width as u16,
+            height as u16,
             jpeg_encoder::ColorType::Rgb,
         )
         .map_err(|e| decode_err(path, e))?;
-
     Ok(Thumbnail {
         jpeg,
-        width: dst_w,
-        height: dst_h,
+        width,
+        height,
     })
 }
 

@@ -23,6 +23,7 @@
 //! and a RAW file's own sensor data converted through a working space, both need the image
 //! engine (M2); WP5 does not have one to convert through.
 
+mod aids;
 mod error;
 mod format;
 mod metadata;
@@ -31,11 +32,16 @@ mod preview;
 mod previews;
 mod thumbnail;
 
+pub use aids::{
+    ANALYSIS_EDGE, Aids, MaskKind, analyse, clipping_mask, encode_mask, mask_png, peaking_mask,
+};
 pub use error::{ImagingError, Result};
 pub use format::is_photo_file;
 pub use metadata::{Metadata, read_metadata};
 pub use phash::perceptual_hash;
-pub use preview::{VIEW_MAX_EDGE, embedded_preview, view_image};
+pub use preview::{
+    VIEW_MAX_EDGE, ViewPicture, embedded_preview, measure_file, view_image, view_picture,
+};
 pub use previews::PreviewsDb;
 pub use thumbnail::{Thumbnail, make_thumbnail};
 
