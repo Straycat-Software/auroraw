@@ -712,6 +712,8 @@ pub struct PhotoGridRust {
     label_filter: QString,
     /// Everything the filters list, in order (the rows are derived from it: a collapsed series is one of them).
     all: Vec<Item>,
+    /// Where each photo of `all` is, so that a change to one photo reaches the copy a collapsed series hides.
+    all_pos: HashMap<PhotoId, usize>,
     series_info: HashMap<SeriesId, auroraw_catalogue::SeriesInfo>,
     /// The series shown expanded.
     open: std::collections::HashSet<SeriesId>,
@@ -817,9 +819,33 @@ impl qobject::PhotoGrid {
                 item.label = pending.label.unwrap_or(item.label);
             }
         }
+        let positions = all
+            .iter()
+            .enumerate()
+            .map(|(i, item)| (item.id, i))
+            .collect();
         self.as_mut().rust_mut().all = all;
+        self.as_mut().rust_mut().all_pos = positions;
         self.as_mut().rust_mut().series_info = info;
         self.rebuild();
+    }
+
+    /// Writes what is known of a photo's rating, flag or colour into the list of everything listed, so that a row
+    /// made later (a series that opens) shows it, as a photo a collapsed series hides has no row now.
+    fn note_in_all(
+        mut self: Pin<&mut Self>,
+        id: PhotoId,
+        rating: Option<u8>,
+        flag: Option<u8>,
+        label: Option<u8>,
+    ) {
+        let Some(&at) = self.all_pos.get(&id) else {
+            return;
+        };
+        let item = &mut self.as_mut().rust_mut().all[at];
+        item.rating = rating.unwrap_or(item.rating);
+        item.flag = flag.unwrap_or(item.flag);
+        item.label = label.unwrap_or(item.label);
     }
 
     /// Makes the rows from what the filters list and which series are open, and tells the views.
@@ -1418,6 +1444,7 @@ impl qobject::PhotoGrid {
             self.as_mut().rust_mut().items[*row].flag = new;
             // (A collapsed series' row stands for all its members.)
             for id in self.items[*row].photos() {
+                self.as_mut().note_in_all(id, None, Some(new), None);
                 self.as_mut().ask(id, None, Some(new), None);
             }
         }
@@ -1479,6 +1506,7 @@ impl qobject::PhotoGrid {
             self.as_mut().rust_mut().items[*row].label = new;
             // (A collapsed series' row stands for all its members.)
             for id in self.items[*row].photos() {
+                self.as_mut().note_in_all(id, None, None, Some(new));
                 self.as_mut().ask(id, None, None, Some(new));
             }
         }
@@ -1677,6 +1705,7 @@ impl qobject::PhotoGrid {
             self.as_mut().rust_mut().items[*row].rating = rating;
             // (A collapsed series' row stands for all its members.)
             for id in self.items[*row].photos() {
+                self.as_mut().note_in_all(id, Some(rating), None, None);
                 self.as_mut().ask(id, Some(rating), None, None);
             }
         }
@@ -1715,10 +1744,12 @@ impl qobject::PhotoGrid {
         let Ok(id) = PhotoId::from_str(&id.to_string()) else {
             return;
         };
-        // A photo that is not listed (one that has just entered the catalogue) waits for the reload.
-        let Some(&row) = self.rows.get(&id) else {
+        // A photo that is not listed (one that has just entered the catalogue) waits for the reload; one a collapsed
+        // series hides has no row but is in the list of everything.
+        let row = self.rows.get(&id).copied();
+        if row.is_none() && !self.all_pos.contains_key(&id) {
             return;
-        };
+        }
         let Some(session) = session::current() else {
             return;
         };
@@ -1744,6 +1775,15 @@ impl qobject::PhotoGrid {
             self.as_mut().rust_mut().pending.remove(&id);
         }
         let label = label_code(photo.label.as_deref());
+        self.as_mut().note_in_all(
+            id,
+            Some(photo.effective_rating),
+            Some(photo.effective_flag),
+            Some(label),
+        );
+        let Some(row) = row else {
+            return;
+        };
         if self.items[row].rating != photo.effective_rating
             || self.items[row].flag != photo.effective_flag
             || self.items[row].label != label
@@ -1873,6 +1913,7 @@ impl qobject::PhotoGrid {
         });
         // The cell shows the new rating at once; the engine's own event confirms it.
         self.as_mut().rust_mut().items[row as usize].rating = rating;
+        self.as_mut().note_in_all(id, Some(rating), None, None);
         self.as_mut().ask(id, Some(rating), None, None);
         self.redraw_photo(row as usize);
     }

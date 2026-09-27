@@ -193,7 +193,7 @@ Item {
         width: Math.min(220, parent.width - 72)
         height: 90
         visible: pane.compare.showHistogram && pane.aids !== null
-        data: pane.aids ? pane.aids.histogram : null
+        counts: pane.aids ? pane.aids.histogram : null
         high: pane.aids ? pane.aids.high : 0
         low: pane.aids ? pane.aids.low : 0
     }

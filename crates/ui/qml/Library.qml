@@ -190,21 +190,29 @@ FocusScope {
         updateSummary()
     }
 
+    // Runs `change`, which rebuilds the list of rows (a series opens or closes), and leaves the view where it was with
+    // the cursor on the same photo. Left alone, the view scrolls back to the cursor's photo, or to the top.
+    function keepingTheView(change) {
+        const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
+        const scrolled = grid.contentY
+        grid.currentIndex = -1
+        const result = change()
+        grid.contentY = scrolled
+        grid.currentIndex = cursor !== "" ? photoGrid.rowOf(cursor) : -1
+        grid.contentY = scrolled
+        return result
+    }
+
     // Opens or closes the series of the photo in `index` (the cursor's when it is -1); the cursor stays on its photo.
     function toggleSeries(index) {
         const row = index >= 0 ? index : grid.currentIndex
-        const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
-        if (!photoGrid.toggleSeries(row))
-            return
-        grid.currentIndex = cursor !== "" ? photoGrid.rowOf(cursor) : -1
-        updateSummary()
+        if (keepingTheView(() => photoGrid.toggleSeries(row)))
+            updateSummary()
     }
 
     // Opens or closes every series.
     function expandAll(open) {
-        const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
-        photoGrid.expandAll(open)
-        grid.currentIndex = cursor !== "" ? photoGrid.rowOf(cursor) : -1
+        keepingTheView(() => photoGrid.expandAll(open))
         allOpen = open
         updateSummary()
     }

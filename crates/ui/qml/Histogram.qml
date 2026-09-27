@@ -3,11 +3,11 @@ import QtQuick
 import org.auroraw.ui
 
 // A histogram (D-103): the brightness (grey, filled) and the three colours (thin lines) of a picture, from the
-// numbers the image view measured on it (`data`: four arrays of 256 counts, luma, red, green and blue). It says
+// numbers the image view measured on it (`counts`: four arrays of 256 counts, luma, red, green and blue). It says
 // what the camera's preview holds, not the RAW data.
 Rectangle {
     id: histogram
-    property var data: null
+    property var counts: null
     // The share of pixels in the highlights' clip and in the shadows' (0 to 1), written under the drawing.
     property real high: 0
     property real low: 0
@@ -18,7 +18,7 @@ Rectangle {
     radius: 4
     color: "#c0000000"
 
-    onDataChanged: canvas.requestPaint()
+    onCountsChanged: canvas.requestPaint()
 
     Canvas {
         id: canvas
@@ -28,11 +28,11 @@ Rectangle {
         onPaint: {
             const ctx = getContext("2d")
             ctx.clearRect(0, 0, width, height)
-            if (!histogram.data)
+            if (!histogram.counts)
                 return
             // The tallest bar, ignoring the two ends (a clipped picture piles up there and would flatten the rest).
             let top = 1
-            for (const channel of histogram.data)
+            for (const channel of histogram.counts)
                 for (let i = 2; i < 254; i++)
                     top = Math.max(top, channel[i])
             const x = i => i / 255 * width
@@ -52,10 +52,10 @@ Rectangle {
                     ctx.stroke()
                 }
             }
-            line(histogram.data[0], "rgba(200,200,200,0.45)", true)
-            line(histogram.data[1], "rgba(255,80,80,0.9)", false)
-            line(histogram.data[2], "rgba(80,220,80,0.9)", false)
-            line(histogram.data[3], "rgba(90,140,255,0.9)", false)
+            line(histogram.counts[0], "rgba(200,200,200,0.45)", true)
+            line(histogram.counts[1], "rgba(255,80,80,0.9)", false)
+            line(histogram.counts[2], "rgba(80,220,80,0.9)", false)
+            line(histogram.counts[3], "rgba(90,140,255,0.9)", false)
         }
     }
     Text {

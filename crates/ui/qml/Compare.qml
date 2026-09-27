@@ -38,7 +38,10 @@ FocusScope {
     property int ranksSerial: 0
     property alias panes: panes
     property alias toolbar: toolbar
+    property alias sizeButtons: sizeButtons
 
+    // No use offering 3 or 4 frames a page for a series of 2 (never fewer than 2, the least the buttons offer).
+    readonly property int maxPageSize: Math.max(2, Math.min(4, ids.length))
     readonly property int pages: Math.max(1, Math.ceil(ids.length / pageSize))
     readonly property var pageIds: ids.slice(page * pageSize, page * pageSize + pageSize)
     readonly property string focusedId: pageIds[Math.min(focusSlotIndex, pageIds.length - 1)] || ""
@@ -52,7 +55,7 @@ FocusScope {
     // Opens on these photos (identifiers joined by commas), the first one focused.
     function openOn(idsText) {
         ids = idsText.split(",")
-        pageSize = Math.max(2, Math.min(4, launcher.intOption("comparePanes")))
+        pageSize = Math.min(maxPageSize, Math.max(2, Math.min(4, launcher.intOption("comparePanes"))))
         showPeaking = launcher.viewOption("peaking")
         showClipping = launcher.viewOption("clipping")
         showHistogram = launcher.viewOption("histogram")
@@ -141,6 +144,8 @@ FocusScope {
 
     // 2, 3 or 4 frames a page, the focused frame staying on screen.
     function setPageSize(n) {
+        if (n > maxPageSize)
+            return
         const g = focusedGlobal
         pageSize = n
         launcher.setIntOption("comparePanes", n)
@@ -289,6 +294,8 @@ FocusScope {
                         checkable: true
                         autoExclusive: true
                         checked: comparison.pageSize === sizeButton.modelData
+                        enabled: sizeButton.modelData <= comparison.maxPageSize
+                        opacity: enabled ? 1 : 0.35
                         focusPolicy: Qt.NoFocus
                         Accessible.name: qsTr("%n frame(s) a page", "", sizeButton.modelData)
                         onClicked: comparison.setPageSize(sizeButton.modelData)
@@ -297,6 +304,7 @@ FocusScope {
                 ToolButton {
                     text: "◀"
                     enabled: comparison.page > 0
+                    opacity: enabled ? 1 : 0.35
                     focusPolicy: Qt.NoFocus
                     Accessible.name: qsTr("Previous page")
                     onClicked: comparison.turnPage(-1)
@@ -309,6 +317,7 @@ FocusScope {
                 ToolButton {
                     text: "▶"
                     enabled: comparison.page < comparison.pages - 1
+                    opacity: enabled ? 1 : 0.35
                     focusPolicy: Qt.NoFocus
                     Accessible.name: qsTr("Next page")
                     onClicked: comparison.turnPage(1)

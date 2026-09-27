@@ -104,6 +104,18 @@ AppTestCase {
         tryVerify(() => app.library.comparing)
         compare(cmp.ids.length, 3)
         compare(cmp.ids.join(","), chosen)
+        // Only the counts of frames that the photos fill are offered, and there is no page to turn to.
+        compare([0, 1, 2].map(i => cmp.sizeButtons.itemAt(i).enabled), [true, true, false], "no 4 for 3 photos")
+        cmp.setPageSize(4)
+        compare(cmp.pageSize, 2, "a count that is not offered is refused")
+        keyClick(Qt.Key_Escape)
+        click(0)
+        click(1, Qt.ControlModifier)
+        keyClick(Qt.Key_C)
+        tryVerify(() => app.library.comparing)
+        compare([0, 1, 2].map(i => cmp.sizeButtons.itemAt(i).enabled), [true, false, false], "2 photos")
+        compare(cmp.pageSize, 2)
+        verify(!cmp.sizeButtons.itemAt(1).enabled && cmp.sizeButtons.itemAt(1).opacity < 1)
         keyClick(Qt.Key_Escape)
         // A loner with nothing selected: nothing to compare.
         click(5)
@@ -205,6 +217,9 @@ AppTestCase {
         tryVerify(() => pane.aids !== null, 20000)
         verify(pane.histogram.visible)
         compare(pane.aids.histogram.length, 4)
+        // Drawn: its canvas and its caption are its children (a property that shadows `data` once emptied it).
+        compare(pane.histogram.children.length, 2)
+        verify(pane.histogram.canvas.width > 0 && pane.histogram.canvas.height > 0)
         snapshot("compare-aids-en")
     }
 

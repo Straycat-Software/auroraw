@@ -65,6 +65,7 @@ FocusScope {
         showClipping = launcher.viewOption("clipping")
         showHistogram = launcher.viewOption("histogram")
         refresh()
+        Qt.callLater(strip.centre)
         forceActiveFocus()
     }
 
@@ -328,7 +329,7 @@ FocusScope {
         anchors.bottom: flick.bottom
         anchors.margins: 10
         visible: view.showHistogram && view.aids !== null
-        data: view.aids ? view.aids.histogram : null
+        counts: view.aids ? view.aids.histogram : null
         high: view.aids ? view.aids.high : 0
         low: view.aids ? view.aids.low : 0
     }
@@ -573,7 +574,15 @@ FocusScope {
         model: view.photos
         currentIndex: view.row
         highlightMoveDuration: 0
-        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Center)
+        onCurrentIndexChanged: centre()
+        // The list is rebuilt (a series opened for the view) and laid out after the index is set: centre once it is.
+        onCountChanged: Qt.callLater(centre)
+        onWidthChanged: Qt.callLater(centre)
+        onVisibleChanged: if (visible) Qt.callLater(centre)
+        function centre() {
+            if (currentIndex >= 0)
+                positionViewAtIndex(currentIndex, ListView.Center)
+        }
 
         delegate: Item {
             id: frame

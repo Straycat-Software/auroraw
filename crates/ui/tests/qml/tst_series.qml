@@ -26,6 +26,8 @@ AppTestCase {
         if (app) {
             app.launcher.chooseLanguage("en")
             app.launcher.setSeriesGap(2)
+            app.library.sizeSlider.value = 160
+            app.library.sizeSlider.moved()
             app.library.filterSeries(0)
             app.library.filterFlags(1)
             wait(200)
@@ -98,6 +100,37 @@ AppTestCase {
         compare(app.photos.count, 34)
     }
 
+    // Opening or closing a series leaves the view where it is, with a cursor far away (it was scrolled back to it) or
+    // none (it was scrolled to put the series at the bottom). Large thumbnails make the grid longer than the window.
+    function test_opening_or_closing_a_series_does_not_scroll_the_grid() {
+        app.library.sizeSlider.value = 256
+        app.library.sizeSlider.moved()
+        tryVerify(() => grid.contentHeight > grid.height + 200, 5000, "the grid can be scrolled")
+        wait(300)
+        app.library.select(0)
+        wait(100)
+        grid.contentY = 500
+        wait(100)
+        compare(grid.contentY, 500)
+        app.library.toggleSeries(bracketRow)
+        wait(300)
+        compare(grid.contentY, 500, "opening with the cursor on the first photo")
+        compare(grid.currentIndex, 0)
+        app.library.toggleSeries(bracketRow)
+        wait(300)
+        compare(grid.contentY, 500, "closing again")
+        app.library.select(-1)
+        wait(100)
+        grid.contentY = 300
+        wait(100)
+        app.library.toggleSeries(bracketRow)
+        wait(300)
+        compare(grid.contentY, 300, "opening with no cursor")
+        app.library.toggleSeries(bracketRow)
+        wait(300)
+        compare(grid.contentY, 300)
+    }
+
     function test_x_on_a_collapsed_series_rejects_all_its_photos_and_ctrl_z_gives_them_back() {
         click(burstRow)
         compare(app.photos.selectedCount, 5, "a collapsed series is selected with all its photos")
@@ -147,6 +180,28 @@ AppTestCase {
         tryVerify(() => flagsOf([33, 34, 35, 36, 37]).join() === "2,1,2,1,2", 5000)
     }
 
+    // The flags of a closed series changed as one show on its photos when it opens, with no refresh needed.
+    function test_flags_cleared_on_a_closed_series_show_on_its_photos_once_it_opens() {
+        app.library.filterFlags(1)
+        wait(200)
+        app.library.toggleSeries(burstRow)
+        click(burstRow + 1)
+        keyClick(Qt.Key_R)
+        tryVerify(() => flagsOf([33, 34, 35, 36, 37]).join() === "2,1,2,2,2", 5000, flagsOf([33, 34, 35, 36, 37]).join())
+        app.library.toggleSeries(burstRow)
+        click(burstRow)
+        app.library.reopen()
+        wait(200)
+        click(burstRow)
+        compare(app.photos.selectedCount, 5, "the closed series is all its photos")
+        keyClick(Qt.Key_U)
+        wait(400)
+        app.library.toggleSeries(burstRow)
+        tryVerify(() => flagsOf([33, 34, 35, 36, 37]).every(f => f === 0), 5000, flagsOf([33, 34, 35, 36, 37]).join())
+        for (let n = 0; n < 5; n++)
+            tryCell(burstRow + n, "flag", 0)
+    }
+
     function test_the_series_menu_of_the_filter_bar_lists_photos_by_series() {
         app.library.filterSeries(1)
         tryCompare(app.photos, "count", 2)
@@ -189,6 +244,16 @@ AppTestCase {
         tryVerify(() => app.library.viewing)
         compare(app.photos.count, 38, "the series opened")
         compare(app.library.viewer.row, burstRow, "at its cover, its first frame")
+        // The filmstrip has the frame in its middle (as near as the end of the list allows), though the list was just rebuilt.
+        const strip = app.library.viewer.strip
+        tryVerify(() => {
+            const frame = strip.itemAtIndex(burstRow)
+            if (!frame)
+                return false
+            const middle = frame.x + frame.width / 2 - strip.width / 2
+            const wanted = Math.max(0, Math.min(middle, strip.contentWidth - strip.width))
+            return Math.abs(strip.contentX - wanted) < 3
+        }, 3000, "the strip is at " + strip.contentX + " of " + strip.contentWidth)
         keyClick(Qt.Key_Left)
         compare(app.library.viewer.row, burstRow - 1)
         keyClick(Qt.Key_Escape)
