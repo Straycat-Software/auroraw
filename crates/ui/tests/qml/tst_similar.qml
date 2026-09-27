@@ -53,9 +53,10 @@ AppTestCase {
         return item
     }
 
-    function click(index) {
+    function click(index, modifiers) {
         const item = cell(index)
-        mouseClick(item, item.width / 2, item.height / 2 - 10)
+        mouseClick(item, item.width / 2, item.height / 2 - 10, Qt.LeftButton,
+                   modifiers === undefined ? Qt.NoModifier : modifiers)
         wait(60)
     }
 
@@ -145,6 +146,31 @@ AppTestCase {
         mouseClick(panel.compareButton)
         tryVerify(() => app.library.comparing)
         compare(app.library.compareView.ids.length, 3)
+        keyClick(Qt.Key_Escape)
+    }
+
+    // A bug: when the panel's reference was itself the cover of a closed series, its row stood for every member of
+    // that series (as it does for rating, flagging...), so Compare's "reference and its nearest" selection swept the
+    // series mate in with it, and the fallback that "too many photos selected" triggers on then compared the series
+    // alone, dropping the real suggestions. Compare must show exactly the reference and its own nearest, whatever
+    // series the reference happens to be the cover of.
+    function test_compare_from_a_closed_series_compares_the_reference_and_its_nearest_not_its_series_mate() {
+        const mateId = app.photos.idAt(rowOf("IMG_0003"))
+        click(rowOf("IMG_0000"))
+        click(rowOf("IMG_0003"), Qt.ControlModifier)
+        keyClick(Qt.Key_G, Qt.ControlModifier)
+        tryCompare(app.photos, "seriesCount", 1, 5000)
+        click(rowOf("IMG_0000"))
+        keyClick(Qt.Key_M)
+        tryVerify(() => panel.reference === app.photos.idAt(grid.currentIndex), 5000)
+        tryVerify(() => panel.pending === 0, 30000)
+        // IMG_0003 is grouped with it already, so only IMG_0001 and IMG_0002 are suggested.
+        compare(suggested().slice().sort().join(), "IMG_0001.jpg,IMG_0002.jpg")
+        mouseClick(panel.compareButton)
+        tryVerify(() => app.library.comparing)
+        const ids = app.library.compareView.ids
+        compare(ids.length, 3, "the reference and its two nearest, not its whole series")
+        verify(ids.indexOf(mateId) < 0, "the series mate must not appear just because the reference stands for it")
         keyClick(Qt.Key_Escape)
     }
 

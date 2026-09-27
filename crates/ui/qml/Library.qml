@@ -363,6 +363,18 @@ FocusScope {
         compareView.openOn(ids)
     }
 
+    // Opens the comparison on exactly these photos (identifiers joined by commas): unlike `openCompare`, the ids are
+    // not re-derived from the selection, and a collapsed series among them is compared as the one photo it is (its
+    // cover), not opened and expanded to its members. The similar-photos panel uses this: its reference photo is one
+    // specific photo, even when the series it happens to be the cover of is still closed.
+    function compareOn(idsCsv) {
+        if (idsCsv === "" || idsCsv.split(",").length < 2)
+            return
+        viewing = false
+        comparing = true
+        compareView.openOn(idsCsv)
+    }
+
     // Back to the grid, with the cursor on the frame that had the focus.
     function closeCompare() {
         if (!comparing)

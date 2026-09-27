@@ -6,9 +6,9 @@ import org.auroraw.ui
 
 // The similar photos panel (WP9, D-034, D-105), between the grid and the keyword panel: the photos that look like the
 // one under the cursor and were taken near it, nearest first, as thumbnails with how close they are. They are only
-// suggested: a click goes to a photo in the grid, and the buttons group them with this photo as one series, or compare
-// them (each one a step the person asked for, and undone with Ctrl+Z). The photos come from a hash of each thumbnail
-// that is made in the background (`similarPending` says how many are not yet), so a library just opened fills in.
+// suggested: a click goes to a photo in the grid, and the buttons group them with this photo as one series (undone
+// with Ctrl+Z) or compare them. The photos come from a hash of each thumbnail that is made in the background
+// (`similarPending` says how many are not yet), so a library just opened fills in.
 Rectangle {
     id: panel
     required property var library
@@ -51,10 +51,23 @@ Rectangle {
         return Math.round((64 - distance) / 64 * 100)
     }
 
-    // The photo and the first `n` suggestions, as the selection.
+    // The photo and the first `n` suggestions, as the selection (for Group, which acts on it as a normal selection).
     function selectWith(n) {
         panel.photoGrid.selectIds([panel.reference].concat(panel.similar.slice(0, n).map(s => s.id)).join(","))
         panel.library.updateSummary()
+    }
+
+    // The photo and its first `n` suggestions, as a plain list of identifiers (for Compare, which must show exactly
+    // these `n` + 1 photos: `selectWith` would do, since a collapsed series' extra members would then be added in,
+    // more or fewer photos than the panel promised).
+    function idsWith(n) {
+        return [panel.reference].concat(panel.similar.slice(0, n).map(s => s.id)).join(",")
+    }
+
+    // The file name of a suggested photo, for its tooltip.
+    function filenameOf(id) {
+        const row = panel.photoGrid.rowOf(id)
+        return row >= 0 ? panel.photoGrid.infoAt(row).split(" — ")[0] : ""
     }
 
     onVisibleChanged: if (visible)
@@ -135,7 +148,10 @@ Rectangle {
         GridView {
             id: thumbList
             Layout.fillWidth: true
-            Layout.fillHeight: true
+            // Only as tall as its own rows need, so the buttons sit right under the thumbnails instead of at the
+            // bottom of the panel (a handful of suggestions rarely fill it).
+            Layout.preferredHeight: Math.max(1, Math.ceil(panel.count / 2)) * cellHeight
+            Layout.maximumHeight: parent.height - 140
             clip: true
             model: panel.similar
             cellWidth: Math.floor(width / 2)
@@ -173,6 +189,8 @@ Rectangle {
                         id: hover
                         anchors.fill: parent
                         hoverEnabled: true
+                        ToolTip.visible: containsMouse
+                        ToolTip.text: panel.filenameOf(entry.modelData.id)
                         onClicked: {
                             const row = panel.photoGrid.rowOf(entry.modelData.id)
                             if (row >= 0)
@@ -192,7 +210,7 @@ Rectangle {
                 focusPolicy: Qt.NoFocus
                 enabled: panel.count > 0 && !panel.library.inResolvedSeries
                 ToolTip.visible: hovered
-                ToolTip.text: qsTr("Makes one series of this photo and the similar ones (Ctrl+Z undoes it)")
+                ToolTip.text: qsTr("Makes one series of this photo and the similar ones")
                 onClicked: {
                     panel.selectWith(panel.count)
                     panel.library.group()
@@ -206,11 +224,9 @@ Rectangle {
                 enabled: panel.count > 0
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Compares this photo with the three nearest")
-                onClicked: {
-                    panel.selectWith(3)
-                    panel.library.openCompare()
-                }
+                onClicked: panel.library.compareOn(panel.idsWith(3))
             }
         }
+        Item { Layout.fillWidth: true; Layout.fillHeight: true }
     }
 }

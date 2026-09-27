@@ -1115,93 +1115,93 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="497"/>
+        <location filename="../qml/Library.qml" line="509"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="497"/>
+        <location filename="../qml/Library.qml" line="509"/>
         <source>1+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="497"/>
+        <location filename="../qml/Library.qml" line="509"/>
         <source>2+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="498"/>
+        <location filename="../qml/Library.qml" line="510"/>
         <source>3+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="498"/>
+        <location filename="../qml/Library.qml" line="510"/>
         <source>4+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="498"/>
+        <location filename="../qml/Library.qml" line="510"/>
         <source>5</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="515"/>
+        <location filename="../qml/Library.qml" line="527"/>
         <source>Show photos by flag</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="538"/>
+        <location filename="../qml/Library.qml" line="550"/>
         <source>Only the photos labelled %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="561"/>
+        <location filename="../qml/Library.qml" line="573"/>
         <source>Show photos by series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="576"/>
+        <location filename="../qml/Library.qml" line="588"/>
         <source>Close all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="576"/>
+        <location filename="../qml/Library.qml" line="588"/>
         <source>Open all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="579"/>
+        <location filename="../qml/Library.qml" line="591"/>
         <source>Open or close every series (E for the one under the cursor)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="587"/>
+        <location filename="../qml/Library.qml" line="599"/>
         <source>Keyword: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="602"/>
-        <location filename="../qml/Library.qml" line="604"/>
+        <location filename="../qml/Library.qml" line="614"/>
+        <location filename="../qml/Library.qml" line="616"/>
         <source>Thumbnail size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="618"/>
+        <location filename="../qml/Library.qml" line="630"/>
         <source>Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="629"/>
+        <location filename="../qml/Library.qml" line="641"/>
         <source>Export the list…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="633"/>
+        <location filename="../qml/Library.qml" line="645"/>
         <source>Writes the file of every listed photo to a text file, one path a line</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="906"/>
+        <location filename="../qml/Library.qml" line="918"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n star</numerusform>
@@ -1209,76 +1209,76 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="906"/>
+        <location filename="../qml/Library.qml" line="918"/>
         <source>Photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="953"/>
+        <location filename="../qml/Library.qml" line="965"/>
         <source>No preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1023"/>
+        <location filename="../qml/Library.qml" line="1035"/>
         <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1127"/>
+        <location filename="../qml/Library.qml" line="1139"/>
         <source>Open in the image view</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1128"/>
-        <location filename="../qml/Library.qml" line="1153"/>
+        <location filename="../qml/Library.qml" line="1140"/>
+        <location filename="../qml/Library.qml" line="1165"/>
         <source>Show in file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1130"/>
+        <location filename="../qml/Library.qml" line="1142"/>
         <source>Similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1131"/>
+        <location filename="../qml/Library.qml" line="1143"/>
         <source>Open or close the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1132"/>
+        <location filename="../qml/Library.qml" line="1144"/>
         <source>Group as a series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1133"/>
+        <location filename="../qml/Library.qml" line="1145"/>
         <source>Take out of the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1134"/>
+        <location filename="../qml/Library.qml" line="1146"/>
         <source>Resolve the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1135"/>
+        <location filename="../qml/Library.qml" line="1147"/>
         <source>Reopen the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1144"/>
-        <location filename="../qml/Library.qml" line="1162"/>
+        <location filename="../qml/Library.qml" line="1156"/>
+        <location filename="../qml/Library.qml" line="1174"/>
         <source>Pick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1145"/>
-        <location filename="../qml/Library.qml" line="1163"/>
+        <location filename="../qml/Library.qml" line="1157"/>
+        <location filename="../qml/Library.qml" line="1175"/>
         <source>Reject</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1146"/>
-        <location filename="../qml/Library.qml" line="1164"/>
+        <location filename="../qml/Library.qml" line="1158"/>
+        <location filename="../qml/Library.qml" line="1176"/>
         <source>Clear the flag</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1535,27 +1535,27 @@
 <context>
     <name>SimilarPanel</name>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="104"/>
+        <location filename="../qml/SimilarPanel.qml" line="117"/>
         <source>Similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="112"/>
+        <location filename="../qml/SimilarPanel.qml" line="125"/>
         <source>Close the similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="114"/>
+        <location filename="../qml/SimilarPanel.qml" line="127"/>
         <source>Close (M)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="122"/>
+        <location filename="../qml/SimilarPanel.qml" line="135"/>
         <source>Put the cursor on a photo.</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/SimilarPanel.qml" line="123"/>
+        <location filename="../qml/SimilarPanel.qml" line="136"/>
         <source>%n similar photo(s)</source>
         <translation>
             <numerusform>%n similar photo</numerusform>
@@ -1563,8 +1563,8 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/SimilarPanel.qml" line="124"/>
-        <location filename="../qml/SimilarPanel.qml" line="132"/>
+        <location filename="../qml/SimilarPanel.qml" line="137"/>
+        <location filename="../qml/SimilarPanel.qml" line="145"/>
         <source>Analysing %n photo(s)…</source>
         <translation>
             <numerusform>Analysing %n photo…</numerusform>
@@ -1572,27 +1572,27 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="125"/>
+        <location filename="../qml/SimilarPanel.qml" line="138"/>
         <source>No similar photo near this one.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="191"/>
+        <location filename="../qml/SimilarPanel.qml" line="209"/>
         <source>Group with this photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="195"/>
-        <source>Makes one series of this photo and the similar ones (Ctrl+Z undoes it)</source>
+        <location filename="../qml/SimilarPanel.qml" line="213"/>
+        <source>Makes one series of this photo and the similar ones</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="204"/>
+        <location filename="../qml/SimilarPanel.qml" line="222"/>
         <source>Compare</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="208"/>
+        <location filename="../qml/SimilarPanel.qml" line="226"/>
         <source>Compares this photo with the three nearest</source>
         <translation type="unfinished"></translation>
     </message>
