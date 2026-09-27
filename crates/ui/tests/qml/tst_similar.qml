@@ -174,6 +174,25 @@ AppTestCase {
         keyClick(Qt.Key_Escape)
     }
 
+    // Another bug from the same cause: a suggestion's tooltip named the cover of its closed series instead of the
+    // suggested photo itself, going through its row (which stands for the whole series) rather than its own identity.
+    function test_a_suggestions_tooltip_names_its_own_file_even_when_a_closed_series_hides_it() {
+        const hiddenId = app.photos.idAt(rowOf("IMG_0002"))
+        // IMG_0001 and IMG_0002 become a series by hand; IMG_0001 (the earlier one) is its cover, so the row that
+        // stands for the series now answers to IMG_0001's name, but IMG_0002 is still suggested on its own.
+        click(rowOf("IMG_0001"))
+        click(rowOf("IMG_0002"), Qt.ControlModifier)
+        keyClick(Qt.Key_G, Qt.ControlModifier)
+        tryCompare(app.photos, "seriesCount", 1, 5000)
+        click(rowOf("IMG_0000"))
+        keyClick(Qt.Key_M)
+        tryVerify(() => panel.reference === app.photos.idAt(grid.currentIndex), 5000)
+        tryVerify(() => panel.pending === 0, 30000)
+        verify(panel.similar.some(s => s.id === hiddenId), "IMG_0002 is still suggested, its series being closed or not")
+        compare(panel.filenameOf(hiddenId), "IMG_0002.jpg")
+        keyClick(Qt.Key_M)
+    }
+
     function test_the_panel_speaks_french() {
         app.launcher.chooseLanguage("fr")
         wait(250)

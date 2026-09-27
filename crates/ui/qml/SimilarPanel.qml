@@ -64,10 +64,10 @@ Rectangle {
         return [panel.reference].concat(panel.similar.slice(0, n).map(s => s.id)).join(",")
     }
 
-    // The file name of a suggested photo, for its tooltip.
+    // The file name of a suggested photo, for its tooltip: its own (`rowOf` then `infoAt` would give a closed
+    // series' cover's name instead, when the suggestion is one of its other members).
     function filenameOf(id) {
-        const row = panel.photoGrid.rowOf(id)
-        return row >= 0 ? panel.photoGrid.infoAt(row).split(" — ")[0] : ""
+        return panel.photoGrid.filenameOf(id)
     }
 
     onVisibleChanged: if (visible)

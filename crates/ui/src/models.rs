@@ -153,6 +153,14 @@ pub mod qobject {
         #[cxx_name = "isMarked"]
         fn is_marked(self: &PhotoGrid, id: &QString) -> bool;
 
+        /// A photo's own file name, read straight from the catalogue by its identifier: unlike going through a row
+        /// (`rowOf` then `infoAt`), this never resolves to the row of the closed series that hides it, so it names
+        /// the photo actually asked for even when it is not one listed by itself (the similar-photos panel's
+        /// suggestions, which are real photos that may be members of a closed series of their own).
+        #[qinvokable]
+        #[cxx_name = "filenameOf"]
+        fn filename_of(self: &PhotoGrid, id: &QString) -> QString;
+
         /// What was measured on the picture of a photo the image view holds (JSON: sharpness, histogram,
         /// clipped shares), empty until it does.
         #[qinvokable]
@@ -1356,6 +1364,19 @@ impl qobject::PhotoGrid {
 
     pub fn is_marked(&self, id: &QString) -> bool {
         PhotoId::from_str(&id.to_string()).is_ok_and(|photo| self.marks.contains(&photo))
+    }
+
+    pub fn filename_of(&self, id: &QString) -> QString {
+        let (Some(session), Ok(photo)) = (session::current(), PhotoId::from_str(&id.to_string()))
+        else {
+            return QString::default();
+        };
+        session
+            .engine
+            .read_catalogue()
+            .ok()
+            .and_then(|catalogue| catalogue.photo(&photo).ok().flatten())
+            .map_or_else(QString::default, |row| QString::from(row.filename.as_str()))
     }
 
     fn ids_from(text: &QString) -> Vec<PhotoId> {
