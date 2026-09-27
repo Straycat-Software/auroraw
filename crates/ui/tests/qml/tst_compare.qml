@@ -170,7 +170,10 @@ AppTestCase {
         verify(app.photos.isMarked(cmp.ids[1]) && app.photos.isMarked(cmp.ids[3]))
         keyClick(Qt.Key_R)
         tryVerify(() => !app.library.comparing, 5000, "resolving closes the comparison")
+        tryCompare(app.photos, "count", 34, 5000, "and the series it opened for it")
         app.library.filterFlags(1)
+        app.library.toggleSeries(burstRow)
+        tryCompare(app.photos, "count", 38, 5000)
         tryVerify(() => flagsOf([33, 34, 35, 36, 37]).join() === "2,1,2,1,2", 10000, flagsOf([33, 34, 35, 36, 37]).join())
         verify(!app.photos.isMarked(cmp.ids[1]), "the marks are used up")
         tryVerify(() => app.actions.undo.text === "Undo resolving the series", 5000, app.actions.undo.text)
@@ -178,6 +181,51 @@ AppTestCase {
         grid.forceActiveFocus()
         keyClick(Qt.Key_Z, Qt.ControlModifier)
         tryVerify(() => flagsOf([33, 34, 35, 36, 37]).every(f => f === 0), 10000)
+    }
+
+    function test_four_landscape_frames_are_laid_out_two_by_two() {
+        compareBurst()
+        cmp.setPageSize(4)
+        compare(cmp.panes.count, 4)
+        tryVerify(() => cmp.frameRatio > 0, 20000)
+        verify(cmp.frameRatio >= 1, "the test photos are landscape")
+        compare(cmp.frames.columns, 2)
+        const a = cmp.panes.itemAt(0), b = cmp.panes.itemAt(1), c = cmp.panes.itemAt(2), d = cmp.panes.itemAt(3)
+        tryVerify(() => a.y === b.y && c.y === d.y && c.y > a.y && a.x === c.x && b.x === d.x && b.x > a.x)
+        verify(Math.abs(a.width - d.width) < 2 && Math.abs(a.height - d.height) < 2, "the same size")
+        // Three and two go side by side.
+        cmp.setPageSize(3)
+        compare(cmp.frames.columns, 3)
+        cmp.setPageSize(2)
+        compare(cmp.frames.columns, 2)
+        keyClick(Qt.Key_Escape)
+    }
+
+    function test_a_resolved_series_offers_reopen_in_place_of_resolve_and_no_marks_or_flags() {
+        app.library.filterFlags(1)
+        wait(300)
+        compareBurst()
+        const before = cmp.resolveButton.text
+        compare(before, "Resolve")
+        cmp.focusGlobal(1)
+        keyClick(Qt.Key_K)
+        tryVerify(() => app.library.canResolve, 5000)
+        keyClick(Qt.Key_R)
+        tryVerify(() => !app.library.comparing, 5000)
+        tryVerify(() => app.library.canReopen, 5000)
+        compareBurst()
+        compare(cmp.resolveButton.text, "Reopen")
+        verify(cmp.resolveButton.enabled)
+        const keep = cmp.panes.itemAt(0).keepButton
+        verify(keep.visible && !keep.enabled, "no keep mark on a resolved series")
+        const flags = app.photos.flagAt(app.library.grid.currentIndex)
+        keyClick(Qt.Key_X)
+        wait(200)
+        compare(app.photos.flagAt(app.library.grid.currentIndex), flags, "no flag on a resolved series")
+        cmp.resolveButton.clicked()
+        tryCompare(cmp.resolveButton, "text", "Resolve", 5000)
+        verify(cmp.resolveButton.enabled)
+        keyClick(Qt.Key_Escape)
     }
 
     function test_the_zoom_and_the_place_are_shared_by_every_pane() {
@@ -285,6 +333,8 @@ AppTestCase {
         snapshot("grid-large-en")
     }
 
+    // Clicks the middle of the cell that is on screen where it is (no scrolling to it first), and says which photo is
+    // selected: it must be that cell's.
     function test_the_comparison_speaks_french() {
         app.launcher.chooseLanguage("fr")
         wait(250)

@@ -23,6 +23,9 @@ dimmed, until you refresh or change a filter, and the default filter then hides 
 
 Stars, flags and colour labels are written to the photo's information (its sidecar) straight away.
 
+The flag keys do nothing on a photo of a **resolved series** (see [Series](05-series.md#what-a-resolved-series-takes)):
+its flags are what the resolution decided. Reopen the series to change them.
+
 ## Undo and redo
 
 `Ctrl+Z` undoes the last thing you did to your photos, and `Ctrl+Y` redoes it; **Edit** names the step (*Undo 12
@@ -87,7 +90,8 @@ with the image engine.
 
 `K` (or the **Keep** button) puts a **keep mark**, a green ring, on the photo; `K` again removes it. Marks are
 drafts, held in memory for the session: they change nothing on disk and are forgotten when you close the
-workspace. They serve to resolve a [series](05-series.md).
+workspace. They serve to resolve a [series](05-series.md), so the **Keep** button, like the **Compare** button, appears
+in the image view only for a photo that is in a series.
 
 ## A fast way through a shoot
 

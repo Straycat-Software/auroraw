@@ -25,6 +25,13 @@ Item {
 
     property alias flick: flick
     property alias picture: big
+    // The first frame's shape says how four are laid out.
+    Binding {
+        target: pane.compare
+        property: "frameRatio"
+        value: big.implicitHeight > 0 ? big.implicitWidth / big.implicitHeight : 0
+        when: pane.slot === 0
+    }
     property alias keepButton: keepButton
     property alias peakingOverlay: peakingImage
     property alias clippingOverlay: clippingImage
@@ -232,6 +239,10 @@ Item {
         ToolButton {
             id: keepButton
             text: qsTr("Keep")
+            // Only a frame of an unresolved series is marked to keep (its series' state is the selection's, the focus).
+            visible: ((pane.compare.library.photoGrid.selectionSeries, pane.photos.seriesStateOf(pane.photoId)) & 6) !== 0
+            enabled: !pane.compare.resolved
+            opacity: enabled ? 1 : 0.35
             checkable: true
             checked: pane.marked
             focusPolicy: Qt.NoFocus
@@ -239,7 +250,7 @@ Item {
             Accessible.name: qsTr("Keep this photo")
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Mark this photo to keep (K)")
-            onClicked: pane.photos.toggleMark(pane.photoId)
+            onClicked: pane.compare.library.toggleMark(pane.photoId)
         }
     }
 

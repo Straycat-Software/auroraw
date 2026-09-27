@@ -100,7 +100,7 @@ FocusScope {
     function filterLabel(name) {
         photoGrid.filterLabel(photoGrid.labelFilter === name ? "" : name)
         grid.currentIndex = -1
-        grid.contentY = 0
+        grid.positionViewAtBeginning()
         updateSummary()
     }
 
@@ -112,7 +112,7 @@ FocusScope {
     function filterSeries(kind) {
         photoGrid.filterSeries(kind)
         grid.currentIndex = -1
-        grid.contentY = 0
+        grid.positionViewAtBeginning()
         updateSummary()
     }
 
@@ -173,10 +173,36 @@ FocusScope {
     function selectNone() { photoGrid.selectNone(); updateSummary() }
     function invertSelection() { photoGrid.invert(); updateSummary() }
 
-    // Flags what is selected (or the cursor's photo when nothing is): `pick`, `reject` or `clear`.
-    function flag(kind) {
+    // What the selection is as to series (`PhotoGrid.selectionSeries`): what a resolved series does not take is off for
+    // it (its flags are what its resolution made: reopen it first), and what only a series has is off for a photo in
+    // none. The commands, their keys, menus and buttons all ask these.
+    readonly property bool inSeries: (photoGrid.selectionSeries & 6) !== 0
+    readonly property bool inResolvedSeries: (photoGrid.selectionSeries & 4) !== 0
+    readonly property bool inOpenSeries: (photoGrid.selectionSeries & 2) !== 0 && !inResolvedSeries
+    readonly property bool canFlag: !inResolvedSeries
+    readonly property bool canKeep: inOpenSeries
+    readonly property bool canResolve: inOpenSeries
+    readonly property bool canGroup: !inResolvedSeries
+    readonly property bool canUngroup: inOpenSeries
+    readonly property bool canReopen: inResolvedSeries
+
+    // The cursor's photo is what the commands act on when nothing is selected.
+    function selectCursorIfNone() {
         if (photoGrid.selectedCount === 0 && grid.currentIndex >= 0)
             photoGrid.selectOnly(grid.currentIndex)
+    }
+
+    // Marks a photo to keep, or takes the mark off, unless its series is resolved or it is in none.
+    function toggleMark(id) {
+        if ((photoGrid.seriesStateOf(id) & 2) !== 0)
+            photoGrid.toggleMark(id)
+    }
+
+    // Flags what is selected (or the cursor's photo when nothing is): `pick`, `reject` or `clear`.
+    function flag(kind) {
+        selectCursorIfNone()
+        if (!canFlag)
+            return
         photoGrid.flagSelection(kind)
         updateSummary()
     }
@@ -218,17 +244,59 @@ FocusScope {
     }
 
     // Groups what is selected into a series (one step), or takes it out of its series.
-    function group() { photoGrid.groupSelection() }
-    function ungroup() { photoGrid.ungroupSelection() }
-    function reopen() { photoGrid.reopenSeries() }
+    function group() {
+        selectCursorIfNone()
+        if (canGroup)
+            photoGrid.groupSelection()
+    }
+    function ungroup() {
+        selectCursorIfNone()
+        if (canUngroup)
+            photoGrid.ungroupSelection()
+    }
+    function reopen() {
+        selectCursorIfNone()
+        if (canReopen)
+            photoGrid.reopenSeries()
+    }
 
     // Resolves the series of the selection, keeping the selected photos: the others are rejected, the kept picked. A
     // collapsed series has nothing to choose from: it is opened for the person to select what to keep.
     function resolve() {
-        if (photoGrid.selectedCount === 0 && grid.currentIndex >= 0)
-            photoGrid.selectOnly(grid.currentIndex)
+        selectCursorIfNone()
+        if (!canResolve)
+            return
         if (photoGrid.resolveSeries() === -1)
             toggleSeries(-1)
+        updateSummary()
+    }
+
+    // The series that the image view or the comparison opened to walk their frames (the covers' photos), and where the
+    // grid was scrolled: back in the grid they are closed again and the grid is where it was.
+    property var openedForView: []
+    property real scrollBeforeView: 0
+
+    function openSeriesForView(row) {
+        if (openedForView.length === 0)
+            scrollBeforeView = grid.contentY
+        const id = photoGrid.idAt(row)
+        keepingTheView(() => photoGrid.toggleSeries(row))
+        openedForView = openedForView.concat([id])
+    }
+
+    function closeSeriesOpenedForView() {
+        if (openedForView.length === 0)
+            return
+        const covers = openedForView
+        openedForView = []
+        keepingTheView(() => {
+            for (const id of covers) {
+                const row = photoGrid.rowOf(id)
+                if (row >= 0 && !photoGrid.isCollapsed(row))
+                    photoGrid.toggleSeries(row)
+            }
+        })
+        grid.contentY = scrollBeforeView
         updateSummary()
     }
 
@@ -240,7 +308,7 @@ FocusScope {
             return
         if (photoGrid.isCollapsed(row)) {
             const id = photoGrid.idAt(row)
-            photoGrid.toggleSeries(row)
+            openSeriesForView(row)
             row = photoGrid.rowOf(id)
         }
         goTo(row, 0)
@@ -261,7 +329,7 @@ FocusScope {
         for (const id of ids.split(",")) {
             const row = photoGrid.rowOf(id)
             if (row >= 0 && photoGrid.isCollapsed(row))
-                toggleSeries(row)
+                openSeriesForView(row)
         }
         viewing = false
         comparing = true
@@ -273,6 +341,7 @@ FocusScope {
         if (!comparing)
             return
         comparing = false
+        closeSeriesOpenedForView()
         showCursor(grid.currentIndex)
         grid.forceActiveFocus()
     }
@@ -282,6 +351,7 @@ FocusScope {
         if (!viewing)
             return
         viewing = false
+        closeSeriesOpenedForView()
         showCursor(grid.currentIndex)
         grid.forceActiveFocus()
     }
@@ -296,14 +366,14 @@ FocusScope {
         photoGrid.filterKeyword(id)
         keywordFilterName = name
         grid.currentIndex = -1
-        grid.contentY = 0
+        grid.positionViewAtBeginning()
         updateSummary()
     }
 
     function filterFlags(flags) {
         photoGrid.filterFlags(flags)
         grid.currentIndex = -1
-        grid.contentY = 0
+        grid.positionViewAtBeginning()
         updateSummary()
     }
 
@@ -334,7 +404,7 @@ FocusScope {
         photoGrid.filterBy(minRating)
         keywordList.refresh()
         grid.currentIndex = -1
-        grid.contentY = 0
+        grid.positionViewAtBeginning()
         updateSummary()
     }
 
@@ -597,7 +667,7 @@ FocusScope {
                         if (event.key === Qt.Key_C)
                             root.openCompare()
                         else if (grid.currentIndex >= 0)
-                            root.photoGrid.toggleMark(root.photoGrid.idAt(grid.currentIndex))
+                            root.toggleMark(root.photoGrid.idAt(grid.currentIndex))
                     } else if (event.key === Qt.Key_E || event.key === Qt.Key_R) {
                         if (ctrlOrShift)
                             return
@@ -647,6 +717,10 @@ FocusScope {
                     // not), under the cells.
                     parent: grid.contentItem
                     z: -1
+                    // (The view's content starts at its origin, which is not always 0: after the cells were made another
+                    // size, the first row can sit lower than 0 in the content's own coordinates.)
+                    x: grid.originX
+                    y: grid.originY
                     width: grid.width
                     height: Math.max(grid.contentHeight, grid.height)
                     preventStealing: true
@@ -743,12 +817,12 @@ FocusScope {
                         repeat: true
                         running: pointer.banding && pointer.pressed
                         onTriggered: {
-                            const shown = pointer.lastY - grid.contentY
+                            const shown = pointer.lastY + grid.originY - grid.contentY
                             const step = shown < 24 ? -20 : shown > grid.height - 24 ? 20 : 0
                             if (step === 0)
                                 return
-                            grid.contentY = Math.max(0, Math.min(grid.contentY + step,
-                                                                 Math.max(0, grid.contentHeight - grid.height)))
+                            grid.contentY = Math.max(grid.originY, Math.min(grid.contentY + step,
+                                                                            grid.originY + Math.max(0, grid.contentHeight - grid.height)))
                             pointer.lastY = Math.max(0, Math.min(pointer.lastY + step, pointer.height))
                             pointer.band()
                         }
@@ -990,10 +1064,10 @@ FocusScope {
         MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; onTriggered: root.openView(-1) }
         MenuSeparator {}
         MarkItem { text: qsTr("Open or close the series"); keyHint: "E"; onTriggered: root.toggleSeries(-1) }
-        MarkItem { text: qsTr("Group as a series"); keyHint: "Ctrl+G"; onTriggered: root.group() }
-        MarkItem { text: qsTr("Take out of the series"); keyHint: "Ctrl+Shift+G"; onTriggered: root.ungroup() }
-        MarkItem { text: qsTr("Resolve the series"); keyHint: "R"; onTriggered: root.resolve() }
-        MarkItem { text: qsTr("Reopen the series"); onTriggered: root.reopen() }
+        MarkItem { text: qsTr("Group as a series"); keyHint: "Ctrl+G"; enabled: root.canGroup; onTriggered: root.group() }
+        MarkItem { text: qsTr("Take out of the series"); keyHint: "Ctrl+Shift+G"; enabled: root.canUngroup; onTriggered: root.ungroup() }
+        MarkItem { text: qsTr("Resolve the series"); keyHint: "R"; enabled: root.canResolve; onTriggered: root.resolve() }
+        MarkItem { text: qsTr("Reopen the series"); enabled: root.canReopen; onTriggered: root.reopen() }
         MenuSeparator {}
         MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
         MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }
@@ -1002,9 +1076,9 @@ FocusScope {
         MarkItem { text: root.colourTitle("purple"); colour: "purple"; onTriggered: root.label("purple") }
         MarkItem { text: root.colourTitle("none"); onTriggered: root.label("none") }
         MenuSeparator {}
-        MarkItem { text: qsTr("Pick"); keyHint: "P"; onTriggered: root.flag("pick") }
-        MarkItem { text: qsTr("Reject"); keyHint: "X"; onTriggered: root.flag("reject") }
-        MarkItem { text: qsTr("Clear the flag"); keyHint: "U"; onTriggered: root.flag("clear") }
+        MarkItem { text: qsTr("Pick"); enabled: root.canFlag; keyHint: "P"; onTriggered: root.flag("pick") }
+        MarkItem { text: qsTr("Reject"); enabled: root.canFlag; keyHint: "X"; onTriggered: root.flag("reject") }
+        MarkItem { text: qsTr("Clear the flag"); enabled: root.canFlag; keyHint: "U"; onTriggered: root.flag("clear") }
     }
 
     // The image view's menu: the same rows without the one that opens the view (a menu of its own rather than a
@@ -1018,9 +1092,9 @@ FocusScope {
         MarkItem { text: root.colourTitle("purple"); colour: "purple"; onTriggered: root.label("purple") }
         MarkItem { text: root.colourTitle("none"); onTriggered: root.label("none") }
         MenuSeparator {}
-        MarkItem { text: qsTr("Pick"); keyHint: "P"; onTriggered: root.flag("pick") }
-        MarkItem { text: qsTr("Reject"); keyHint: "X"; onTriggered: root.flag("reject") }
-        MarkItem { text: qsTr("Clear the flag"); keyHint: "U"; onTriggered: root.flag("clear") }
+        MarkItem { text: qsTr("Pick"); enabled: root.canFlag; keyHint: "P"; onTriggered: root.flag("pick") }
+        MarkItem { text: qsTr("Reject"); enabled: root.canFlag; keyHint: "X"; onTriggered: root.flag("reject") }
+        MarkItem { text: qsTr("Clear the flag"); enabled: root.canFlag; keyHint: "U"; onTriggered: root.flag("clear") }
     }
 
     // Two to four photos side by side (spec §5.3, D-103).

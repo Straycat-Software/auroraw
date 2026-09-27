@@ -186,6 +186,7 @@ AppTestCase {
         wait(200)
         app.library.toggleSeries(burstRow)
         click(burstRow + 1)
+        tryVerify(() => app.library.canResolve, 5000)
         keyClick(Qt.Key_R)
         tryVerify(() => flagsOf([33, 34, 35, 36, 37]).join() === "2,1,2,2,2", 5000, flagsOf([33, 34, 35, 36, 37]).join())
         app.library.toggleSeries(burstRow)
@@ -200,6 +201,63 @@ AppTestCase {
         tryVerify(() => flagsOf([33, 34, 35, 36, 37]).every(f => f === 0), 5000, flagsOf([33, 34, 35, 36, 37]).join())
         for (let n = 0; n < 5; n++)
             tryCell(burstRow + n, "flag", 0)
+    }
+
+    // What a series lets be done with it: a photo in none has no series commands but Group; a resolved series takes no
+    // flags, keep marks, grouping, taking out or resolving, and only it can be reopened.
+    function test_commands_are_off_for_a_resolved_series_and_reopening_needs_one() {
+        const lib = app.library
+        lib.filterFlags(1)
+        wait(300)
+        click(0)
+        verify(!lib.inSeries && lib.canFlag && lib.canGroup)
+        verify(!lib.canKeep && !lib.canResolve && !lib.canUngroup && !lib.canReopen, "a loner has no series command")
+        keyClick(Qt.Key_K)
+        verify(!app.photos.isMarked(app.photos.idAt(0)), "and no keep mark")
+        lib.toggleSeries(burstRow)
+        click(burstRow + 1)
+        verify(lib.inSeries && lib.canKeep && lib.canResolve && lib.canUngroup && lib.canFlag && lib.canGroup)
+        verify(!lib.canReopen, "an unresolved series cannot be reopened")
+        keyClick(Qt.Key_R)
+        tryCell(burstRow, "seriesResolved", true)
+        click(burstRow + 1)
+        tryVerify(() => lib.canReopen, 5000)
+        verify(!lib.canFlag && !lib.canKeep && !lib.canResolve && !lib.canGroup && !lib.canUngroup)
+        const flags = flagsOf([33, 34, 35, 36, 37]).join()
+        keyClick(Qt.Key_X)
+        keyClick(Qt.Key_P)
+        keyClick(Qt.Key_U)
+        keyClick(Qt.Key_K)
+        keyClick(Qt.Key_G, Qt.ControlModifier)
+        keyClick(Qt.Key_G, Qt.ControlModifier | Qt.ShiftModifier)
+        wait(300)
+        compare(flagsOf([33, 34, 35, 36, 37]).join(), flags, "no flag changed")
+        verify(!app.photos.isMarked(app.photos.idAt(burstRow + 1)), "no keep mark")
+        compare(app.photos.seriesCount, 2, "still the same series")
+        // The image view: the flag button is off, Keep is off and Compare is there.
+        lib.openView(burstRow + 1)
+        tryVerify(() => lib.viewing)
+        verify(lib.viewer.keepButton.visible && !lib.viewer.keepButton.enabled && lib.viewer.compareButton.visible)
+        verify(!lib.viewer.flagButton.enabled)
+        keyClick(Qt.Key_Escape)
+        // Reopened, everything is back and Reopen is off.
+        click(burstRow + 1)
+        lib.reopen()
+        tryVerify(() => !lib.canReopen && lib.canFlag && lib.canKeep && lib.canResolve, 5000)
+    }
+
+    function test_the_view_offers_keep_and_compare_only_for_a_photo_in_a_series() {
+        const lib = app.library
+        click(0)
+        lib.openView(0)
+        tryVerify(() => lib.viewing)
+        verify(!lib.viewer.keepButton.visible && !lib.viewer.compareButton.visible, "a loner")
+        keyClick(Qt.Key_Escape)
+        lib.toggleSeries(burstRow)
+        lib.openView(burstRow + 1)
+        tryVerify(() => lib.viewing)
+        verify(lib.viewer.keepButton.visible && lib.viewer.keepButton.enabled && lib.viewer.compareButton.visible, "a frame")
+        keyClick(Qt.Key_Escape)
     }
 
     function test_the_series_menu_of_the_filter_bar_lists_photos_by_series() {
@@ -257,6 +315,33 @@ AppTestCase {
         keyClick(Qt.Key_Left)
         compare(app.library.viewer.row, burstRow - 1)
         keyClick(Qt.Key_Escape)
+        tryCompare(app.photos, "count", 34, 5000, "the series is closed again, as it was")
+    }
+
+    // The series that the view opened is closed again when it goes away, and the grid has not moved.
+    function test_going_back_from_the_image_view_leaves_the_series_closed_and_the_grid_where_it_was() {
+        app.library.sizeSlider.value = 256
+        app.library.sizeSlider.moved()
+        tryVerify(() => grid.contentHeight > grid.height + 200, 5000)
+        wait(300)
+        grid.positionViewAtEnd()
+        wait(200)
+        const scrolled = grid.contentY
+        app.library.openView(burstRow)
+        tryVerify(() => app.library.viewing)
+        compare(app.photos.count, 38)
+        compare(grid.contentY, scrolled, "opening the view did not scroll the grid")
+        keyClick(Qt.Key_Right)
+        keyClick(Qt.Key_Escape)
+        tryCompare(app.photos, "count", 34, 5000)
+        compare(grid.contentY, scrolled, "nor did going back")
+        compare(grid.currentIndex, burstRow, "the cursor is on the series")
+        // A series that was open stays open.
+        app.library.toggleSeries(burstRow)
+        app.library.openView(burstRow)
+        keyClick(Qt.Key_Escape)
+        wait(200)
+        compare(app.photos.count, 38)
     }
 
     function test_the_gap_is_a_setting_and_regrouping_uses_it() {

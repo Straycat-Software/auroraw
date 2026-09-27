@@ -26,8 +26,9 @@ resolved, are never touched.
 
 Click a series' badge (▣ and the count), or press `E` with the cursor on it, to **open** it: its photos appear in
 place, **in the order they were taken**, joined by a line under them. The badge (▾) or `E` closes it. **Open all**
-and **Close all** in the filter bar do every series at once. Opening the image view on a closed series opens it and
-starts at its first frame.
+and **Close all** in the filter bar do every series at once. Opening the image view (or the comparison) on a closed series
+opens it while you look at it and starts at its first frame; **back in the grid the series is closed again and the grid
+has not moved**.
 
 ![A series, open](images/series-open.png)
 
@@ -44,7 +45,7 @@ select 2 to 4 photos and press `C`, to **compare them side by side**.
 
 ![Comparing three frames of a burst](images/compare.png)
 
-- The frames are shown **2, 3 or 4 at a time** (buttons *Frames* at the top); a series with more frames is shown in
+- The frames are shown **2, 3 or 4 at a time**, as many as the series has (a series of 2 offers only 2) (buttons *Frames* at the top); a series with more frames is shown in
   **pages**: `PageUp` and `PageDown`, or the arrows at the top, turn the page, and `Left` and `Right` move the focus
   from frame to frame, past an end onto the next page. The focused frame has a blue border.
 - **Zoom and pan are linked**: the wheel, `+`, `-` and a drag act on all the frames together, so you can look at
@@ -52,6 +53,7 @@ select 2 to 4 photos and press `C`, to **compare them side by side**.
   pixels.
 - Each frame shows its **sharpness** as a percentage of the sharpest of the series, once all of them are measured.
   This is a hint for where to look first, not a choice made for you.
+- Four frames of a landscape or square shape are laid out **two by two**; four portraits stay in a row.
 - `S`, `O` and `H` turn on the [aids](04-culling.md#judging-sharpness-and-exposure): peaking, clipping, and a
   histogram on each frame.
 
@@ -60,7 +62,8 @@ select 2 to 4 photos and press `C`, to **compare them side by side**.
 - The keys for stars, flags and colours (`0` to `5`, `P`, `X`, `U`, `6` to `9`) act on the **focused** frame.
 - `K` (or the frame's **Keep** button) **marks** the focused frame to keep; a green ring shows it in the comparison,
   in the grid and in the image view's filmstrip.
-- `R` **resolves** the series and closes the comparison. `Escape` closes it without resolving.
+- `R` (or the **Resolve** button) **resolves** the series and closes the comparison. `Escape` closes it without
+  resolving. Once the series is resolved the button says **Reopen** instead.
 
 Marking then resolving is the fastest way to sort a burst: compare, mark the frames worth keeping, press `R`.
 
@@ -72,6 +75,14 @@ photo's menu). **Marked frames win**: with no marks, the selected frames are kep
 badge) and stays a series; the rejected frames leave the default list, and *All photos* shows them again.
 `Ctrl+Z` puts every flag back as it was. *Reopen the series* (in the menu) marks it unresolved again and leaves
 the flags alone. `R` on a closed series only opens it, for you to choose. Marks are cleared once a series is resolved.
+
+## What a resolved series takes
+
+A resolved series is settled: its flags are what the resolution made. So, for its photos, **Keep, Group, Take out of the
+series, Resolve and the flag commands (`P`, `X`, `U`) are switched off**, in the keys, the menus and the buttons; stars
+and colour labels still work. **Reopen the series** is the way back, and it is on only for a resolved series. The other
+way round, a photo in no series has no Keep, Resolve, Take out or Reopen, and the image view shows no **Keep** or
+**Compare** button for it.
 
 ## Making and unmaking series by hand
 

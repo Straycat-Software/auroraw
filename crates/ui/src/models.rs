@@ -42,6 +42,7 @@ pub mod qobject {
         #[qproperty(i32, total)]
         #[qproperty(i32, series_count, cxx_name = "seriesCount")]
         #[qproperty(i32, mark_serial, cxx_name = "markSerial")]
+        #[qproperty(i32, selection_series, cxx_name = "selectionSeries")]
         #[qproperty(i32, series_filter, cxx_name = "seriesFilter")]
         type PhotoGrid = super::PhotoGridRust;
 
@@ -99,6 +100,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "selectedIds"]
         fn selected_ids(self: &PhotoGrid) -> QString;
+        #[qinvokable]
+        #[cxx_name = "seriesStateOf"]
+        fn series_state_of(self: &PhotoGrid, id: &QString) -> i32;
+
         #[qinvokable]
         #[cxx_name = "seriesMembersOf"]
         fn series_members_of(self: &PhotoGrid, id: &QString) -> QString;
@@ -732,6 +737,9 @@ pub struct PhotoGridRust {
     /// The ratings and flags asked for and not yet confirmed (a quick series of keys must not flicker back).
     pending: HashMap<PhotoId, Pending>,
     selected_count: i32,
+    /// What the selection holds as to series: 1 a photo in none, 2 a photo of an unresolved series, 4 a photo of a
+    /// resolved one (the commands that a resolved series does not take are off for it).
+    selection_series: i32,
     /// What was selected when a rubber band started that adds to it.
     rubber_base: Option<std::collections::HashSet<PhotoId>>,
     /// The photos selected, by identifier, and where ranges start (D-097).
@@ -880,11 +888,25 @@ impl qobject::PhotoGrid {
         let listed = self.ids();
         self.as_mut().rust_mut().selection.set(mapped);
         self.as_mut().rust_mut().selection.retain(&listed);
-        let selected = self.selected_photo_count();
-        self.set_selected_count(selected);
+        self.sync_selection_state();
     }
 
     /// How many photos are selected (a collapsed series' row counts its members).
+    /// Tells the views how many photos are selected and what they are as to series.
+    fn sync_selection_state(mut self: Pin<&mut Self>) {
+        let selected = self.selected_photo_count();
+        let mut state = 0;
+        for item in self.items.iter().filter(|i| self.selection.contains(&i.id)) {
+            state |= match item.series {
+                None => 1,
+                Some(_) if item.series_resolved => 4,
+                Some(_) => 2,
+            };
+        }
+        self.as_mut().set_selected_count(selected);
+        self.as_mut().set_selection_series(state);
+    }
+
     fn selected_photo_count(&self) -> i32 {
         self.items
             .iter()
@@ -998,6 +1020,22 @@ impl qobject::PhotoGrid {
             self.as_mut().rust_mut().open.clear();
         }
         self.rebuild();
+    }
+
+    /// What a photo is as to series, as `selectionSeries` says of the selection: 1 in none, 2 in an unresolved
+    /// series, 4 in a resolved one, 0 for a photo that is not listed.
+    pub fn series_state_of(&self, id: &QString) -> i32 {
+        PhotoId::from_str(&id.to_string())
+            .ok()
+            .and_then(|id| {
+                let id = self.hidden.get(&id).copied().unwrap_or(id);
+                self.rows.get(&id).map(|row| &self.items[*row])
+            })
+            .map_or(0, |item| match item.series {
+                None => 1,
+                Some(_) if item.series_resolved => 4,
+                Some(_) => 2,
+            })
     }
 
     pub fn series_at(&self, row: i32) -> QString {
@@ -1315,8 +1353,7 @@ impl qobject::PhotoGrid {
             roles.append(ROLE_SELECTED);
             self.as_mut().data_changed(&first, &end, &roles);
         }
-        let selected = self.selected_photo_count();
-        self.set_selected_count(selected);
+        self.sync_selection_state();
     }
 
     pub fn select_only(mut self: Pin<&mut Self>, row: i32) {

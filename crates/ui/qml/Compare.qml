@@ -39,8 +39,12 @@ FocusScope {
     property alias panes: panes
     property alias toolbar: toolbar
     property alias sizeButtons: sizeButtons
+    property alias frames: frames
+    property alias resolveButton: resolveButton
 
     // No use offering 3 or 4 frames a page for a series of 2 (never fewer than 2, the least the buttons offer).
+    // The first frame's width over its height once its picture is known (0 before): the layout of four frames.
+    property real frameRatio: 0
     readonly property int maxPageSize: Math.max(2, Math.min(4, ids.length))
     readonly property int pages: Math.max(1, Math.ceil(ids.length / pageSize))
     readonly property var pageIds: ids.slice(page * pageSize, page * pageSize + pageSize)
@@ -216,7 +220,7 @@ FocusScope {
         } else if (key === Qt.Key_PageDown) {
             turnPage(1)
         } else if (key === Qt.Key_K || key === Qt.Key_Return || key === Qt.Key_Enter) {
-            photos.toggleMark(focusedId)
+            library.toggleMark(focusedId)
         } else if (key === Qt.Key_R) {
             resolve()
         } else if (key === Qt.Key_Z) {
@@ -248,10 +252,18 @@ FocusScope {
 
     // Resolves the series: the frames marked to keep are picked, the others rejected (the focused frame is kept when
     // nothing is marked), and the comparison closes.
+    // The focused frame's series is resolved: the button says Reopen, and the marks and flags are off.
+    readonly property bool resolved: library.inResolvedSeries
+
     function resolve() {
         syncSelection()
-        if (library.photoGrid.resolveSeries() === 1)
+        if (library.canResolve && library.photoGrid.resolveSeries() === 1)
             library.closeCompare()
+    }
+
+    function reopen() {
+        syncSelection()
+        library.reopen()
     }
 
     Rectangle {
@@ -368,11 +380,14 @@ FocusScope {
                 }
                 ToolButton {
                     id: resolveButton
-                    text: qsTr("Resolve")
+                    text: comparison.resolved ? qsTr("Reopen") : qsTr("Resolve")
+                    enabled: comparison.resolved ? library.canReopen : library.canResolve
+                    opacity: enabled ? 1 : 0.35
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered
-                    ToolTip.text: qsTr("Resolve the series: keep the marked frames, reject the others (R)")
-                    onClicked: comparison.resolve()
+                    ToolTip.text: comparison.resolved ? qsTr("Reopen the series: it can be changed again")
+                                                      : qsTr("Resolve the series: keep the marked frames, reject the others (R)")
+                    onClicked: comparison.resolved ? comparison.reopen() : comparison.resolve()
                 }
                 ToolButton {
                     text: qsTr("Full screen")
@@ -390,10 +405,15 @@ FocusScope {
             }
         }
 
-        RowLayout {
+        // The frames side by side; four of a landscape or square shape go two by two (a row of four would show them
+        // tiny), and four portraits stay in a row.
+        GridLayout {
+            id: frames
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 2
+            columnSpacing: 2
+            rowSpacing: 2
+            columns: comparison.pageIds.length === 4 && comparison.frameRatio >= 1 ? 2 : Math.max(1, comparison.pageIds.length)
             Repeater {
                 id: panes
                 model: comparison.pageIds
@@ -402,6 +422,8 @@ FocusScope {
                     required property string modelData
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.preferredWidth: 1
+                    Layout.preferredHeight: 1
                     compare: comparison
                     photoId: modelData
                     slot: index

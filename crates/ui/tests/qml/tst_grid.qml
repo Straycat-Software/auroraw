@@ -51,6 +51,8 @@ AppTestCase {
         if (app) {
             app.launcher.chooseLanguage("en")
             app.library.filterBy(0)
+            app.library.sizeSlider.value = 160
+            app.library.sizeSlider.moved()
             for (const id of rated) {
                 const row = app.photos.rowOf(id)
                 if (row >= 0)
@@ -316,5 +318,52 @@ AppTestCase {
         const star = app.library.star
         compare(star.length, 1)
         compare(star.charCodeAt(0), 0x2605)
+    }
+
+    // Clicks the middle of what shows of the cell that is on screen (no scrolling to it first), and says which photo is
+    // selected: it must be that cell's.
+    function clickWhereItIs(index, note) {
+        const item = grid.itemAtIndex(index)
+        verify(item, "the cell " + index + " is on screen")
+        const top = Math.max(0, item.mapToItem(grid, 0, 0).y + 6)
+        const bottom = Math.min(grid.height, item.mapToItem(grid, 0, 0).y + app.library.thumbH - 6)
+        if (bottom - top < 8)
+            return
+        const x = item.mapToItem(grid, item.width / 2, 0).x, y = (top + bottom) / 2
+        mouseClick(grid, x, y)
+        wait(40)
+        compare(grid.currentIndex, index, note + ": clicked the cell " + index + " at " + x + "," + y
+                + " (contentY " + grid.contentY + ", cell " + grid.cellWidth + "x" + grid.cellHeight + ")")
+    }
+
+    function test_after_scrolling_and_resizing_the_thumbnails_a_click_selects_the_cell_under_the_pointer() {
+        const slider = app.library.sizeSlider
+        for (const [scroll, sizes] of [[0.6, [232, 208, 184, 160, 128]], [0.5, [160, 200, 240]], [0.9, [200, 96]], [0.3, [128, 256]]]) {
+            // Scrolled first, then the thumbnails resized in steps, as a drag of the slider does.
+            slider.value = 256
+            slider.moved()
+            wait(300)
+            grid.contentY = Math.max(0, (grid.contentHeight - grid.height) * scroll)
+            wait(200)
+            for (const size of sizes) {
+                slider.value = size
+                slider.moved()
+                wait(20)
+            }
+            wait(400)
+            let odd = []
+            for (let index = 0; index < grid.count; index++) {
+                const it = grid.itemAtIndex(index)
+                if (it) {
+                    const wantX = grid.originX + (index % grid.columns) * grid.cellWidth, wantY = grid.originY + Math.floor(index / grid.columns) * grid.cellHeight
+                    if (Math.abs(it.x - wantX) > 1 || Math.abs(it.y - wantY) > 1)
+                        odd.push(index + ":" + it.x + "," + it.y + " want " + wantX + "," + wantY)
+                }
+            }
+            verify(odd.length === 0, "misplaced (origin " + grid.originY + ", cols " + grid.columns + ", cell " + grid.cellWidth + "x" + grid.cellHeight + ", contentY " + grid.contentY + "): " + odd.slice(0, 6).join(" | "))
+            for (let index = 0; index < grid.count; index++)
+                if (grid.itemAtIndex(index))
+                    clickWhereItIs(index, "scroll " + scroll + ", sizes " + sizes)
+        }
     }
 }

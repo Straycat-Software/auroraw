@@ -13,7 +13,8 @@ it, a strip below it that describes what is selected, and the [keyword panel](06
 - A **green ring** when you have marked the photo to keep (see [Series](05-series.md)).
 
 The **slider** in the filter bar sets the **size of the thumbnails**, from small (many photos on screen) to large
-(256 pixels on the long side, the size of the stored thumbnail); the grid keeps the size you chose.
+(256 pixels on the long side, the size of the stored thumbnail); the grid keeps the size you chose. Resizing the thumbnails after scrolling keeps
+what you click and what is selected the same photo.
 
 ![Large thumbnails](images/grid-large.png)
 

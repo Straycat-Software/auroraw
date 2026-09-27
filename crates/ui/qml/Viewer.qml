@@ -50,6 +50,8 @@ FocusScope {
     property alias ratingButton: ratingButton
     property alias flagButton: flagButton
     property alias colourButton: colourButton
+    property alias keepButton: keepButton
+    property alias compareButton: compareButton
 
     readonly property real fitScale: big.implicitWidth > 0 && big.implicitHeight > 0
                                      ? Math.min(flick.width / big.implicitWidth, flick.height / big.implicitHeight) : 1
@@ -218,7 +220,7 @@ FocusScope {
             showHistogram = !showHistogram
             setOption("histogram", showHistogram)
         } else if (key === Qt.Key_K) {
-            photos.toggleMark(photoId)
+            library.toggleMark(photoId)
         } else if (key === Qt.Key_C) {
             library.openCompare()
         } else if (key === Qt.Key_A) {
@@ -375,6 +377,8 @@ FocusScope {
             ToolButton {
                 id: flagButton
                 focusPolicy: Qt.NoFocus
+                enabled: view.library.canFlag
+                opacity: enabled ? 1 : 0.35
                 text: view.flag === 1 ? "✔" : view.flag === 2 ? "✖" : "–"
                 font.pixelSize: 15
                 palette.buttonText: view.flag === 1 ? Theme.picked : view.flag === 2 ? Theme.danger : Theme.quiet
@@ -412,12 +416,14 @@ FocusScope {
             ToolButton {
                 id: keepButton
                 text: qsTr("Keep")
+                visible: view.library.inSeries
+                enabled: view.library.canKeep
                 checkable: true
                 checked: (view.photos.markSerial, view.photos.isMarked(view.photoId))
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Mark this photo to keep, for resolving its series (K)")
-                onClicked: view.photos.toggleMark(view.photoId)
+                onClicked: view.library.toggleMark(view.photoId)
             }
             ToolButton {
                 text: qsTr("Peaking")
@@ -456,7 +462,9 @@ FocusScope {
                 }
             }
             ToolButton {
+                id: compareButton
                 text: qsTr("Compare")
+                visible: view.library.inSeries
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Compare with the other frames of the series (C)")

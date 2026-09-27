@@ -492,12 +492,12 @@
 <context>
     <name>Compare</name>
     <message>
-        <location filename="../qml/Compare.qml" line="279"/>
+        <location filename="../qml/Compare.qml" line="296"/>
         <source>Frames:</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Compare.qml" line="293"/>
+        <location filename="../qml/Compare.qml" line="312"/>
         <source>%n frame(s) a page</source>
         <translation>
             <numerusform>%n frame a page</numerusform>
@@ -505,87 +505,97 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="301"/>
+        <location filename="../qml/Compare.qml" line="321"/>
         <source>Previous page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="305"/>
+        <location filename="../qml/Compare.qml" line="325"/>
         <source>%1 to %2 of %3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="313"/>
+        <location filename="../qml/Compare.qml" line="334"/>
         <source>Next page</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="318"/>
+        <location filename="../qml/Compare.qml" line="339"/>
         <source>Peaking</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="323"/>
+        <location filename="../qml/Compare.qml" line="344"/>
         <source>Focus peaking: what is in focus (S)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="330"/>
+        <location filename="../qml/Compare.qml" line="351"/>
         <source>Clipping</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="335"/>
+        <location filename="../qml/Compare.qml" line="356"/>
         <source>Clipping warnings: highlights in red, shadows in blue (O)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="342"/>
+        <location filename="../qml/Compare.qml" line="363"/>
         <source>Histogram</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="347"/>
+        <location filename="../qml/Compare.qml" line="368"/>
         <source>Histogram (H)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="354"/>
+        <location filename="../qml/Compare.qml" line="375"/>
         <source>100 %</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="354"/>
+        <location filename="../qml/Compare.qml" line="375"/>
         <source>Fit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="357"/>
+        <location filename="../qml/Compare.qml" line="378"/>
         <source>Fit or 100 % in every frame (Z)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="362"/>
+        <location filename="../qml/Compare.qml" line="383"/>
         <source>Resolve</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="365"/>
+        <location filename="../qml/Compare.qml" line="383"/>
+        <source>Reopen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Compare.qml" line="388"/>
+        <source>Reopen the series: it can be changed again</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Compare.qml" line="389"/>
         <source>Resolve the series: keep the marked frames, reject the others (R)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="369"/>
+        <location filename="../qml/Compare.qml" line="393"/>
         <source>Full screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="376"/>
+        <location filename="../qml/Compare.qml" line="400"/>
         <source>Back to the grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Compare.qml" line="378"/>
+        <location filename="../qml/Compare.qml" line="402"/>
         <source>Back to the grid (Esc)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -593,27 +603,27 @@
 <context>
     <name>ComparePane</name>
     <message>
-        <location filename="../qml/ComparePane.qml" line="228"/>
+        <location filename="../qml/ComparePane.qml" line="235"/>
         <source>★ Sharpest</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="228"/>
+        <location filename="../qml/ComparePane.qml" line="235"/>
         <source>Sharpness %1 %</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="234"/>
+        <location filename="../qml/ComparePane.qml" line="241"/>
         <source>Keep</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="239"/>
+        <location filename="../qml/ComparePane.qml" line="250"/>
         <source>Keep this photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="241"/>
+        <location filename="../qml/ComparePane.qml" line="252"/>
         <source>Mark this photo to keep (K)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1092,83 +1102,83 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="392"/>
+        <location filename="../qml/Library.qml" line="470"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="392"/>
+        <location filename="../qml/Library.qml" line="470"/>
         <source>1+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="392"/>
+        <location filename="../qml/Library.qml" line="470"/>
         <source>2+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="393"/>
+        <location filename="../qml/Library.qml" line="471"/>
         <source>3+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="393"/>
+        <location filename="../qml/Library.qml" line="471"/>
         <source>4+</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="393"/>
+        <location filename="../qml/Library.qml" line="471"/>
         <source>5</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="410"/>
+        <location filename="../qml/Library.qml" line="488"/>
         <source>Show photos by flag</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="433"/>
+        <location filename="../qml/Library.qml" line="511"/>
         <source>Only the photos labelled %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="456"/>
+        <location filename="../qml/Library.qml" line="534"/>
         <source>Show photos by series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="471"/>
+        <location filename="../qml/Library.qml" line="549"/>
         <source>Close all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="471"/>
+        <location filename="../qml/Library.qml" line="549"/>
         <source>Open all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="474"/>
+        <location filename="../qml/Library.qml" line="552"/>
         <source>Open or close every series (E for the one under the cursor)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="482"/>
+        <location filename="../qml/Library.qml" line="560"/>
         <source>Keyword: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="497"/>
-        <location filename="../qml/Library.qml" line="499"/>
+        <location filename="../qml/Library.qml" line="575"/>
+        <location filename="../qml/Library.qml" line="577"/>
         <source>Thumbnail size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="513"/>
+        <location filename="../qml/Library.qml" line="591"/>
         <source>Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="775"/>
+        <location filename="../qml/Library.qml" line="857"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n star</numerusform>
@@ -1176,60 +1186,60 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="775"/>
+        <location filename="../qml/Library.qml" line="857"/>
         <source>Photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="822"/>
+        <location filename="../qml/Library.qml" line="904"/>
         <source>No preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="982"/>
+        <location filename="../qml/Library.qml" line="1064"/>
         <source>Open in the image view</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="984"/>
+        <location filename="../qml/Library.qml" line="1066"/>
         <source>Open or close the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="985"/>
+        <location filename="../qml/Library.qml" line="1067"/>
         <source>Group as a series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="986"/>
+        <location filename="../qml/Library.qml" line="1068"/>
         <source>Take out of the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="987"/>
+        <location filename="../qml/Library.qml" line="1069"/>
         <source>Resolve the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="988"/>
+        <location filename="../qml/Library.qml" line="1070"/>
         <source>Reopen the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="997"/>
-        <location filename="../qml/Library.qml" line="1013"/>
+        <location filename="../qml/Library.qml" line="1079"/>
+        <location filename="../qml/Library.qml" line="1095"/>
         <source>Pick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="998"/>
-        <location filename="../qml/Library.qml" line="1014"/>
+        <location filename="../qml/Library.qml" line="1080"/>
+        <location filename="../qml/Library.qml" line="1096"/>
         <source>Reject</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="999"/>
-        <location filename="../qml/Library.qml" line="1015"/>
+        <location filename="../qml/Library.qml" line="1081"/>
+        <location filename="../qml/Library.qml" line="1097"/>
         <source>Clear the flag</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1461,172 +1471,172 @@
 <context>
     <name>Viewer</name>
     <message>
-        <location filename="../qml/Viewer.qml" line="96"/>
+        <location filename="../qml/Viewer.qml" line="99"/>
         <source>Sharpness: measuring…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="97"/>
+        <location filename="../qml/Viewer.qml" line="100"/>
         <source>Sharpest of the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="97"/>
+        <location filename="../qml/Viewer.qml" line="100"/>
         <source>Sharpness: %1 % of the series&apos; best</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="342"/>
+        <location filename="../qml/Viewer.qml" line="345"/>
         <source>The original is not available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="369"/>
+        <location filename="../qml/Viewer.qml" line="372"/>
         <source>Rating</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="371"/>
+        <location filename="../qml/Viewer.qml" line="374"/>
         <source>Rating: click to change it (0 to 5)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="380"/>
+        <location filename="../qml/Viewer.qml" line="385"/>
         <source>Flag</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="382"/>
+        <location filename="../qml/Viewer.qml" line="387"/>
         <source>Flag: click for picked, rejected, none (P, X, U)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="388"/>
+        <location filename="../qml/Viewer.qml" line="393"/>
         <source>Colour label</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="390"/>
+        <location filename="../qml/Viewer.qml" line="395"/>
         <source>Colour label: click to go through the colours (6 to 9)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="413"/>
+        <location filename="../qml/Viewer.qml" line="418"/>
         <source>Keep</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="418"/>
+        <location filename="../qml/Viewer.qml" line="425"/>
         <source>Mark this photo to keep, for resolving its series (K)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="422"/>
+        <location filename="../qml/Viewer.qml" line="429"/>
         <source>Peaking</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="427"/>
+        <location filename="../qml/Viewer.qml" line="434"/>
         <source>Focus peaking: what is in focus (S)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="434"/>
+        <location filename="../qml/Viewer.qml" line="441"/>
         <source>Clipping</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="439"/>
+        <location filename="../qml/Viewer.qml" line="446"/>
         <source>Clipping warnings: highlights in red, shadows in blue (O)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="446"/>
+        <location filename="../qml/Viewer.qml" line="453"/>
         <source>Histogram</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="451"/>
+        <location filename="../qml/Viewer.qml" line="458"/>
         <source>Histogram (H)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="458"/>
+        <location filename="../qml/Viewer.qml" line="466"/>
         <source>Compare</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="461"/>
+        <location filename="../qml/Viewer.qml" line="470"/>
         <source>Compare with the other frames of the series (C)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="465"/>
+        <location filename="../qml/Viewer.qml" line="474"/>
         <source>100 %</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="465"/>
+        <location filename="../qml/Viewer.qml" line="474"/>
         <source>Fit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="468"/>
+        <location filename="../qml/Viewer.qml" line="477"/>
         <source>Fit or 100 % (Z)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="472"/>
+        <location filename="../qml/Viewer.qml" line="481"/>
         <source>Info</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="477"/>
+        <location filename="../qml/Viewer.qml" line="486"/>
         <source>Information (I)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="484"/>
+        <location filename="../qml/Viewer.qml" line="493"/>
         <source>Filmstrip</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="489"/>
+        <location filename="../qml/Viewer.qml" line="498"/>
         <source>Filmstrip (T)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="496"/>
+        <location filename="../qml/Viewer.qml" line="505"/>
         <source>Auto-advance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="501"/>
+        <location filename="../qml/Viewer.qml" line="510"/>
         <source>Move on after a rating, flag or label (A)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="508"/>
+        <location filename="../qml/Viewer.qml" line="517"/>
         <source>Full screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="511"/>
+        <location filename="../qml/Viewer.qml" line="520"/>
         <source>Full screen (F)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="517"/>
+        <location filename="../qml/Viewer.qml" line="526"/>
         <source>Back to the grid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="519"/>
+        <location filename="../qml/Viewer.qml" line="528"/>
         <source>Back to the grid (Esc)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="540"/>
+        <location filename="../qml/Viewer.qml" line="549"/>
         <source>%1 / %2</source>
         <translation type="unfinished"></translation>
     </message>
