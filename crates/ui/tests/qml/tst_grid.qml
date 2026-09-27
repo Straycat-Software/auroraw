@@ -367,16 +367,24 @@ AppTestCase {
         }
     }
 
+    // The last `n` segments of a path, slashes and backslashes both understood (the engine may have resolved the
+    // home the tests were given to a different real path, symlinks and short Windows names included: what the
+    // reveal or the export names is compared to the fixture's own naming, not to the raw `AURORAW_TEST_HOME`).
+    function tail(path, n) {
+        const parts = path.split(/[\\\/]/)
+        return parts.slice(-n).join("/")
+    }
+
     function test_show_in_file_manager_records_the_photos_file_from_the_cell_menu_and_the_view_menu() {
         const name = app.photos.infoAt(0).split(" ")[0]
         app.library.revealCell(0)
-        compare(app.photos.lastRevealedPath(), home + "/Card/" + name)
+        compare(tail(app.photos.lastRevealedPath(), 2), "Card/" + name)
         // The image view's menu acts on the photo it shows, the same way.
         app.library.openView(1)
         tryVerify(() => app.library.viewing)
         const shown = app.photos.infoAt(1).split(" ")[0]
         app.library.revealCell(-1)
-        compare(app.photos.lastRevealedPath(), home + "/Card/" + shown)
+        compare(tail(app.photos.lastRevealedPath(), 2), "Card/" + shown)
         keyClick(Qt.Key_Escape)
     }
 
@@ -386,7 +394,7 @@ AppTestCase {
         verify(app.photos.exportListedTo(path))
         let lines = files.read(path).trim().split("\n")
         compare(lines.length, 80)
-        verify(lines.every(line => line.indexOf(home + "/Card/IMG_") === 0))
+        verify(lines.every(line => tail(line, 2).indexOf("Card/IMG_") === 0), lines[0])
         // A stricter filter (nothing is rated yet) exports fewer, and none once it is empty.
         app.library.filterBy(5)
         tryCompare(app.photos, "count", 0)
