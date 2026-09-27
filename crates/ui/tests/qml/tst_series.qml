@@ -247,6 +247,36 @@ AppTestCase {
         tryVerify(() => !lib.canReopen && lib.canFlag && lib.canKeep && lib.canResolve, 5000)
     }
 
+    // The filters hide the rejected frames of a resolved series: the badge says how many are listed, and of how many, and
+    // the view's Compare (nothing to compare) and Keep (resolved) look off.
+    function test_a_series_with_hidden_frames_says_so_and_the_view_shows_what_is_off() {
+        const lib = app.library
+        lib.toggleSeries(burstRow)
+        click(burstRow + 1)
+        tryVerify(() => lib.canResolve, 5000)
+        keyClick(Qt.Key_R)
+        tryCompare(app.photos, "count", 34, 10000, "the four rejected frames are not listed")
+        const one = cell(burstRow)
+        tryCompare(one, "badgeLabel", "✓ ▣ 1/5", 5000)
+        compare(one.seriesSize, 1)
+        compare(one.seriesTotal, 5)
+        lib.openView(burstRow)
+        tryVerify(() => lib.viewing)
+        verify(lib.viewer.compareButton.visible && !lib.viewer.compareButton.enabled && lib.viewer.compareButton.opacity < 1,
+               "one frame listed: nothing to compare")
+        verify(lib.viewer.keepButton.visible && !lib.viewer.keepButton.enabled && lib.viewer.keepButton.opacity < 1)
+        keyClick(Qt.Key_Escape)
+        // All photos: the five frames are listed again and the series compares.
+        lib.filterFlags(1)
+        wait(300)
+        lib.openView(burstRow)
+        tryVerify(() => lib.viewing)
+        verify(lib.viewer.compareButton.enabled && lib.viewer.compareButton.opacity === 1)
+        verify(!lib.viewer.keepButton.enabled)
+        keyClick(Qt.Key_Escape)
+        tryCell(burstRow, "badgeLabel", "✓ ▾ 5")
+    }
+
     function test_the_view_offers_keep_and_compare_only_for_a_photo_in_a_series() {
         const lib = app.library
         click(0)

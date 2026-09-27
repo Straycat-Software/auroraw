@@ -418,6 +418,7 @@ FocusScope {
                 text: qsTr("Keep")
                 visible: view.library.inSeries
                 enabled: view.library.canKeep
+                opacity: enabled ? 1 : 0.35
                 checkable: true
                 checked: (view.photos.markSerial, view.photos.isMarked(view.photoId))
                 focusPolicy: Qt.NoFocus
@@ -465,6 +466,8 @@ FocusScope {
                 id: compareButton
                 text: qsTr("Compare")
                 visible: view.library.inSeries
+                enabled: view.library.canCompare
+                opacity: enabled ? 1 : 0.35
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Compare with the other frames of the series (C)")

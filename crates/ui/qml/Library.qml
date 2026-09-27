@@ -318,13 +318,24 @@ FocusScope {
 
     // Opens the comparison: on the 2 to 4 photos selected, else on the frames of the series the cursor's photo is in.
     // A closed series is opened first (its frames are rows of the grid).
-    function openCompare() {
+    // The photos the comparison would show now (identifiers joined by commas), "" when there are fewer than two: the
+    // frames of a series the filters leave one photo of are not enough.
+    function compareIds() {
         if (photoGrid.count === 0)
-            return
+            return ""
         const cursor = grid.currentIndex >= 0 ? photoGrid.idAt(grid.currentIndex) : ""
         const chosen = photoGrid.selectedCount
-        let ids = chosen >= 2 && chosen <= 4 ? photoGrid.selectedIds() : (cursor !== "" ? photoGrid.seriesMembersOf(cursor) : "")
-        if (ids === "" || ids.split(",").length < 2)
+        const ids = chosen >= 2 && chosen <= 4 ? photoGrid.selectedIds() : (cursor !== "" ? photoGrid.seriesMembersOf(cursor) : "")
+        return ids.split(",").length >= 2 ? ids : ""
+    }
+
+    // Whether there is something to compare (for what shows the command: it depends on the selection, the list and
+    // the filters, which the first three terms stand for).
+    readonly property bool canCompare: (photoGrid.selectionSeries, photoGrid.count, photoGrid.selectedCount, compareIds() !== "")
+
+    function openCompare() {
+        const ids = compareIds()
+        if (ids === "")
             return
         for (const id of ids.split(",")) {
             const row = photoGrid.rowOf(id)
@@ -846,6 +857,10 @@ FocusScope {
                     required property bool marked
                     // A series is one thumbnail with a count, that opens in place.
                     readonly property bool inSeries: cell.seriesId !== "" && cell.seriesTotal > 1
+                    // What the series' badge says: a tick once resolved, the arrow, the photos listed, and of how many when the
+                    // filters hide some of the series.
+                    readonly property string badgeLabel: (cell.seriesResolved ? "✓ " : "") + (cell.seriesOpen ? "▾ " : "▣ ")
+                        + (cell.seriesSize < cell.seriesTotal ? cell.seriesSize + "/" + cell.seriesTotal : cell.seriesSize)
                     readonly property bool collapsed: cell.inSeries && cell.seriesSize > 1 && !cell.seriesOpen
                     // No thumbnail can be made for this photo (it says so instead of staying empty).
                     readonly property bool unavailable: thumbnail.status === Image.Error
@@ -959,14 +974,20 @@ FocusScope {
                             Text {
                                 id: badgeText
                                 anchors.centerIn: parent
-                                text: (cell.seriesResolved ? "✓ " : "") + (cell.seriesOpen ? "▾ " : "▣ ")
-                                      + (cell.collapsed ? cell.seriesSize : cell.seriesTotal)
+                                // The photos listed, and of how many when the filters hide some of the series.
+                                text: cell.badgeLabel
                                 color: cell.seriesResolved ? Theme.picked : "white"
                             }
                             MouseArea {
                                 anchors.fill: parent
                                 anchors.margins: -3
+                                // With one photo of the series listed there is nothing to open.
+                                enabled: cell.seriesSize > 1
+                                hoverEnabled: true
                                 onClicked: root.toggleSeries(cell.index)
+                                ToolTip.visible: containsMouse && cell.seriesSize < cell.seriesTotal
+                                ToolTip.text: qsTr("%1 of the series' %2 photos are listed (the filters hide the others)")
+                                              .arg(cell.seriesSize).arg(cell.seriesTotal)
                             }
                         }
                         // The colour label, a bar along the bottom of the picture.

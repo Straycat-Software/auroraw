@@ -577,7 +577,7 @@
     <message>
         <location filename="../qml/Compare.qml" line="388"/>
         <source>Reopen the series: it can be changed again</source>
-        <translation>Rouvrir la série : elle peut de nouveau être modifiée</translation>
+        <translation>Rouvrir la série&#xa0;: elle peut de nouveau être modifiée</translation>
     </message>
     <message>
         <location filename="../qml/Compare.qml" line="389"/>
@@ -1102,83 +1102,83 @@
         <translation>Séries résolues</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="470"/>
+        <location filename="../qml/Library.qml" line="481"/>
         <source>All</source>
         <translation>Tout</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="470"/>
+        <location filename="../qml/Library.qml" line="481"/>
         <source>1+</source>
         <translation>1+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="470"/>
+        <location filename="../qml/Library.qml" line="481"/>
         <source>2+</source>
         <translation>2+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="471"/>
+        <location filename="../qml/Library.qml" line="482"/>
         <source>3+</source>
         <translation>3+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="471"/>
+        <location filename="../qml/Library.qml" line="482"/>
         <source>4+</source>
         <translation>4+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="471"/>
+        <location filename="../qml/Library.qml" line="482"/>
         <source>5</source>
         <translation>5</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="488"/>
+        <location filename="../qml/Library.qml" line="499"/>
         <source>Show photos by flag</source>
         <translation>Afficher les photos selon le drapeau</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="511"/>
+        <location filename="../qml/Library.qml" line="522"/>
         <source>Only the photos labelled %1</source>
         <translation>Seulement les photos étiquetées %1</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="534"/>
+        <location filename="../qml/Library.qml" line="545"/>
         <source>Show photos by series</source>
         <translation>Afficher les photos selon les séries</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="549"/>
+        <location filename="../qml/Library.qml" line="560"/>
         <source>Close all</source>
         <translation>Tout fermer</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="549"/>
+        <location filename="../qml/Library.qml" line="560"/>
         <source>Open all</source>
         <translation>Tout ouvrir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="552"/>
+        <location filename="../qml/Library.qml" line="563"/>
         <source>Open or close every series (E for the one under the cursor)</source>
         <translation>Ouvrir ou fermer toutes les séries (E pour celle sous le curseur)</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="560"/>
+        <location filename="../qml/Library.qml" line="571"/>
         <source>Keyword: %1</source>
         <translation>Mot-clé : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="575"/>
-        <location filename="../qml/Library.qml" line="577"/>
+        <location filename="../qml/Library.qml" line="586"/>
+        <location filename="../qml/Library.qml" line="588"/>
         <source>Thumbnail size</source>
         <translation>Taille des vignettes</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="591"/>
+        <location filename="../qml/Library.qml" line="602"/>
         <source>Refresh</source>
         <translation>Actualiser</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="857"/>
+        <location filename="../qml/Library.qml" line="872"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n étoile</numerusform>
@@ -1186,60 +1186,65 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="857"/>
+        <location filename="../qml/Library.qml" line="872"/>
         <source>Photo</source>
         <translation>Photo</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="904"/>
+        <location filename="../qml/Library.qml" line="919"/>
         <source>No preview</source>
         <translation>Aucun aperçu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1064"/>
+        <location filename="../qml/Library.qml" line="989"/>
+        <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
+        <translation>%1 des %2 photos de la série sont affichées (les filtres cachent les autres)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1085"/>
         <source>Open in the image view</source>
         <translation>Ouvrir dans la vue image</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1066"/>
+        <location filename="../qml/Library.qml" line="1087"/>
         <source>Open or close the series</source>
         <translation>Ouvrir ou fermer la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1067"/>
+        <location filename="../qml/Library.qml" line="1088"/>
         <source>Group as a series</source>
         <translation>Grouper en série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1068"/>
+        <location filename="../qml/Library.qml" line="1089"/>
         <source>Take out of the series</source>
         <translation>Sortir de la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1069"/>
+        <location filename="../qml/Library.qml" line="1090"/>
         <source>Resolve the series</source>
         <translation>Résoudre la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1070"/>
+        <location filename="../qml/Library.qml" line="1091"/>
         <source>Reopen the series</source>
         <translation>Rouvrir la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1079"/>
-        <location filename="../qml/Library.qml" line="1095"/>
+        <location filename="../qml/Library.qml" line="1100"/>
+        <location filename="../qml/Library.qml" line="1116"/>
         <source>Pick</source>
         <translation>Retenir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1080"/>
-        <location filename="../qml/Library.qml" line="1096"/>
+        <location filename="../qml/Library.qml" line="1101"/>
+        <location filename="../qml/Library.qml" line="1117"/>
         <source>Reject</source>
         <translation>Refuser</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1081"/>
-        <location filename="../qml/Library.qml" line="1097"/>
+        <location filename="../qml/Library.qml" line="1102"/>
+        <location filename="../qml/Library.qml" line="1118"/>
         <source>Clear the flag</source>
         <translation>Effacer le drapeau</translation>
     </message>
@@ -1526,117 +1531,117 @@
         <translation>Garder</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="425"/>
+        <location filename="../qml/Viewer.qml" line="426"/>
         <source>Mark this photo to keep, for resolving its series (K)</source>
         <translation>Marquer cette photo à garder, pour résoudre sa série (K)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="429"/>
+        <location filename="../qml/Viewer.qml" line="430"/>
         <source>Peaking</source>
         <translation>Peaking</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="434"/>
+        <location filename="../qml/Viewer.qml" line="435"/>
         <source>Focus peaking: what is in focus (S)</source>
         <translation>Peaking&#xa0;: ce qui est net (S)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="441"/>
+        <location filename="../qml/Viewer.qml" line="442"/>
         <source>Clipping</source>
         <translation>Écrêtage</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="446"/>
+        <location filename="../qml/Viewer.qml" line="447"/>
         <source>Clipping warnings: highlights in red, shadows in blue (O)</source>
         <translation>Avertissements d’écrêtage&#xa0;: hautes lumières en rouge, ombres en bleu (O)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="453"/>
+        <location filename="../qml/Viewer.qml" line="454"/>
         <source>Histogram</source>
         <translation>Histogramme</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="458"/>
+        <location filename="../qml/Viewer.qml" line="459"/>
         <source>Histogram (H)</source>
         <translation>Histogramme (H)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="466"/>
+        <location filename="../qml/Viewer.qml" line="467"/>
         <source>Compare</source>
         <translation>Comparer</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="470"/>
+        <location filename="../qml/Viewer.qml" line="473"/>
         <source>Compare with the other frames of the series (C)</source>
         <translation>Comparer avec les autres images de la série (C)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="474"/>
+        <location filename="../qml/Viewer.qml" line="477"/>
         <source>100 %</source>
         <translation>100&#xa0;%</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="474"/>
+        <location filename="../qml/Viewer.qml" line="477"/>
         <source>Fit</source>
         <translation>Ajuster</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="477"/>
+        <location filename="../qml/Viewer.qml" line="480"/>
         <source>Fit or 100 % (Z)</source>
         <translation>Ajuster ou 100&#xa0;% (Z)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="481"/>
+        <location filename="../qml/Viewer.qml" line="484"/>
         <source>Info</source>
         <translation>Infos</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="486"/>
+        <location filename="../qml/Viewer.qml" line="489"/>
         <source>Information (I)</source>
         <translation>Informations (I)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="493"/>
+        <location filename="../qml/Viewer.qml" line="496"/>
         <source>Filmstrip</source>
         <translation>Pellicule</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="498"/>
+        <location filename="../qml/Viewer.qml" line="501"/>
         <source>Filmstrip (T)</source>
         <translation>Pellicule (T)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="505"/>
+        <location filename="../qml/Viewer.qml" line="508"/>
         <source>Auto-advance</source>
         <translation>Avance auto</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="510"/>
+        <location filename="../qml/Viewer.qml" line="513"/>
         <source>Move on after a rating, flag or label (A)</source>
         <translation>Passer à la suivante après une note, un drapeau ou une étiquette (A)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="517"/>
+        <location filename="../qml/Viewer.qml" line="520"/>
         <source>Full screen</source>
         <translation>Plein écran</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="520"/>
+        <location filename="../qml/Viewer.qml" line="523"/>
         <source>Full screen (F)</source>
         <translation>Plein écran (F)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="526"/>
+        <location filename="../qml/Viewer.qml" line="529"/>
         <source>Back to the grid</source>
         <translation>Retour à la grille</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="528"/>
+        <location filename="../qml/Viewer.qml" line="531"/>
         <source>Back to the grid (Esc)</source>
         <translation>Retour à la grille (Échap)</translation>
     </message>
     <message>
-        <location filename="../qml/Viewer.qml" line="549"/>
+        <location filename="../qml/Viewer.qml" line="552"/>
         <source>%1 / %2</source>
         <translation>%1 / %2</translation>
     </message>

@@ -22,6 +22,10 @@ In **File ▸ Settings…** you can change the gap and press **Regroup the serie
 automatically and are not resolved are formed again with the new gap. Series you made by hand, and series you
 resolved, are never touched.
 
+When the filters hide some frames of a series (the default list hides the rejected ones, and a resolved series has
+some), the badge says how many are listed and of how many: **2/7**. With a single frame listed there is nothing to open,
+and the badge only tells you the rest is hidden; choose *All photos* to see it.
+
 ## Opening and closing
 
 Click a series' badge (▣ and the count), or press `E` with the cursor on it, to **open** it: its photos appear in
@@ -51,6 +55,7 @@ select 2 to 4 photos and press `C`, to **compare them side by side**.
 - **Zoom and pan are linked**: the wheel, `+`, `-` and a drag act on all the frames together, so you can look at
   the same detail (an eye, a whisker) in each one. `Z` (or *100 %*) fits them all, or shows them at their own
   pixels.
+- **Compare** is available when there are at least two photos to compare (a series with one frame listed has none).
 - Each frame shows its **sharpness** as a percentage of the sharpest of the series, once all of them are measured.
   This is a hint for where to look first, not a choice made for you.
 - Four frames of a landscape or square shape are laid out **two by two**; four portraits stay in a row.
