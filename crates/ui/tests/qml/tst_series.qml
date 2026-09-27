@@ -195,6 +195,7 @@ AppTestCase {
         wait(200)
         click(burstRow)
         compare(app.photos.selectedCount, 5, "the closed series is all its photos")
+        tryVerify(() => app.library.canFlag, 5000, "reopened: its flags can be changed")
         keyClick(Qt.Key_U)
         wait(400)
         app.library.toggleSeries(burstRow)
