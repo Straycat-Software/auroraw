@@ -4,7 +4,7 @@
 //! the catalogue goes through here, whichever thread asked for it.
 
 use std::collections::{HashMap, VecDeque};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::SystemTime;
@@ -12,7 +12,7 @@ use std::time::SystemTime;
 use auroraw_catalogue::{Catalogue, SidecarStat};
 use auroraw_format::sidecar::{FileEntry, FileRole, Location, PhotoSidecar, VersionSidecar};
 use auroraw_format::state::{KeywordEntry, SourceEntry, Vocabulary};
-use auroraw_import::Profile;
+use auroraw_import::{DiscoveredFile, PairRule, Profile, pair_files};
 use auroraw_plugin_api::source::{Source, SourceState};
 use auroraw_sources::filesystem::FilesystemSource;
 use auroraw_sources::relink::{self, FoundFile, KnownFile, ScanOutcome};
@@ -28,6 +28,7 @@ use crate::history::{
 use crate::import_job::{self, ImportJob};
 use crate::index_job::{self, IndexJob};
 use crate::job::{CancelToken, JobId};
+use crate::reconcile_apply::{self, CatalogueAction};
 use crate::remove_job::{self, RemoveJob};
 
 /// What a command that waits for its result (`Engine::submit_and_wait`) gets back.
@@ -147,6 +148,11 @@ pub(crate) enum Inbound {
         fingerprint: auroraw_types::Fingerprint,
         hash: ContentHash,
     },
+    /// An index job reconciled a known file against a fresh scan (`sources::relink::reconcile`, the same
+    /// function `scan_source` uses) and worked out what it means for the catalogue
+    /// (`reconcile_apply::CatalogueAction`, D-109): applied here, the coordinator's only writer, exactly the
+    /// way `scan_source` applies its own directly.
+    Apply(CatalogueAction),
     /// The last [`crate::Engine`] handle was dropped: cancel what runs in the background and stop.
     /// (The coordinator holds a sender to its own queue for the jobs it starts, so a closed queue
     /// never signals the end by itself.)
@@ -289,6 +295,9 @@ impl Coordinator {
                         &fingerprint,
                         &hash,
                     );
+                }
+                Inbound::Apply(action) => {
+                    let _ = self.apply_catalogue_action(action);
                 }
                 Inbound::Removed { photo_id } => {
                     // A photo that leaves a series shrinks it.
@@ -1249,7 +1258,37 @@ impl Coordinator {
                 second_locations: 0,
             });
         }
-        let found: Vec<FoundFile> = source.scan()?;
+        // Paired (D-032) before reconciling, not after: a companion's own fingerprint is never part of what the
+        // catalogue tracks for a photo (only its original's is, one row per photo, D-109), so only a group's
+        // original is fed to `reconcile` — a companion is never independently tested against `known` and can
+        // never become a phantom "new" file of its own on a later rescan.
+        let listed: Vec<DiscoveredFile> = source
+            .list()?
+            .into_iter()
+            .filter(|entry| auroraw_imaging::is_photo_file(Path::new(&entry.path)))
+            .map(|entry| DiscoveredFile {
+                path: entry.path,
+                size: entry.size,
+                capture_time: None,
+                camera: None,
+            })
+            .collect();
+        let groups = pair_files(listed, PairRule::Both);
+        let mut found = Vec::with_capacity(groups.len());
+        // A group's companion is never fed to `reconcile` (above); kept here only so that a group whose
+        // original turns out to be genuinely new (or an unconfirmed fingerprint collision, below) still offers
+        // its companion too, exactly as a scan always has (`AddNewPhotos` has no pairing of its own either way,
+        // D-109's own named limit).
+        let mut companion_of: HashMap<String, String> = HashMap::new();
+        for group in &groups {
+            found.push(FoundFile {
+                path: group.original.path.clone(),
+                fingerprint: source.fingerprint_of(&group.original.path)?,
+            });
+            if let Some(companion) = &group.companion {
+                companion_of.insert(group.original.path.clone(), companion.path.clone());
+            }
+        }
         let known_rows = self.catalogue.known_files_in_source(&source_id)?;
         // Which of these known paths is the photo's *primary* location (D-108): the others (secondary locations,
         // D-036) are the `location` table's, never the `photo` row's, and are handled differently below.
@@ -1288,13 +1327,12 @@ impl Coordinator {
                     confirmed += 1;
                 }
                 ScanOutcome::OriginalChanged { photo_id, path } => {
-                    if is_primary.get(&path).copied().unwrap_or(true) {
-                        self.catalogue.mark_original_changed(&photo_id, true)?;
-                    } else {
-                        // Not the same content any more: not a verified duplicate. Nothing on disk is touched.
-                        self.catalogue
-                            .remove_location(&photo_id, &source_id, &path)?;
-                    }
+                    self.apply_catalogue_action(reconcile_apply::changed(
+                        photo_id,
+                        source_id,
+                        path,
+                        &is_primary,
+                    ))?;
                     changed += 1;
                 }
                 ScanOutcome::Relinked { photo_id, from, to } => {
@@ -1304,44 +1342,32 @@ impl Coordinator {
                         .find(|f| f.path == to)
                         .map(|f| f.fingerprint)
                         .expect("the relink target was just found");
-                    if is_primary.get(&from).copied().unwrap_or(true) {
-                        self.catalogue.apply_relink(
-                            &photo_id,
-                            &source_id,
-                            &to,
-                            &filename,
-                            &fingerprint,
-                        )?;
-                    } else {
-                        // A secondary location moved or was renamed within its source: follow it in `location`,
-                        // never touch the photo's own row.
-                        self.catalogue
-                            .remove_location(&photo_id, &source_id, &from)?;
-                        if let Some(hash) = self.catalogue.photo_hash(&photo_id)? {
-                            self.catalogue.insert_location(
-                                &photo_id,
-                                &source_id,
-                                &to,
-                                &filename,
-                                &fingerprint,
-                                &hash,
-                            )?;
-                        }
-                    }
+                    self.apply_catalogue_action(reconcile_apply::relinked(
+                        photo_id,
+                        source_id,
+                        from,
+                        to,
+                        filename,
+                        fingerprint,
+                        &is_primary,
+                    ))?;
                     relinked += 1;
                 }
                 ScanOutcome::Missing { photo_id, path } => {
-                    if is_primary.get(&path).copied().unwrap_or(true) {
-                        self.catalogue.mark_missing(&photo_id, true)?;
-                    } else {
-                        // The copy is simply gone: nothing to report about it any more (nothing was deleted by
-                        // Auroraw; this only prunes Auroraw's own record of where a copy had been seen).
-                        self.catalogue
-                            .remove_location(&photo_id, &source_id, &path)?;
-                    }
+                    self.apply_catalogue_action(reconcile_apply::missing(
+                        photo_id,
+                        source_id,
+                        path,
+                        &is_primary,
+                    ))?;
                     missing += 1;
                 }
-                ScanOutcome::New { path } => new.push(path),
+                ScanOutcome::New { path } => {
+                    if let Some(companion) = companion_of.get(&path) {
+                        new.push(companion.clone());
+                    }
+                    new.push(path);
+                }
                 ScanOutcome::Ambiguous { .. } => ambiguous += 1,
                 ScanOutcome::SecondLocation { photo_id, path } => {
                     let fingerprint = found
@@ -1354,6 +1380,9 @@ impl Coordinator {
                     } else {
                         // The sampled fingerprint collided: not actually the same file (D-108's own residual
                         // risk, confirmed away). It is simply a new, unrelated photo.
+                        if let Some(companion) = companion_of.get(&path) {
+                            new.push(companion.clone());
+                        }
                         new.push(path);
                     }
                 }
@@ -1380,6 +1409,65 @@ impl Coordinator {
             ambiguous,
             second_locations,
         })
+    }
+
+    /// Applies one `reconcile_apply::CatalogueAction` (D-109): the decision (primary vs secondary) was already
+    /// made, by `scan_source` itself or by an index job that sent it here as `Inbound::Apply`; this is the one
+    /// place that turns it into the matching `Catalogue` calls, so the two callers cannot drift on what an
+    /// outcome means again.
+    fn apply_catalogue_action(&mut self, action: CatalogueAction) -> Result<()> {
+        match action {
+            CatalogueAction::MarkChanged { photo_id } => {
+                self.catalogue.mark_original_changed(&photo_id, true)?;
+                Ok(())
+            }
+            CatalogueAction::DropLocation {
+                photo_id,
+                source_id,
+                path,
+            } => {
+                self.catalogue
+                    .remove_location(&photo_id, &source_id, &path)?;
+                Ok(())
+            }
+            CatalogueAction::Relink {
+                photo_id,
+                source_id,
+                to,
+                filename,
+                fingerprint,
+            } => {
+                self.catalogue
+                    .apply_relink(&photo_id, &source_id, &to, &filename, &fingerprint)?;
+                Ok(())
+            }
+            CatalogueAction::RelinkLocation {
+                photo_id,
+                source_id,
+                from,
+                to,
+                filename,
+                fingerprint,
+            } => {
+                self.catalogue
+                    .remove_location(&photo_id, &source_id, &from)?;
+                if let Some(hash) = self.catalogue.photo_hash(&photo_id)? {
+                    self.catalogue.insert_location(
+                        &photo_id,
+                        &source_id,
+                        &to,
+                        &filename,
+                        &fingerprint,
+                        &hash,
+                    )?;
+                }
+                Ok(())
+            }
+            CatalogueAction::MarkMissing { photo_id } => {
+                self.catalogue.mark_missing(&photo_id, true)?;
+                Ok(())
+            }
+        }
     }
 
     /// A found file's fingerprint matched exactly one existing photo, whose old location is also still present

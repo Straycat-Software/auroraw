@@ -161,9 +161,11 @@ pub enum Event {
         known: usize,
         /// Files that could not be read.
         failed: usize,
-        /// Files that turned out to be a confirmed second location of an existing photo, from a *different* source
-        /// (D-036, D-108): joined to it instead of becoming a new photo.
+        /// Files that turned out to be a confirmed second location of an existing photo, from the same source or
+        /// a *different* one (D-036, D-108): joined to it instead of becoming a new photo.
         second_locations: usize,
+        /// Known files found nowhere this scan (D-109): kept, never removed automatically (D-019, D-031).
+        missing: usize,
     },
     /// An index job could not run at all (the source is not reachable, or cannot be listed).
     IndexAborted {

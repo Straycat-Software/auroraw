@@ -111,6 +111,76 @@ fn a_source_holding_a_copy_of_an_existing_photo_joins_it_instead_of_becoming_a_n
 }
 
 #[test]
+fn a_raw_and_jpeg_pair_in_a_new_source_is_still_joined_to_its_existing_copy() {
+    // Issues #6 and #8: the join used to be skipped entirely whenever the candidate had a RAW+JPEG companion
+    // (exactly what a burst on a RAW-shooting camera produces), so a paired duplicate was always added as a
+    // brand-new photo instead of being recognized (D-109).
+    let (engine, events, dir) = new_engine();
+    let working = dir.path().join("Working");
+    std::fs::create_dir_all(&working).unwrap();
+    std::fs::write(working.join("IMG_0001.CR2"), b"the same raw bytes").unwrap();
+    write_jpeg(&working.join("IMG_0001.JPG"), 11);
+    // `AddSourceRequest` (the real UI's path, `index_job`) so the pair is registered as one photo — unlike this
+    // file's other tests, `ScanSource`+`AddNewPhotos` (the CLI's own manual flow) has no pairing of its own.
+    let first = engine
+        .add_source(AddSourceRequest {
+            root: working,
+            name: Some("Card".into()),
+            merge: false,
+        })
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        match events.recv_timeout(Duration::from_millis(200)) {
+            Some(Event::IndexFinished { job, added: a, .. }) if job == first.job => {
+                assert_eq!(a, 1, "the pair is one photo");
+                break;
+            }
+            _ => assert!(Instant::now() < deadline, "the index job never finished"),
+        }
+    }
+
+    // A file-manager copy of the same pair, in a fresh source (mirroring #6's scenario).
+    let backup = dir.path().join("Backup");
+    std::fs::create_dir_all(&backup).unwrap();
+    std::fs::write(backup.join("IMG_0001.CR2"), b"the same raw bytes").unwrap();
+    write_jpeg(&backup.join("IMG_0001.JPG"), 11);
+    let added = engine
+        .add_source(AddSourceRequest {
+            root: backup,
+            name: Some("Backup disk".into()),
+            merge: false,
+        })
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        match events.recv_timeout(Duration::from_millis(200)) {
+            Some(Event::IndexFinished {
+                job,
+                added: a,
+                second_locations,
+                ..
+            }) if job == added.job => {
+                assert_eq!(
+                    a, 0,
+                    "joined, not added as a new photo, even with a companion"
+                );
+                assert_eq!(second_locations, 1);
+                break;
+            }
+            _ => assert!(Instant::now() < deadline, "the index job never finished"),
+        }
+    }
+
+    let count: u64 = engine.read_catalogue().unwrap().count_all().unwrap();
+    assert_eq!(count, 1, "still one photo, not two");
+    let dups = engine.duplicate_photos().unwrap();
+    assert_eq!(dups.len(), 1);
+    assert_eq!(dups[0].extra[0].source_name, "Backup disk");
+    assert_eq!(dups[0].extra[0].path, "IMG_0001.CR2");
+}
+
+#[test]
 fn a_second_source_with_unrelated_photos_adds_them_as_their_own_photos() {
     let (engine, _events, dir) = new_engine();
     let working = dir.path().join("Working");
