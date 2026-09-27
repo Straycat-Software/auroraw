@@ -40,10 +40,7 @@ fn profile(template: &str) -> Profile {
         destination_template: template.into(),
         backup_templates: Vec::new(),
         pair_rule: PairRule::Both,
-        metadata_template: MetadataTemplate {
-            creator: vec!["Patrick".into()],
-            ..MetadataTemplate::default()
-        },
+        metadata_template: MetadataTemplate::default(),
     }
 }
 
@@ -57,7 +54,6 @@ fn request(s: &Setup, card: &Path, destination: &Path, template: &str) -> Import
         source_root: card.to_path_buf(),
         destination_root: destination.to_path_buf(),
         profile: profile(template),
-        shoot: None,
         backup_root: None,
         state_dir: s.dir.path().join("state"),
         add_destination_as_source: false,
@@ -231,19 +227,7 @@ fn a_destination_inside_a_source_registers_the_photos_with_their_place_in_it() {
     let row = catalogue.list_recent(None, 10).unwrap().remove(0);
     assert_eq!(row.source_id, Some(added.source_id));
     assert_eq!(row.path.as_deref(), Some("2026/September/a.CR2"));
-    let sidecar = s
-        .engine
-        .workspace()
-        .read_photo(&row.id)
-        .unwrap()
-        .unwrap()
-        .current()
-        .unwrap();
-    assert_eq!(
-        sidecar.meta.creator,
-        ["Patrick"],
-        "the metadata template is written"
-    );
+    assert!(s.engine.workspace().read_photo(&row.id).unwrap().is_some());
     assert_eq!(
         s.engine.sources().unwrap().len(),
         1,

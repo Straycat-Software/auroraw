@@ -72,9 +72,8 @@ The dialog asks for:
   and per day, and the camera's own file name. Available parts: `{year}`, `{month}`, `{day}`, `{date}`,
   `{hour}`, `{minute}`, `{second}`, `{time}`, `{seq}` (a number, `{seq:04}` pads it to four digits), `{camera}`,
   `{original}` (the name without its extension), `{ext}`, `{name}` (the whole name), `{folder}` (the folder on the
-  card), `{path}` (the card's folders and name) and `{shoot}`.
+  card) and `{path}` (the card's folders and name).
 - **Backup folder** (optional): every photo is copied there too.
-- **Shoot name**, **Creator** and **Copyright** (optional): written into each imported photo's information.
 
 **Import** copies every photo and **verifies** each copy against the original; the summary says *All 120 files
 copied and verified.* Photos already imported before are skipped, so running the same card twice copies nothing

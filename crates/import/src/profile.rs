@@ -27,14 +27,13 @@ pub enum PairRule {
 /// crate has no vocabulary to resolve them against (that needs the catalogue), so the caller
 /// resolves each path to a `KeywordId`, creating one if it does not exist yet, the way
 /// `engine::Coordinator::edit_keywords` already resolves a path for a single keyword.
+///
+/// A creator and a copyright notice used to be part of this too, asked once per import; removed
+/// (issue #4) since the Import dialog is the only thing that ever fed them, and a photo's own
+/// discovered metadata (its embedded EXIF/XMP creator and rights, if any) is what `Metadata`
+/// itself keeps instead of being overwritten by a template's guess.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MetadataTemplate {
-    /// The creators to record.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub creator: Vec<String>,
-    /// The copyright notice.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub rights: Option<String>,
     /// Keyword paths to add to every imported photo.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub keyword_paths: Vec<String>,
@@ -93,8 +92,6 @@ mod tests {
             backup_templates: vec!["backup/{year}/{original}".into()],
             pair_rule: PairRule::Both,
             metadata_template: MetadataTemplate {
-                creator: vec!["Patrick Fournier".into()],
-                rights: Some("© Patrick Fournier".into()),
                 keyword_paths: vec!["Family".into()],
             },
         }

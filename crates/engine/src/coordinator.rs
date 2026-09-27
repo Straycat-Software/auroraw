@@ -426,7 +426,6 @@ impl Coordinator {
                 destination_root,
                 registration,
                 profile,
-                shoot,
                 backup_roots,
                 state_path,
             } => self.start_import(
@@ -434,7 +433,6 @@ impl Coordinator {
                 destination_root,
                 registration,
                 profile,
-                shoot,
                 backup_roots,
                 state_path,
             ),
@@ -1666,7 +1664,6 @@ impl Coordinator {
         destination_root: PathBuf,
         registration: Option<crate::import_job::Registration>,
         mut profile: Profile,
-        shoot: Option<String>,
         backup_roots: Vec<PathBuf>,
         state_path: PathBuf,
     ) -> Result<Outcome> {
@@ -1713,7 +1710,6 @@ impl Coordinator {
             dest_root,
             registration,
             profile,
-            shoot,
             backup_roots,
             state_path,
             catalogue_path,

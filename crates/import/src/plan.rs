@@ -137,7 +137,6 @@ pub fn plan(
     mut groups: Vec<PhotoGroup>,
     destination_template: &str,
     backup_templates: &[String],
-    shoot: Option<&str>,
     used: &mut UsedPaths,
     exists: Exists,
 ) -> Vec<PlannedPhoto> {
@@ -166,7 +165,6 @@ pub fn plan(
             original_stem: stem,
             extension: ext,
             source_path: &group.original.path,
-            shoot,
         };
         let original = namer.planned_file(&group.original.path, group.original.size, &ctx);
         let companion = group.companion.map(|c| {
@@ -222,7 +220,6 @@ mod tests {
             vec![group(a), group(b)],
             "{seq:02}_{original}.{ext}",
             &[],
-            None,
             &mut used,
             &|_, _| false,
         );
@@ -249,7 +246,6 @@ mod tests {
             vec![group(a), group(b)],
             "{original}.{ext}",
             &[],
-            None,
             &mut used,
             &|_, _| false,
         );
@@ -273,7 +269,6 @@ mod tests {
             vec![group(a)],
             "{original}.{ext}",
             &[],
-            None,
             &mut used,
             &|_, _| false,
         );
@@ -297,7 +292,6 @@ mod tests {
             vec![g],
             "{seq:02}_{original}.{ext}",
             &[],
-            None,
             &mut used,
             &|_, _| false,
         );
@@ -316,7 +310,6 @@ mod tests {
             vec![group(a), group(b)],
             "{original}.{ext}",
             &["backup/{original}.{ext}".to_string()],
-            None,
             &mut used,
             &|_, _| false,
         );
@@ -341,7 +334,6 @@ mod tests {
             vec![group(a)],
             "{original}.{ext}",
             &[],
-            None,
             &mut UsedPaths::new(),
             &on_disk,
         );
@@ -358,7 +350,6 @@ mod tests {
             vec![group(a)],
             "{original}.{ext}",
             &["{original}.{ext}".to_string()],
-            None,
             &mut UsedPaths::new(),
             &|_, _| false,
         );
@@ -385,7 +376,6 @@ mod tests {
             vec![group(a), group(b)],
             "{name}",
             &[],
-            None,
             &mut UsedPaths::new(),
             &|_, _| false,
         );
@@ -421,7 +411,6 @@ mod tests {
             vec![group(a), group(b)],
             "{path}",
             &[],
-            None,
             &mut UsedPaths::new(),
             &on_disk,
         );

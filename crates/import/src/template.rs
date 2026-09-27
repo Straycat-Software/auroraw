@@ -4,14 +4,12 @@
 //! `{seq}` (a sequence number, `{seq:04}` for zero-padded width 4), `{camera}`, `{original}` (the
 //! source file's name without its extension), `{ext}` (its extension, **as found**: an imported file
 //! never changes case), `{name}` (the whole file name, as found), `{folder}` (the name of the folder it
-//! is in on the card, `100CANON` for `DCIM/100CANON/IMG_0001.CR2`), `{path}` (its path on the card below
-//! `DCIM` when there is one, folders and name as found: `{path}` alone keeps the card's own layout) and `{shoot}` (a
-//! session name, given at import time, not stored in the profile: D-029's profile schema does not
-//! name one, and it is naturally a per-import choice, like a wedding's name, not a per-profile one).
+//! is in on the card, `100CANON` for `DCIM/100CANON/IMG_0001.CR2`) and `{path}` (its path on the card below
+//! `DCIM` when there is one, folders and name as found: `{path}` alone keeps the card's own layout).
 //!
-//! A value that is not known for a file (`{camera}` with no make or model, `{shoot}` when none was
-//! given) renders as an empty piece rather than failing the whole import: a slightly odd path is
-//! recoverable, a photo the profile refuses to place is not.
+//! A value that is not known for a file (`{camera}` with no make or model) renders as an empty piece
+//! rather than failing the whole import: a slightly odd path is recoverable, a photo the profile
+//! refuses to place is not.
 
 use time::OffsetDateTime;
 
@@ -30,8 +28,6 @@ pub struct TemplateContext<'a> {
     pub extension: &'a str,
     /// The file's path in the source, with `/` separators.
     pub source_path: &'a str,
-    /// A session name given at import time.
-    pub shoot: Option<&'a str>,
 }
 
 /// Characters not safe in a path component on at least one of the three platforms (Windows is the
@@ -109,7 +105,6 @@ fn field(name: &str, spec: Option<&str>, ctx: &TemplateContext) -> String {
         ),
         "folder" => sanitize(folder_of(ctx.source_path)),
         "path" => path_below_dcim(ctx.source_path),
-        "shoot" => sanitize(ctx.shoot.unwrap_or_default()),
         // An unknown token renders as itself, wrapped, rather than silently vanishing: a typo in
         // a template should be visible in the resulting path, not swallowed.
         other => spec.map_or_else(|| format!("{{{other}}}"), |s| format!("{{{other}:{s}}}")),
@@ -181,7 +176,6 @@ mod tests {
             original_stem: "IMG_0042",
             extension: "CR3",
             source_path: "DCIM/100CANON/IMG_0042.CR3",
-            shoot: Some("Marie wedding"),
         }
     }
 

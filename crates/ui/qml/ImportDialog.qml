@@ -24,9 +24,6 @@ AppDialog {
     property alias destinationField: destinationField
     property alias backupField: backupField
     property alias templateField: templateField
-    property alias shootField: shootField
-    property alias creatorField: creatorField
-    property alias rightsField: rightsField
     property alias importButton: importButton
     property alias cancelButton: cancelButton
     property alias closeButton: closeButton
@@ -78,9 +75,6 @@ AppDialog {
         destinationField.text = saved.destination
         backupField.text = saved.backup
         templateField.text = saved.template
-        creatorField.text = saved.creator
-        rightsField.text = saved.rights
-        shootField.text = ""
         layoutChoice = saved.layout
         addDestination = saved.add_destination
         finished = false
@@ -125,11 +119,8 @@ AppDialog {
             destination: destinationField.text.trim(),
             backup: backupField.text.trim(),
             template: templateField.text.trim(),
-            creator: creatorField.text.trim(),
-            rights: rightsField.text.trim(),
             layout: layoutChoice,
-            add_destination: addDestination,
-            shoot: shootField.text.trim()
+            add_destination: addDestination
         }
     }
 
@@ -246,13 +237,14 @@ AppDialog {
             TextField {
                 id: sourceField
                 Layout.fillWidth: true
+                enabled: !dialog.importing
                 Accessible.name: qsTr("Import from (card or folder)")
                 onTextEdited: dialog.fieldsChanged()
             }
             AppButton {
                 text: qsTr("Browse…")
                 Accessible.name: qsTr("Browse for: %1").arg(qsTr("Import from (card or folder)"))
-                enabled: !dialog.browsing
+                enabled: !dialog.browsing && !dialog.importing
                 onClicked: sourcePicker.pick()
             }
             Label {
@@ -268,6 +260,7 @@ AppDialog {
             TextField {
                 id: destinationField
                 Layout.fillWidth: true
+                enabled: !dialog.importing
                 placeholderText: qsTr("Where the photos are copied to")
                 Accessible.name: qsTr("Destination folder")
                 onTextEdited: dialog.fieldsChanged()
@@ -275,7 +268,7 @@ AppDialog {
             AppButton {
                 text: qsTr("Browse…")
                 Accessible.name: qsTr("Browse for: %1").arg(qsTr("Destination folder"))
-                enabled: !dialog.browsing
+                enabled: !dialog.browsing && !dialog.importing
                 onClicked: destinationPicker.pick()
             }
             Label {
@@ -290,6 +283,7 @@ AppDialog {
                 id: addDestinationBox
                 Layout.columnSpan: 3
                 visible: dialog.kind === "not-covered"
+                enabled: !dialog.importing
                 text: qsTr("Add this folder to the catalogue's sources")
                 checked: dialog.addDestination
                 onToggled: {
@@ -304,12 +298,14 @@ AppDialog {
                 spacing: 8
                 AppButton {
                     id: templateButton
+                    enabled: !dialog.importing
                     text: qsTr("Use the template")
                     highlighted: dialog.layoutChoice === "template"
                     onClicked: dialog.layoutChoice = "template"
                 }
                 AppButton {
                     id: foldersButton
+                    enabled: !dialog.importing
                     text: qsTr("Keep the source's folders")
                     highlighted: dialog.layoutChoice === "folders"
                     onClicked: dialog.layoutChoice = "folders"
@@ -326,6 +322,7 @@ AppDialog {
                 visible: dialog.layoutChoice === "template"
                 Layout.fillWidth: true
                 Layout.columnSpan: 2
+                enabled: !dialog.importing
                 placeholderText: "{year}/{date}/{original}.{ext}"
                 Accessible.name: qsTr("Folders and file names")
             }
@@ -334,38 +331,14 @@ AppDialog {
             TextField {
                 id: backupField
                 Layout.fillWidth: true
+                enabled: !dialog.importing
                 Accessible.name: qsTr("Backup folder (optional)")
             }
             AppButton {
                 text: qsTr("Browse…")
                 Accessible.name: qsTr("Browse for: %1").arg(qsTr("Backup folder (optional)"))
-                enabled: !dialog.browsing
+                enabled: !dialog.browsing && !dialog.importing
                 onClicked: backupPicker.pick()
-            }
-
-            Label { text: qsTr("Shoot name (optional)") }
-            TextField {
-                id: shootField
-                Layout.fillWidth: true
-                Layout.columnSpan: 2
-                Accessible.name: qsTr("Shoot name (optional)")
-            }
-
-            Label { visible: dialog.registering; text: qsTr("Creator") }
-            TextField {
-                id: creatorField
-                visible: dialog.registering
-                Layout.fillWidth: true
-                Layout.columnSpan: 2
-                Accessible.name: qsTr("Creator")
-            }
-            Label { visible: dialog.registering; text: qsTr("Copyright") }
-            TextField {
-                id: rightsField
-                visible: dialog.registering
-                Layout.fillWidth: true
-                Layout.columnSpan: 2
-                Accessible.name: qsTr("Copyright")
             }
 
             ProgressBar {

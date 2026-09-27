@@ -209,8 +209,6 @@ pub enum Command {
         registration: Option<crate::import_job::Registration>,
         /// Destination templates, pairing, and the metadata template.
         profile: Profile,
-        /// A session name for the `{shoot}` template token.
-        shoot: Option<String>,
         /// Extra verified-copy destinations, resolved to real paths.
         backup_roots: Vec<PathBuf>,
         /// Where this job's resumable state is kept.

@@ -44,8 +44,6 @@ pub struct ImportRequest {
     pub destination_root: PathBuf,
     /// Layout (`{path}` keeps the card's folders), pairing rule, metadata template.
     pub profile: Profile,
-    /// A session name for the `{shoot}` template token.
-    pub shoot: Option<String>,
     /// A second folder every file is also copied and verified into, laid out by the same
     /// destination template unless the profile names its own backup templates.
     pub backup_root: Option<PathBuf>,
@@ -185,7 +183,6 @@ impl Engine {
             source_root,
             destination_root,
             mut profile,
-            shoot,
             backup_root,
             state_dir,
             add_destination_as_source,
@@ -300,7 +297,6 @@ impl Engine {
             destination_root,
             registration,
             profile,
-            shoot,
             backup_roots,
             state_path: state_dir.join(format!("import-{key}.json")),
         })? {

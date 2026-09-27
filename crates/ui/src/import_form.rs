@@ -40,8 +40,8 @@ pub mod qobject {
         #[qinvokable]
         fn volumes(self: &ImportForm) -> QString;
 
-        /// Remembers the fields (JSON: `Settings` and `shoot`) and starts the import as a background
-        /// job (`job` is its job); empty, or why not.
+        /// Remembers the fields (JSON: `Settings`) and starts the import as a background job
+        /// (`job` is its job); empty, or why not.
         #[qinvokable]
         fn start(self: Pin<&mut ImportForm>, fields: &QString) -> QString;
 
@@ -83,8 +83,6 @@ pub struct ImportFormRust {
 struct Form {
     #[serde(flatten)]
     settings: Settings,
-    #[serde(default)]
-    shoot: String,
 }
 
 fn text(value: &str) -> QString {
@@ -163,12 +161,10 @@ impl qobject::ImportForm {
             .save(&session.data_dir.join("import-settings.json"));
         let resolve = |typed: &str| paths::resolve(typed).map_err(|e| e.to_string());
         let request = (|| -> Result<ImportRequest, String> {
-            let shoot = form.shoot.trim();
             Ok(ImportRequest {
                 source_root: resolve(&form.settings.source)?,
                 destination_root: resolve(&form.settings.destination)?,
                 profile: form.settings.profile(),
-                shoot: (!shoot.is_empty()).then(|| shoot.to_string()),
                 backup_root: match form.settings.backup.trim() {
                     "" => None,
                     backup => Some(resolve(backup)?),

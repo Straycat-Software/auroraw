@@ -918,7 +918,6 @@ mod tests {
                     prefix: String::new(),
                 }),
                 profile,
-                shoot: None,
                 backup_roots: Vec::new(),
                 state_path,
             })
@@ -1147,7 +1146,6 @@ mod tests {
                     prefix: String::new(),
                 }),
                 profile: simple_profile("{original}.{ext}"),
-                shoot: None,
                 backup_roots: Vec::new(),
                 state_path: dir.path().join("job.json"),
             })
@@ -1179,7 +1177,6 @@ mod tests {
             source_root: card.to_path_buf(),
             destination_root: dir.join("Archive"),
             profile: simple_profile("{original}.{ext}"),
-            shoot: None,
             backup_root: None,
             state_dir: dir.join("state"),
             add_destination_as_source: true,

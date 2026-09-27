@@ -689,47 +689,47 @@
     <name>ImportDialog</name>
     <message>
         <location filename="../qml/ImportDialog.qml" line="20"/>
-        <location filename="../qml/ImportDialog.qml" line="405"/>
+        <location filename="../qml/ImportDialog.qml" line="378"/>
         <source>Import</source>
         <translation>Import</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="62"/>
+        <location filename="../qml/ImportDialog.qml" line="59"/>
         <source>This folder is part of the source &quot;%1&quot;: the photos also enter the catalogue.</source>
         <translation>Ce dossier fait partie de la source « %1 » : les photos entrent aussi dans le catalogue.</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="65"/>
+        <location filename="../qml/ImportDialog.qml" line="62"/>
         <source>This folder becomes a source: the photos also enter the catalogue.</source>
         <translation>Ce dossier devient une source : les photos entrent aussi dans le catalogue.</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="66"/>
+        <location filename="../qml/ImportDialog.qml" line="63"/>
         <source>This folder is not in the catalogue: the photos are only copied.</source>
         <translation>Ce dossier n&apos;est pas dans le catalogue : les photos sont seulement copiées.</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="68"/>
+        <location filename="../qml/ImportDialog.qml" line="65"/>
         <source>This folder contains the sources %1: the photos are only copied.</source>
         <translation>Ce dossier contient les sources %1 : les photos sont seulement copiées.</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="150"/>
+        <location filename="../qml/ImportDialog.qml" line="141"/>
         <source>Cannot start the import: %1</source>
         <translation>Impossible de lancer l&apos;import : %1</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="155"/>
+        <location filename="../qml/ImportDialog.qml" line="146"/>
         <source>Reading the card…</source>
         <translation>Lecture de la carte…</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="165"/>
+        <location filename="../qml/ImportDialog.qml" line="156"/>
         <source>Importing %1 of %2…</source>
         <translation>Import de %1 sur %2…</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/ImportDialog.qml" line="173"/>
+        <location filename="../qml/ImportDialog.qml" line="164"/>
         <source>All %n file(s) copied and verified.</source>
         <translation>
             <numerusform>Le fichier a été copié et vérifié.</numerusform>
@@ -737,151 +737,133 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="174"/>
+        <location filename="../qml/ImportDialog.qml" line="165"/>
         <source>%1 copied, %2 already in the library, %3 failed. Run it again to retry.</source>
         <translation>%1 copiés, %2 déjà dans la bibliothèque, %3 en échec. Relancez l&apos;import pour réessayer.</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="188"/>
+        <location filename="../qml/ImportDialog.qml" line="179"/>
         <source>The import stopped: %1</source>
         <translation>L&apos;import s&apos;est arrêté : %1</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="195"/>
+        <location filename="../qml/ImportDialog.qml" line="186"/>
         <source>Import cancelled. Running it again resumes where it stopped.</source>
         <translation>Import annulé. Le relancer reprend là où il s&apos;était arrêté.</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="215"/>
+        <location filename="../qml/ImportDialog.qml" line="206"/>
         <source>Cards and drives</source>
         <translation>Cartes et disques</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="234"/>
+        <location filename="../qml/ImportDialog.qml" line="225"/>
         <source>No card detected</source>
         <translation>Aucune carte détectée</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="239"/>
+        <location filename="../qml/ImportDialog.qml" line="230"/>
         <source>Refresh</source>
         <translation>Actualiser</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="245"/>
-        <location filename="../qml/ImportDialog.qml" line="249"/>
-        <location filename="../qml/ImportDialog.qml" line="254"/>
+        <location filename="../qml/ImportDialog.qml" line="236"/>
+        <location filename="../qml/ImportDialog.qml" line="241"/>
+        <location filename="../qml/ImportDialog.qml" line="246"/>
         <source>Import from (card or folder)</source>
         <translation>Importer depuis (carte ou dossier)</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="253"/>
-        <location filename="../qml/ImportDialog.qml" line="276"/>
-        <location filename="../qml/ImportDialog.qml" line="340"/>
+        <location filename="../qml/ImportDialog.qml" line="245"/>
+        <location filename="../qml/ImportDialog.qml" line="269"/>
+        <location filename="../qml/ImportDialog.qml" line="338"/>
         <source>Browse…</source>
         <translation>Parcourir…</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="254"/>
-        <location filename="../qml/ImportDialog.qml" line="277"/>
-        <location filename="../qml/ImportDialog.qml" line="341"/>
+        <location filename="../qml/ImportDialog.qml" line="246"/>
+        <location filename="../qml/ImportDialog.qml" line="270"/>
+        <location filename="../qml/ImportDialog.qml" line="339"/>
         <source>Browse for: %1</source>
         <translation>Parcourir : %1</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="264"/>
+        <location filename="../qml/ImportDialog.qml" line="256"/>
         <source>The photos are in camera folders (%1).</source>
         <translation>Les photos sont dans des dossiers d&apos;appareil (%1).</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="267"/>
-        <location filename="../qml/ImportDialog.qml" line="272"/>
-        <location filename="../qml/ImportDialog.qml" line="277"/>
+        <location filename="../qml/ImportDialog.qml" line="259"/>
+        <location filename="../qml/ImportDialog.qml" line="265"/>
+        <location filename="../qml/ImportDialog.qml" line="270"/>
         <source>Destination folder</source>
         <translation>Dossier de destination</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="271"/>
+        <location filename="../qml/ImportDialog.qml" line="264"/>
         <source>Where the photos are copied to</source>
         <translation>Là où les photos sont copiées</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="293"/>
+        <location filename="../qml/ImportDialog.qml" line="287"/>
         <source>Add this folder to the catalogue&apos;s sources</source>
         <translation>Ajouter ce dossier aux sources du catalogue</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="301"/>
+        <location filename="../qml/ImportDialog.qml" line="295"/>
         <source>Folder layout</source>
         <translation>Disposition des dossiers</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="307"/>
+        <location filename="../qml/ImportDialog.qml" line="302"/>
         <source>Use the template</source>
         <translation>Utiliser le modèle</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="313"/>
+        <location filename="../qml/ImportDialog.qml" line="309"/>
         <source>Keep the source&apos;s folders</source>
         <translation>Garder les dossiers de la source</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="322"/>
-        <location filename="../qml/ImportDialog.qml" line="330"/>
+        <location filename="../qml/ImportDialog.qml" line="318"/>
+        <location filename="../qml/ImportDialog.qml" line="327"/>
         <source>Folders and file names</source>
         <translation>Dossiers et noms de fichiers</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="333"/>
-        <location filename="../qml/ImportDialog.qml" line="337"/>
-        <location filename="../qml/ImportDialog.qml" line="341"/>
+        <location filename="../qml/ImportDialog.qml" line="330"/>
+        <location filename="../qml/ImportDialog.qml" line="335"/>
+        <location filename="../qml/ImportDialog.qml" line="339"/>
         <source>Backup folder (optional)</source>
         <translation>Dossier de sauvegarde (facultatif)</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="346"/>
-        <location filename="../qml/ImportDialog.qml" line="351"/>
-        <source>Shoot name (optional)</source>
-        <translation>Nom de la séance (facultatif)</translation>
-    </message>
-    <message>
-        <location filename="../qml/ImportDialog.qml" line="354"/>
-        <location filename="../qml/ImportDialog.qml" line="360"/>
-        <source>Creator</source>
-        <translation>Auteur</translation>
-    </message>
-    <message>
-        <location filename="../qml/ImportDialog.qml" line="362"/>
-        <location filename="../qml/ImportDialog.qml" line="368"/>
-        <source>Copyright</source>
-        <translation>Droit d&apos;auteur</translation>
-    </message>
-    <message>
-        <location filename="../qml/ImportDialog.qml" line="392"/>
+        <location filename="../qml/ImportDialog.qml" line="365"/>
         <source>Show photos</source>
         <translation>Voir les photos</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="398"/>
+        <location filename="../qml/ImportDialog.qml" line="371"/>
         <source>Cancel import</source>
         <translation>Annuler l&apos;import</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="414"/>
+        <location filename="../qml/ImportDialog.qml" line="387"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="425"/>
+        <location filename="../qml/ImportDialog.qml" line="398"/>
         <source>Choose the card or folder to import from</source>
         <translation>Choisir la carte ou le dossier à importer</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="432"/>
+        <location filename="../qml/ImportDialog.qml" line="405"/>
         <source>Choose the destination folder</source>
         <translation>Choisir le dossier de destination</translation>
     </message>
     <message>
-        <location filename="../qml/ImportDialog.qml" line="439"/>
+        <location filename="../qml/ImportDialog.qml" line="412"/>
         <source>Choose the backup folder</source>
         <translation>Choisir le dossier de sauvegarde</translation>
     </message>

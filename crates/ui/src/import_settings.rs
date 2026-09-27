@@ -19,10 +19,6 @@ pub struct Settings {
     pub backup: String,
     /// The folders-and-names template; empty means [`DEFAULT_TEMPLATE`].
     pub template: String,
-    /// Written to every imported photo's sidecar.
-    pub creator: String,
-    /// Written to every imported photo's sidecar.
-    pub rights: String,
     /// The last card or folder imported from.
     pub source: String,
     /// `template`, or `folders` to keep a card's own camera folders.
@@ -38,8 +34,6 @@ impl Default for Settings {
             destination: String::new(),
             backup: String::new(),
             template: String::new(),
-            creator: String::new(),
-            rights: String::new(),
             source: String::new(),
             layout: "template".into(),
             add_destination: true,
@@ -87,20 +81,12 @@ impl Settings {
 
     /// The import profile these fields describe.
     pub fn profile(&self) -> Profile {
-        let creator = self.creator.trim();
-        let rights = self.rights.trim();
         Profile {
             name: "Default".into(),
             destination_template: self.template_or_default().to_string(),
             backup_templates: Vec::new(),
             pair_rule: PairRule::Both,
             metadata_template: MetadataTemplate {
-                creator: if creator.is_empty() {
-                    Vec::new()
-                } else {
-                    vec![creator.to_string()]
-                },
-                rights: (!rights.is_empty()).then(|| rights.to_string()),
                 keyword_paths: Vec::new(),
             },
         }
@@ -129,7 +115,6 @@ mod tests {
         let path = dir.path().join("nested/settings.json");
         let settings = Settings {
             destination: "/photos".into(),
-            creator: "Patrick".into(),
             ..Settings::default()
         };
         settings.save(&path);
@@ -140,22 +125,28 @@ mod tests {
     }
 
     #[test]
-    fn the_profile_carries_the_typed_metadata_and_falls_back_to_the_default_template() {
+    fn an_old_file_with_the_removed_creator_and_rights_fields_still_loads() {
+        // Issue #4: the fields are gone, but a settings.json from before that keeps working (serde
+        // ignores keys the struct no longer has).
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("settings.json");
+        std::fs::write(
+            &path,
+            br#"{"destination": "/photos", "creator": "Patrick", "rights": "(c) Patrick"}"#,
+        )
+        .unwrap();
+        assert_eq!(Settings::load(&path).destination, "/photos");
+    }
+
+    #[test]
+    fn the_profile_falls_back_to_the_default_template() {
         let mut settings = Settings::default();
         assert_eq!(settings.profile().destination_template, DEFAULT_TEMPLATE);
-        assert!(settings.profile().metadata_template.creator.is_empty());
-        settings.creator = " Patrick ".into();
-        settings.rights = "© Patrick".into();
         settings.template = "{year}/{original}.{ext}".into();
         let profile = settings.profile();
         settings.layout = "folders".into();
         assert_eq!(settings.profile().destination_template, "{path}");
         settings.layout = "template".into();
         assert_eq!(profile.destination_template, "{year}/{original}.{ext}");
-        assert_eq!(profile.metadata_template.creator, vec!["Patrick"]);
-        assert_eq!(
-            profile.metadata_template.rights.as_deref(),
-            Some("© Patrick")
-        );
     }
 }

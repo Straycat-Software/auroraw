@@ -47,7 +47,6 @@ AppTestCase {
         const m = begin("Template3")
         openImport()
         fill(m)
-        d.creatorField.text = "Alex Photographer"
         snapshot("import-dialog")
         click(d.importButton)
         waitForTheImport()
@@ -95,6 +94,10 @@ AppTestCase {
         mouseClick(d.importButton)
         verify(d.importing)
         verify(!d.closeButton.enabled)
+        // Issue #3: the fields cannot be changed while the import runs.
+        verify(!d.sourceField.enabled)
+        verify(!d.destinationField.enabled)
+        verify(!d.backupField.enabled)
         keyClick(Qt.Key_Escape)
         verify(d.visible, "Escape does not close it either")
         verify(d.cancelButton.enabled, "the import can still be cancelled")
@@ -136,8 +139,6 @@ AppTestCase {
         const m = begin("Template2")
         openImport()
         fill(m)
-        d.creatorField.text = "Alex Photographer"
-        d.rightsField.text = "© Alex Photographer"
         click(d.importButton)
         waitForTheImport()
 
@@ -145,8 +146,6 @@ AppTestCase {
         compare(app.launcher.screen, "workspace")
         compare(d.destinationField.text, files.canonical(m.archive))
         compare(d.sourceField.text, files.canonical(m.card))
-        compare(d.creatorField.text, "Alex Photographer")
-        compare(d.rightsField.text, "© Alex Photographer")
     }
 
     function test_the_dialog_says_what_the_destination_is_to_the_catalogue() {
@@ -282,13 +281,13 @@ AppTestCase {
         const left = field => field.mapToItem(null, 0, 0).x
         const en = left(d.backupField)
         compare(left(d.sourceField), en, "every field starts in the same column")
-        compare(left(d.shootField), en)
+        compare(left(d.destinationField), en)
         app.launcher.chooseLanguage("fr")
         wait(300)
         const fr = left(d.backupField)
         verify(fr > en, "the label column follows the widest label: " + fr + " in French, " + en + " in English")
         compare(left(d.sourceField), fr)
-        compare(left(d.shootField), fr)
+        compare(left(d.destinationField), fr)
     }
 
     // The volumes a person has plugged in, as the tests say them.

@@ -45,7 +45,6 @@ pub(crate) struct ImportJob {
     /// a second place is what was asked.
     pub registration: Option<Registration>,
     pub profile: Profile,
-    pub shoot: Option<String>,
     pub backup_roots: Vec<PathBuf>,
     pub state_path: PathBuf,
     pub catalogue_path: PathBuf,
@@ -199,8 +198,6 @@ fn find_duplicate(
 
 fn build_metadata(job: &ImportJob, meta: Option<Metadata>) -> Metadata {
     let mut meta = meta.unwrap_or_default();
-    meta.creator = job.profile.metadata_template.creator.clone();
-    meta.rights = job.profile.metadata_template.rights.clone();
     for (id, path) in &job.template_keywords {
         meta.push_keyword(*id, path.clone());
     }
@@ -440,7 +437,6 @@ fn run(job: ImportJob) {
         groups.clone(),
         &job.profile.destination_template,
         &job.profile.backup_templates,
-        job.shoot.as_deref(),
         &mut UsedPaths::new(),
         &|_, _| false,
     )
@@ -476,7 +472,6 @@ fn run(job: ImportJob) {
         groups,
         &job.profile.destination_template,
         &job.profile.backup_templates,
-        job.shoot.as_deref(),
         &mut used,
         &on_disk,
     );
