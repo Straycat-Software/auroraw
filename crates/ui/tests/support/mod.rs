@@ -132,3 +132,99 @@ pub fn machine_with_series(home: &Path, photos: u32, burst: u32) {
         .submit_and_wait(Command::DetectSeries { regroup: false })
         .unwrap();
 }
+
+/// A picture of 8 by 8 blocks of pseudo-random greys: two seeds are two unrelated scenes, and `lift` brightens one
+/// (a photo of the same scene a little later, its hash a few bits away).
+fn write_scene(path: &Path, seed: u32, lift: u8) {
+    let mut state = seed.wrapping_mul(2_654_435_761).wrapping_add(12_345);
+    let mut blocks = Vec::new();
+    for _ in 0..64 {
+        state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+        blocks.push(((state >> 24) as u8) / 2 + 40);
+    }
+    let img = ImageBuffer::from_fn(320, 240, |x, y| {
+        let v = blocks[((y * 8 / 240) * 8 + (x * 8 / 320)) as usize];
+        Rgb([v.saturating_add(lift); 3])
+    });
+    DynamicImage::ImageRgb8(img)
+        .save_with_format(path, ImageFormat::Jpeg)
+        .unwrap();
+}
+
+/// A machine whose workspace holds `photos` photos (IMG_0000...): the first four show one scene, brightened a little
+/// more each time, taken at 10:00, 10:10, 10:20 and 10:55 (so with the default half hour the first three look alike and
+/// the fourth does not yet); the others are unrelated scenes, one a minute apart from 11:00, all one camera at a slow
+/// pace (no series forms). The times are written into the sidecars and the catalogue rebuilt, so no photo has a hash
+/// until the application's thumbnail workers make it.
+pub fn machine_with_similar(home: &Path, photos: u32) {
+    let dirs = LocalDirs {
+        data: home.join("data"),
+        cache: home.join("cache"),
+    };
+    let card = home.join("Card");
+    std::fs::create_dir_all(&card).unwrap();
+    for n in 0..photos {
+        let (seed, lift) = if n < 4 {
+            (1, (n * 6) as u8)
+        } else {
+            (10 + n, 0)
+        };
+        write_scene(&card.join(format!("IMG_{n:04}.jpg")), seed, lift);
+    }
+    let root: PathBuf = home.join("Pictures").join("Auroraw").join("Main");
+    let opened = Engine::create_workspace(&root, "Main", &dirs).unwrap();
+    let added = opened
+        .engine
+        .add_source(AddSourceRequest {
+            root: card,
+            name: Some("Card".into()),
+            merge: false,
+        })
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        match opened.events.recv_timeout(Duration::from_millis(200)) {
+            Some(Event::IndexFinished { job, .. }) if job == added.job => break,
+            _ => assert!(Instant::now() < deadline, "the scan never finished"),
+        }
+    }
+    let mut rows = opened
+        .engine
+        .read_catalogue()
+        .unwrap()
+        .list_recent(None, 10_000)
+        .unwrap();
+    rows.sort_by(|a, b| a.filename.cmp(&b.filename));
+    for (i, row) in rows.iter().enumerate() {
+        let i = i as u32;
+        let minutes = match i {
+            0 => 0,
+            1 => 10,
+            2 => 20,
+            3 => 55,
+            _ => 60 + (i - 4),
+        };
+        let mut sidecar = opened
+            .engine
+            .workspace()
+            .read_photo(&row.id)
+            .unwrap()
+            .unwrap()
+            .current()
+            .unwrap();
+        let o = &mut sidecar.meta.original;
+        o.capture_time = Some(format!(
+            "2026-03-01T{:02}:{:02}:00Z",
+            10 + minutes / 60,
+            minutes % 60
+        ));
+        o.make = Some("Test".into());
+        o.model = Some("Cam".into());
+        opened.engine.workspace().write_photo(&sidecar).unwrap();
+    }
+    opened.engine.submit_and_wait(Command::Rebuild).unwrap();
+    opened
+        .engine
+        .submit_and_wait(Command::DetectSeries { regroup: false })
+        .unwrap();
+}

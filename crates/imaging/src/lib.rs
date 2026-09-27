@@ -13,7 +13,7 @@
 //! - [`embedded_preview`] decodes the image a thumbnail is made from: the file itself for a
 //!   standard format, the largest embedded preview `rawler` can find for a RAW one.
 //! - [`make_thumbnail`] resizes and encodes it, applying orientation first.
-//! - [`perceptual_hash`] is a similarity fingerprint, computed alongside a thumbnail; WP9 decides
+//! - [`perceptual_hash`] is a similarity fingerprint, and [`thumbnail_hash`] makes it from a stored thumbnail (D-105); WP9 decides
 //!   what to do with it.
 //! - [`PreviewsDb`] is the cache database thumbnails live in (D-075).
 //!
@@ -38,7 +38,7 @@ pub use aids::{
 pub use error::{ImagingError, Result};
 pub use format::is_photo_file;
 pub use metadata::{Metadata, read_metadata};
-pub use phash::perceptual_hash;
+pub use phash::{perceptual_hash, thumbnail_hash};
 pub use preview::{
     VIEW_MAX_EDGE, ViewPicture, embedded_preview, measure_file, view_image, view_picture,
 };

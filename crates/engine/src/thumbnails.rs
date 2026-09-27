@@ -13,14 +13,18 @@
 use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex, mpsc};
 
 use auroraw_catalogue::Catalogue;
 use auroraw_imaging::{PreviewsDb, Thumbnail};
 use auroraw_types::{PhotoId, SourceId};
 use auroraw_workspace::Workspace;
 
+use crate::coordinator::Inbound;
 use crate::error::Result;
+
+/// How many photos without a hash `warm_unhashed` queues at most in one call.
+const UNHASHED_AT_A_TIME: usize = 200_000;
 
 /// What workers have finished and nobody has collected yet.
 #[derive(Default)]
@@ -55,6 +59,7 @@ pub struct ThumbnailService {
     requested: Mutex<HashSet<PhotoId>>,
     warmed: Mutex<HashSet<PhotoId>>,
     workers: Vec<std::thread::JoinHandle<()>>,
+    catalogue_path: PathBuf,
 }
 
 impl ThumbnailService {
@@ -62,11 +67,15 @@ impl ThumbnailService {
     /// fed) against the previews database at `previews_path` (created if it does not exist yet;
     /// this crate resolves no cache directory itself, matching `catalogue::Registry`'s own
     /// precedent -- the caller decides where it lives).
-    pub fn start(
+    ///
+    /// Each thumbnail a worker makes or reads also gives the photo's perceptual hash (D-105) when the catalogue has none
+    /// yet, which the worker sends to the coordinator through `hashes` (the catalogue's only writer).
+    pub(crate) fn start(
         workspace: Arc<Workspace>,
         catalogue_path: PathBuf,
         previews_path: PathBuf,
         workers: usize,
+        hashes: mpsc::Sender<Inbound>,
     ) -> Result<Self> {
         // Opened once, up front: fails fast on a bad path, and guarantees the schema exists
         // before any worker races to create it.
@@ -84,8 +93,16 @@ impl ThumbnailService {
                 let workspace = workspace.clone();
                 let catalogue_path = catalogue_path.clone();
                 let previews_path = previews_path.clone();
+                let hashes = hashes.clone();
                 std::thread::spawn(move || {
-                    worker(shared, inbox, workspace, catalogue_path, previews_path)
+                    worker(
+                        shared,
+                        inbox,
+                        workspace,
+                        catalogue_path,
+                        previews_path,
+                        hashes,
+                    )
                 })
             })
             .collect();
@@ -95,6 +112,7 @@ impl ThumbnailService {
             requested: Mutex::new(HashSet::new()),
             warmed: Mutex::new(HashSet::new()),
             workers: handles,
+            catalogue_path,
         })
     }
 
@@ -128,6 +146,25 @@ impl ThumbnailService {
             .warm
             .push_back(id);
         self.shared.cv.notify_one();
+    }
+
+    /// Queues, as `warm` does, the photos that have no perceptual hash yet (D-105): a library from before hashes, or one
+    /// just rebuilt. Their thumbnails are read (or made) and hashed in the background, after whatever a person is
+    /// waiting for. Gives how many photos were queued.
+    pub fn warm_unhashed(&self) -> usize {
+        let Ok(catalogue) = Catalogue::open(&self.catalogue_path) else {
+            return 0;
+        };
+        let Ok(ids) = catalogue.unhashed(UNHASHED_AT_A_TIME) else {
+            return 0;
+        };
+        let count = ids.len();
+        for id in ids {
+            // (Asked for again even if it was warmed earlier in this session: a rebuild forgot its hash.)
+            self.warmed.lock().expect("not poisoned").remove(&id);
+            self.warm(id);
+        }
+        count
     }
 
     /// Every thumbnail a worker has finished since the last call, without blocking.
@@ -188,6 +225,7 @@ fn worker(
     workspace: Arc<Workspace>,
     catalogue_path: PathBuf,
     previews_path: PathBuf,
+    hashes: mpsc::Sender<Inbound>,
 ) {
     let (Ok(catalogue), Ok(previews)) = (
         Catalogue::open(&catalogue_path),
@@ -212,6 +250,9 @@ fn worker(
             }
         };
         let generated = generate(&catalogue, &previews, &workspace, id);
+        if let Some(thumbnail) = &generated {
+            hash_if_missing(&catalogue, &hashes, id, thumbnail);
+        }
         if !wanted {
             // Made ahead of time: it is in the database now, or it will be reported when asked for.
             continue;
@@ -221,6 +262,24 @@ fn worker(
             Some(thumbnail) => inbox.ready.push((id, thumbnail)),
             None => inbox.failed.push(id),
         }
+    }
+}
+
+/// Sends the perceptual hash of a photo's thumbnail when the catalogue has none for it yet.
+fn hash_if_missing(
+    catalogue: &Catalogue,
+    hashes: &mpsc::Sender<Inbound>,
+    id: PhotoId,
+    thumbnail: &Thumbnail,
+) {
+    if !matches!(catalogue.phash_of(&id), Ok(None)) {
+        return;
+    }
+    if let Some(phash) = auroraw_imaging::thumbnail_hash(thumbnail) {
+        let _ = hashes.send(Inbound::Hashed {
+            photo_id: id,
+            phash,
+        });
     }
 }
 

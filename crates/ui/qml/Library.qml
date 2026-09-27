@@ -32,6 +32,7 @@ FocusScope {
     property alias keywords: keywordList
     property alias viewer: viewer
     property alias compareView: compareView
+    property alias similarPanel: similarPanel
     property alias sizeSlider: sizeSlider
     property alias cellMenu: cellMenu
     property alias viewMenu: viewMenu
@@ -47,6 +48,13 @@ FocusScope {
         const remembered = launcher.intOption("thumbSize")
         if (remembered >= 96)
             thumbW = remembered
+    }
+    // The similar photos panel (D-105) is shown.
+    property bool similarShown: false
+    function showSimilar(shown) {
+        similarShown = shown
+        if (!shown)
+            grid.forceActiveFocus()
     }
     // Every series is shown open (the button of the filter bar says which way it goes next).
     property bool allOpen: false
@@ -672,6 +680,10 @@ FocusScope {
                             root.ungroup()
                         else
                             root.group()
+                    } else if (event.key === Qt.Key_M) {
+                        if (ctrlOrShift)
+                            return
+                        root.showSimilar(!root.similarShown)
                     } else if (event.key === Qt.Key_C || event.key === Qt.Key_K) {
                         if (ctrlOrShift)
                             return
@@ -1043,6 +1055,14 @@ FocusScope {
             }
         }
 
+        SimilarPanel {
+            id: similarPanel
+            visible: root.similarShown
+            library: root
+            photoGrid: root.photoGrid
+            launcher: root.launcher
+        }
+
         KeywordPanel {
             id: keywordPanel
             Layout.fillHeight: true
@@ -1084,6 +1104,7 @@ FocusScope {
         id: cellMenu
         MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; onTriggered: root.openView(-1) }
         MenuSeparator {}
+        MarkItem { text: qsTr("Similar photos"); keyHint: "M"; onTriggered: root.showSimilar(!root.similarShown) }
         MarkItem { text: qsTr("Open or close the series"); keyHint: "E"; onTriggered: root.toggleSeries(-1) }
         MarkItem { text: qsTr("Group as a series"); keyHint: "Ctrl+G"; enabled: root.canGroup; onTriggered: root.group() }
         MarkItem { text: qsTr("Take out of the series"); keyHint: "Ctrl+Shift+G"; enabled: root.canUngroup; onTriggered: root.ungroup() }

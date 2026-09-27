@@ -212,6 +212,14 @@ fn series_in_the_grid() {
     run_suite("series", home.path(), None);
 }
 
+/// Similar photos: the panel that suggests the photos that look alike, and groups or compares them.
+#[test]
+fn similar_photos_are_suggested_and_grouped() {
+    let home = temp_dir();
+    support::machine_with_similar(home.path(), 30);
+    run_suite("similar", home.path(), None);
+}
+
 /// Comparing frames: pages, marks, resolving from the comparison, linked zoom, the aids, the thumbnail size.
 #[test]
 fn comparing_frames_and_the_quality_aids() {

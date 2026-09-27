@@ -73,6 +73,12 @@ pub const COMMANDS: &[CommandSpec] = &[
         false,
     ),
     command("grid.mark", "Mark or unmark to keep", "K", false),
+    command(
+        "grid.similar",
+        "Show or hide the similar photos",
+        "M",
+        false,
+    ),
     command("view.zoom", "Fit, or 100 %", "Z", false),
     command("view.peaking", "Show or hide focus peaking", "S", false),
     command(

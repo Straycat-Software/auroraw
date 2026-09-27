@@ -38,6 +38,7 @@ The keys of the grid and of the image view apply to the selected photos, or to t
 | `Return` | Open in the image view |
 | `E` | Open or close the series under the cursor |
 | `K` | Mark the photo under the cursor to keep, or unmark it |
+| `M` | Show or hide the panel of photos similar to the one under the cursor |
 | `C` | Compare the selected photos (2 to 4), or the series under the cursor |
 | `R` | Resolve the series: keep the marked photos (else the selected ones), reject the others |
 | `Ctrl+G` | Group the selection as a series |

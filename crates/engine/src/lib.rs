@@ -27,6 +27,7 @@ pub mod paths;
 mod refresh;
 mod remove_job;
 mod series_detect;
+mod similar_api;
 mod sources_api;
 mod thumbnails;
 mod viewer;
@@ -50,6 +51,7 @@ pub use import_flow::{
 };
 pub use import_job::Registration;
 pub use job::JobId;
+pub use similar_api::{SimilarPhoto, SimilarQuery};
 pub use sources_api::{AddPlan, AddSourceRequest, AddedSource, SourceInfo, SourceKind};
 pub use thumbnails::ThumbnailService;
 pub use viewer::{DEFAULT_CAPACITY as PREVIEW_CACHE, PreviewService};
@@ -240,6 +242,7 @@ impl Engine {
             self.catalogue_path.clone(),
             previews_path.to_path_buf(),
             workers,
+            self.inbound.clone(),
         )
     }
 

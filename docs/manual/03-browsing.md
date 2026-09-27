@@ -60,7 +60,8 @@ photos that were left in place.
 ## The menu on a photo
 
 A right click on a photo opens a menu: open it in the [image view](04-culling.md), give it a colour (including
-purple, which has no key), pick, reject or clear its flag, and the series commands.
+purple, which has no key), pick, reject or clear its flag, show the [similar photos](05-series.md#similar-photos), and
+the series commands.
 
 ![The menu of a photo](images/grid-menu.png)
 

@@ -108,7 +108,11 @@ CREATE TABLE photo(
   -- matches `fingerprint`; "original missing" means no file matching this photo was found in its
   -- source at all. Cleared by the next reconcile that confirms or relinks the file.
   original_changed INTEGER NOT NULL DEFAULT 0,
-  original_missing INTEGER NOT NULL DEFAULT 0
+  original_missing INTEGER NOT NULL DEFAULT 0,
+  -- The 64-bit perceptual hash of the photo's thumbnail (the bits of a u64), for the similar-photo suggestions
+  -- (WP9, D-105). Added by schema 2. A cache of what the thumbnail shows: a rebuild leaves it unset and the
+  -- thumbnail workers make it again.
+  phash INTEGER
 );
 
 -- A reconcile looks a found file up by fingerprint (design note 004 §6.4) and a scan pages

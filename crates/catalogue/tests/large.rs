@@ -52,7 +52,7 @@ fn queries_at_scale() {
     let path = cat.path().unwrap().to_path_buf();
     drop(cat);
     let started = Instant::now();
-    let cat = auroraw_catalogue::Catalogue::open(&path).unwrap();
+    let mut cat = auroraw_catalogue::Catalogue::open(&path).unwrap();
     let open_ms = ms(started.elapsed());
 
     let count_all = time(&|| {
@@ -80,9 +80,36 @@ fn queries_at_scale() {
         cat.photo(&one_photo).unwrap();
     });
 
+    // The similar-photo suggestions (D-105): every photo gets a hash, then the set around one photo is read (the photos
+    // within 30 minutes, their hashes compared in memory with the reference's).
+    let mut state = 88_172_645_463_325_252u64;
+    let started = Instant::now();
+    for (photo, _) in &data.photos {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        cat.apply_phash(&photo.photo_id, state).unwrap();
+    }
+    let hashed_ms = ms(started.elapsed());
+    let unhashed = time(&|| {
+        cat.unhashed_count().unwrap();
+    });
+    let in_window = std::cell::Cell::new(0usize);
+    let similar = time(&|| {
+        let set = cat.similar_set(&one_photo, 30 * 60).unwrap().unwrap();
+        in_window.set(set.candidates.len());
+        let _near = set
+            .candidates
+            .iter()
+            .filter(|c| (c.phash ^ set.reference).count_ones() <= 10)
+            .count();
+    });
+
     println!(
         "{{\"photos\": {n}, \"generate_ms\": {generated:.0}, \"rebuild_ms\": {rebuilt:.0}, \"open_cold_ms\": {open_ms:.2}, \
          \"count_all_ms\": {count_all:.3}, \"page_first_ms\": {page_first:.3}, \"by_keyword_ms\": {by_keyword:.3}, \
-         \"by_rating_ms\": {by_rating:.3}, \"count_by_rating_ms\": {count_by_rating:.3}, \"search_ms\": {search:.3}, \"by_id_ms\": {by_id:.3}}}"
+         \"by_rating_ms\": {by_rating:.3}, \"count_by_rating_ms\": {count_by_rating:.3}, \"search_ms\": {search:.3}, \"by_id_ms\": {by_id:.3}, \
+         \"hash_all_writes_ms\": {hashed_ms:.0}, \"unhashed_count_ms\": {unhashed:.3}, \"similar_set_ms\": {similar:.3}, \"similar_window_photos\": {}}}",
+        in_window.get()
     );
 }

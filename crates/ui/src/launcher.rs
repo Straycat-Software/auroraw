@@ -90,7 +90,8 @@ pub mod qobject {
         #[cxx_name = "setViewOption"]
         fn set_view_option(self: &Launcher, name: &QString, on: bool);
 
-        /// A whole-number option: `thumbSize` (the grid's thumbnails, 96 to 256) or `comparePanes` (2 to 4).
+        /// A whole-number option: `thumbSize` (the grid's thumbnails, 96 to 256), `comparePanes` (2 to 4),
+        /// `similarDistance` (1 to 24 bits) or `similarMinutes` (1 to 10080).
         #[qinvokable]
         #[cxx_name = "intOption"]
         fn int_option(self: &Launcher, name: &QString) -> i32;
@@ -205,6 +206,8 @@ impl qobject::Launcher {
         let service = engine
             .start_thumbnails(&previews_path, 4)
             .expect("the previews database opens");
+        // The photos that have no perceptual hash yet (D-105) are hashed with their thumbnails, in the background.
+        service.warm_unhashed();
         // The gap the person chose applies to the series formed from now on.
         let _ = engine.submit(auroraw_engine::Command::SetSeriesGap {
             seconds: AppSettings::load(&self.settings_path()).series_gap,
@@ -424,6 +427,8 @@ impl qobject::Launcher {
         match name.to_string().as_str() {
             "thumbSize" => settings.thumb_size as i32,
             "comparePanes" => settings.compare_panes as i32,
+            "similarDistance" => settings.similar_distance as i32,
+            "similarMinutes" => settings.similar_minutes as i32,
             _ => 0,
         }
     }
@@ -437,6 +442,8 @@ impl qobject::Launcher {
         match name.to_string().as_str() {
             "thumbSize" => settings.thumb_size = value.clamp(96, 256) as u32,
             "comparePanes" => settings.compare_panes = value.clamp(2, 4) as u32,
+            "similarDistance" => settings.similar_distance = value.clamp(1, 24) as u32,
+            "similarMinutes" => settings.similar_minutes = value.clamp(1, 10_080) as u32,
             _ => return,
         }
         settings.save(&path);

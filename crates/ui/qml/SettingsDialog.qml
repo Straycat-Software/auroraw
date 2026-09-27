@@ -13,6 +13,8 @@ AppDialog {
     property alias languageButtons: languages
     property alias gapBox: gapBox
     property alias regroupButton: regroupButton
+    property alias similarDistanceBox: similarDistanceBox
+    property alias similarMinutesBox: similarMinutesBox
 
     contentItem: ColumnLayout {
         spacing: 10
@@ -67,6 +69,45 @@ AppDialog {
             ToolTip.visible: hovered
             ToolTip.text: qsTr("Forms the series that were made by themselves again with this gap. Series made by hand or resolved stay.")
             onClicked: dialog.launcher.regroupSeries()
+        }
+        Label {
+            text: qsTr("Similar photos")
+            font.bold: true
+            Layout.topMargin: 6
+        }
+        RowLayout {
+            spacing: 8
+            Label {
+                text: qsTr("Photos are similar when at most this many of the 64 bits of their pictures' fingerprints differ:")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            SpinBox {
+                id: similarDistanceBox
+                from: 1
+                to: 24
+                editable: true
+                value: dialog.launcher.intOption("similarDistance")
+                Accessible.name: qsTr("Similar photos: how many bits may differ")
+                onValueModified: dialog.launcher.setIntOption("similarDistance", value)
+            }
+        }
+        RowLayout {
+            spacing: 8
+            Label {
+                text: qsTr("...and they were taken at most this many minutes apart:")
+                wrapMode: Text.Wrap
+                Layout.fillWidth: true
+            }
+            SpinBox {
+                id: similarMinutesBox
+                from: 1
+                to: 10080
+                editable: true
+                value: dialog.launcher.intOption("similarMinutes")
+                Accessible.name: qsTr("Similar photos: how many minutes apart")
+                onValueModified: dialog.launcher.setIntOption("similarMinutes", value)
+            }
         }
     }
 

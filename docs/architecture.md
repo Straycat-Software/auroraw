@@ -278,6 +278,11 @@ reduced size where the decoder allows), otherwise from the RAW through the image
 regenerated when the original changes. Files remain the fallback if Windows shows the database
 performs badly.
 
+Each thumbnail also gives the photo's **perceptual hash** (D-105): the thumbnail workers hash the 256 px JPEG (a 64-bit
+dHash, 0.3 ms) when the catalogue has none and send it to the coordinator, which writes `photo.phash` (schema 2). It is a
+cache of what the thumbnail shows, never in a sidecar: a rebuild leaves it unset and the workers make it again. The
+similar-photo suggestions read it (`Engine::similar_photos`, read-only).
+
 The **image view** (D-100) has a second service beside the thumbnail one: `PreviewService` makes the picture
 of the photo on screen (the embedded preview or the file itself, upright, at most 4096 px on its long edge,
 JPEG at quality 90) and, ahead of the key presses, of the photos around it. The pictures live in memory

@@ -6,11 +6,11 @@ use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::{CatalogueError, Result};
 
-const SCHEMA_V1: &str = include_str!("schema.sql");
-const INDEXES_V1: &str = include_str!("indexes.sql");
+const SCHEMA: &str = include_str!("schema.sql");
+const INDEXES: &str = include_str!("indexes.sql");
 
 /// The schema version this crate reads and writes, written to `PRAGMA user_version`.
-pub const CURRENT_SCHEMA: u32 = 1;
+pub const CURRENT_SCHEMA: u32 = 2;
 
 /// An open catalogue.
 pub struct Catalogue {
@@ -77,15 +77,18 @@ impl Catalogue {
                 supported: CURRENT_SCHEMA,
             });
         }
-        // Schema 1 is the only one so far; a later version adds `if found < N { migrate... }`
-        // steps here, each in its own transaction, each raising `user_version` by one.
+        // Each later version adds an `if found < N { migrate... }` step here, in its own transaction,
+        // raising `user_version` by one.
+        if found < 2 {
+            cat.migrate_to_2()?;
+        }
         Ok(cat)
     }
 
     fn create_schema(&mut self, workspace_id: WorkspaceId) -> Result<()> {
         let tx = self.conn.transaction()?;
-        tx.execute_batch(SCHEMA_V1)?;
-        tx.execute_batch(INDEXES_V1)?;
+        tx.execute_batch(SCHEMA)?;
+        tx.execute_batch(INDEXES)?;
         tx.execute(
             "INSERT INTO meta(key, value) VALUES ('workspace_id', ?1)",
             [workspace_id.to_string()],
@@ -93,6 +96,30 @@ impl Catalogue {
         tx.pragma_update(None, "user_version", CURRENT_SCHEMA)?;
         tx.commit()?;
         Ok(())
+    }
+
+    /// Schema 2 (D-105): the photo's perceptual hash. Made under an immediate transaction that looks again at the version,
+    /// so that two connections opening a version 1 file at once do not both add the column.
+    fn migrate_to_2(&self) -> Result<()> {
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        let result = (|| -> Result<()> {
+            let found: u32 = self
+                .conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            if found < 2 {
+                self.conn
+                    .execute_batch("ALTER TABLE photo ADD COLUMN phash INTEGER")?;
+                self.conn.pragma_update(None, "user_version", 2)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(self.conn.execute_batch("COMMIT")?),
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
     }
 
     /// The path of the catalogue file, or `None` for an in-memory catalogue.

@@ -187,6 +187,10 @@ fn dispatch(event: Event, session: &Session) {
             });
         }
         Event::SeriesChanged => on_gui(|bus| bus.series_changed()),
+        // A rebuilt catalogue has no hashes: they are made again from the thumbnails (D-105).
+        Event::RebuildFinished { .. } => {
+            session.thumbs.service().warm_unhashed();
+        }
         Event::HistoryApplied { photos, .. } => {
             let ids: Vec<String> = photos.iter().map(ToString::to_string).collect();
             let ids = ids.join(",");

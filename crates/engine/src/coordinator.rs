@@ -132,6 +132,8 @@ pub(crate) enum Inbound {
         kept: usize,
         announce: bool,
     },
+    /// A thumbnail worker made the perceptual hash of a photo's thumbnail (D-105): record it.
+    Hashed { photo_id: PhotoId, phash: u64 },
     /// The last [`crate::Engine`] handle was dropped: cancel what runs in the background and stop.
     /// (The coordinator holds a sender to its own queue for the jobs it starts, so a closed queue
     /// never signals the end by itself.)
@@ -253,6 +255,10 @@ impl Coordinator {
                     if arrived {
                         let _ = self.detect_series(false);
                     }
+                }
+                Inbound::Hashed { photo_id, phash } => {
+                    // (A photo that has left since is not there: nothing to record.)
+                    let _ = self.catalogue.apply_phash(&photo_id, phash);
                 }
                 Inbound::Removed { photo_id } => {
                     // A photo that leaves a series shrinks it.

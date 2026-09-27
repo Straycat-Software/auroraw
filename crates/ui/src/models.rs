@@ -108,6 +108,23 @@ pub mod qobject {
         #[cxx_name = "seriesMembersOf"]
         fn series_members_of(self: &PhotoGrid, id: &QString) -> QString;
 
+        /// The photos that look like the photo `id` (D-105), nearest first, as `identifier:distance` pairs joined by
+        /// commas: those within `distance` bits of its hash (of 64) and `minutes` of its capture time, that the grid
+        /// lists under its filters. Empty until the photo is hashed.
+        #[qinvokable]
+        #[cxx_name = "similarTo"]
+        fn similar_to(self: &PhotoGrid, id: &QString, distance: i32, minutes: i32) -> QString;
+
+        /// How many photos have no perceptual hash yet (the suggestions are not complete while it is not 0).
+        #[qinvokable]
+        #[cxx_name = "similarPending"]
+        fn similar_pending(self: &PhotoGrid) -> i32;
+
+        /// Makes these photos (identifiers joined by commas) the selection.
+        #[qinvokable]
+        #[cxx_name = "selectIds"]
+        fn select_ids(self: Pin<&mut PhotoGrid>, ids: &QString);
+
         /// Marks a photo to keep (a draft, in memory: what `R` keeps when a series is resolved) or takes the mark
         /// off; whether it is marked now. `markSerial` changes with every mark, for what shows them.
         #[qinvokable]
@@ -1235,6 +1252,50 @@ impl qobject::PhotoGrid {
             .map(|i| i.id.to_string())
             .collect();
         QString::from(ids.join(",").as_str())
+    }
+
+    pub fn similar_to(&self, id: &QString, distance: i32, minutes: i32) -> QString {
+        let (Some(session), Ok(photo)) = (session::current(), PhotoId::from_str(&id.to_string()))
+        else {
+            return QString::default();
+        };
+        let query = auroraw_engine::SimilarQuery {
+            max_distance: distance.clamp(0, 64) as u32,
+            window_secs: i64::from(minutes.clamp(1, 10_080)) * 60,
+            limit: 200,
+        };
+        let found = session
+            .engine
+            .similar_photos(photo, query)
+            .unwrap_or_default();
+        // What the grid does not list (a filter hides it) is not offered; a photo a collapsed series hides is.
+        let listed = |id: &PhotoId| self.rows.contains_key(id) || self.hidden.contains_key(id);
+        let pairs: Vec<String> = found
+            .into_iter()
+            .filter(|p| listed(&p.id))
+            .take(24)
+            .map(|p| format!("{}:{}", p.id, p.distance))
+            .collect();
+        QString::from(pairs.join(",").as_str())
+    }
+
+    pub fn similar_pending(&self) -> i32 {
+        session::current()
+            .and_then(|session| session.engine.unhashed_count().ok())
+            .map_or(0, |count| count as i32)
+    }
+
+    pub fn select_ids(mut self: Pin<&mut Self>, ids: &QString) {
+        // A photo a collapsed series hides is selected as its row; one that is not listed is left out.
+        let mut rows: Vec<PhotoId> = Vec::new();
+        for id in Self::ids_from(ids) {
+            let row = self.hidden.get(&id).copied().unwrap_or(id);
+            if self.rows.contains_key(&row) && !rows.contains(&row) {
+                rows.push(row);
+            }
+        }
+        self.as_mut().rust_mut().selection.set(rows);
+        self.selection_changed();
     }
 
     pub fn is_marked(&self, id: &QString) -> bool {

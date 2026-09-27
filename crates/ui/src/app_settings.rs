@@ -37,6 +37,10 @@ pub struct AppSettings {
     pub thumb_size: u32,
     /// How many photos the comparison shows side by side (2 to 4).
     pub compare_panes: u32,
+    /// Photos are similar when at most this many of their hashes' 64 bits differ (D-105).
+    pub similar_distance: u32,
+    /// ...and were taken at most this many minutes apart.
+    pub similar_minutes: u32,
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
@@ -58,6 +62,8 @@ impl Default for AppSettings {
             show_histogram: false,
             thumb_size: 160,
             compare_panes: 2,
+            similar_distance: 10,
+            similar_minutes: 30,
         }
     }
 }
@@ -75,6 +81,8 @@ impl AppSettings {
                     .clamp(KEYWORD_PANEL_MIN, KEYWORD_PANEL_MAX);
                 settings.thumb_size = settings.thumb_size.clamp(96, 256);
                 settings.compare_panes = settings.compare_panes.clamp(2, 4);
+                settings.similar_distance = settings.similar_distance.clamp(1, 24);
+                settings.similar_minutes = settings.similar_minutes.clamp(1, 10_080);
                 settings
             })
             .unwrap_or_default()
@@ -135,6 +143,8 @@ mod tests {
             show_histogram: true,
             thumb_size: 200,
             compare_panes: 3,
+            similar_distance: 12,
+            similar_minutes: 45,
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);

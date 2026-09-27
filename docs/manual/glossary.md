@@ -33,6 +33,9 @@ red on burnt highlights and in blue on blocked shadows. Computed on the preview,
 **Sharpness.** A figure that says how much fine detail a frame holds; only meaningful to compare frames of one
 series (100 % is the sharpest).
 
+**Similar photos.** Photos that look alike and were taken close together in time, suggested by Auroraw from a
+64-bit fingerprint of each thumbnail; never grouped without your say.
+
 **Sidecar.** The small file in the workspace that holds what Auroraw knows about one photo (rating, flag, label,
 keywords, information from the original).
 

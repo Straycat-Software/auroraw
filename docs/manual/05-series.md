@@ -98,6 +98,29 @@ way round, a photo in no series has no Keep, Resolve, Take out or Reopen, and th
   selected.
 - Both are steps you can undo.
 
+## Similar photos
+
+Photos that look alike but were not taken in a burst (the same scene shot again a few minutes later) are not grouped
+for you: Auroraw only **suggests** them, and you decide. Press `M` (or **Similar photos** in the photo's menu) to show
+the **Similar photos** panel, on the left of the keywords: it lists the photos that look like the one under the cursor,
+nearest first, with how close each one is, and it follows the cursor.
+
+![The similar photos panel](images/similar.png)
+
+- A click on a suggestion goes to that photo in the grid.
+- **Group with this photo** makes one series of the photo and all the suggestions (`Ctrl+Z` undoes it). It is a series
+  made by hand, so it is never taken apart when the series are regrouped.
+- **Compare** opens the [comparison](#comparing-frames) of the photo with the three nearest.
+- Only photos the grid lists are offered (the filters apply), and never a photo of a resolved series.
+
+How it works: each photo's thumbnail is reduced to a **fingerprint of 64 bits** (whether each patch of the picture is
+brighter than the next). Two photos are similar when at most **10** of the 64 bits differ **and** they were taken at
+most **30 minutes** apart (the time limit is what keeps two like scenes of different days apart). Both limits are
+settings, in **File ▸ Settings…**. Fingerprints are made in the background as thumbnails are, so a library just opened
+fills in over a few minutes and the panel says *Analysing…* until it has them all; a photo with no capture time has
+none to compare. This is a hint, not a proof: a fine detail (a blink, a smile) is not what it compares, so look
+before you group.
+
 ## Filtering
 
 The **Series** menu in the filter bar lists all photos, only photos in a series, only those of **unresolved**

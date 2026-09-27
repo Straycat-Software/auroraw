@@ -27,6 +27,7 @@ mod rebuild;
 mod reconcile;
 mod registry;
 mod series;
+mod similar;
 mod write;
 
 pub mod dataset;
@@ -41,6 +42,7 @@ pub use rebuild::{RebuildInput, keyword_paths, rebuild_to_file};
 pub use reconcile::ReconcileReport;
 pub use registry::{Registry, RegistryEntry};
 pub use series::{SeriesCandidate, SeriesInfo};
+pub use similar::{SimilarCandidate, SimilarSet};
 
 /// A file's size and modification time, as the catalogue last saw them (design note 004 §6.2).
 /// Local to this machine: never written into the workspace. The caller (the workspace scan)
