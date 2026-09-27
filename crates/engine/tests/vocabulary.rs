@@ -23,6 +23,8 @@ struct Fixture {
     engine: Engine,
     events: EventReceiver,
     photos: Vec<PhotoId>,
+    /// Refresh jobs that ended while `undo_label` was draining the events (`wait_for_refreshes` counts them).
+    refreshes_ended: std::cell::Cell<usize>,
 }
 
 /// A workspace with `photos` photos and an empty vocabulary.
@@ -46,6 +48,7 @@ fn fixture(photos: usize) -> Fixture {
         engine,
         events,
         photos: photo_ids,
+        refreshes_ended: std::cell::Cell::new(0),
     }
 }
 
@@ -115,6 +118,11 @@ impl Fixture {
             .into_iter()
             .filter_map(|e| match e {
                 Event::HistoryChanged(state) => Some(state.undo),
+                // A quick job may be over already: it is not lost to the wait that follows.
+                Event::JobFinished(_) | Event::JobCancelled(_) => {
+                    self.refreshes_ended.set(self.refreshes_ended.get() + 1);
+                    None
+                }
                 _ => None,
             })
             .next_back()
@@ -124,7 +132,7 @@ impl Fixture {
     /// Waits until every path-refresh job asked for so far is over (the events it sends).
     fn wait_for_refreshes(&self, jobs: usize) {
         let deadline = Instant::now() + Duration::from_secs(30);
-        let mut seen = 0;
+        let mut seen = self.refreshes_ended.replace(0).min(jobs);
         while seen < jobs {
             match self.events.recv_timeout(Duration::from_millis(100)) {
                 Some(Event::JobFinished(_) | Event::JobCancelled(_)) => seen += 1,
