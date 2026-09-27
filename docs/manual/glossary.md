@@ -36,6 +36,9 @@ series (100 % is the sharpest).
 **Similar photos.** Photos that look alike and were taken close together in time, suggested by Auroraw from a
 64-bit fingerprint of each thumbnail; never grouped without your say.
 
+**Duplicate.** A photo Auroraw has found, and confirmed by its whole file, at more than one place; see
+[Duplicate photos](03-browsing.md#duplicate-photos). Never merged, deleted or chosen between by Auroraw itself.
+
 **Sidecar.** The small file in the workspace that holds what Auroraw knows about one photo (rating, flag, label,
 keywords, information from the original).
 

@@ -16,6 +16,7 @@
 
 mod command;
 mod coordinator;
+mod duplicates_api;
 mod error;
 mod event;
 mod history;
@@ -41,6 +42,7 @@ pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
 pub use auroraw_types::KeywordId;
 pub use command::Command;
 pub use coordinator::Outcome;
+pub use duplicates_api::{DuplicatePhoto, LocationRef};
 pub use error::{EngineError, Result};
 pub use event::Event;
 pub use history::{

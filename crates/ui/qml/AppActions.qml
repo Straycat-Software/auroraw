@@ -164,6 +164,13 @@ QtObject {
         enabled: root.host.gridActive
         onTriggered: root.host.focusKeywords()
     }
+    readonly property Action duplicates: Action {
+        property string commandId: "edit.duplicates"
+        text: qsTr("Duplicate photos…")
+        shortcut: "Ctrl+D"
+        enabled: root.host.inWorkspace && !root.host.dialogOpen
+        onTriggered: root.host.showDuplicates()
+    }
     readonly property Action invertSelection: Action {
         property string commandId: "edit.invert-selection"
         text: qsTr("Invert selection")

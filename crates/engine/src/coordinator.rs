@@ -63,6 +63,8 @@ pub enum Outcome {
         new: Vec<String>,
         /// How many found files were ambiguous.
         ambiguous: usize,
+        /// How many found files were confirmed second locations of an existing photo (D-036, D-108).
+        second_locations: usize,
     },
     /// `AddNewPhotos`'s new identifiers, in the order their paths were given.
     PhotosAdded(Vec<PhotoId>),
@@ -134,6 +136,17 @@ pub(crate) enum Inbound {
     },
     /// A thumbnail worker made the perceptual hash of a photo's thumbnail (D-105): record it.
     Hashed { photo_id: PhotoId, phash: u64 },
+    /// An index job confirmed (by whole-file hash) that a file it was about to add is really a second location of
+    /// an existing photo from a *different* source (D-036, D-108): its sidecar already carries the new `Location`
+    /// (written by the job, under the guard); record it in the catalogue too.
+    LocationAdded {
+        photo_id: PhotoId,
+        source_id: SourceId,
+        path: String,
+        filename: String,
+        fingerprint: auroraw_types::Fingerprint,
+        hash: ContentHash,
+    },
     /// The last [`crate::Engine`] handle was dropped: cancel what runs in the background and stop.
     /// (The coordinator holds a sender to its own queue for the jobs it starts, so a closed queue
     /// never signals the end by itself.)
@@ -259,6 +272,23 @@ impl Coordinator {
                 Inbound::Hashed { photo_id, phash } => {
                     // (A photo that has left since is not there: nothing to record.)
                     let _ = self.catalogue.apply_phash(&photo_id, phash);
+                }
+                Inbound::LocationAdded {
+                    photo_id,
+                    source_id,
+                    path,
+                    filename,
+                    fingerprint,
+                    hash,
+                } => {
+                    let _ = self.catalogue.insert_location(
+                        &photo_id,
+                        &source_id,
+                        &path,
+                        &filename,
+                        &fingerprint,
+                        &hash,
+                    );
                 }
                 Inbound::Removed { photo_id } => {
                     // A photo that leaves a series shrinks it.
@@ -1206,6 +1236,7 @@ impl Coordinator {
                 missing: 0,
                 new: Vec::new(),
                 ambiguous: 0,
+                second_locations: 0,
             });
             return Ok(Outcome::Scanned {
                 reachable: false,
@@ -1215,14 +1246,20 @@ impl Coordinator {
                 missing: 0,
                 new: Vec::new(),
                 ambiguous: 0,
+                second_locations: 0,
             });
         }
         let found: Vec<FoundFile> = source.scan()?;
-        let known: Vec<KnownFile> = self
-            .catalogue
-            .known_files_in_source(&source_id)?
+        let known_rows = self.catalogue.known_files_in_source(&source_id)?;
+        // Which of these known paths is the photo's *primary* location (D-108): the others (secondary locations,
+        // D-036) are the `location` table's, never the `photo` row's, and are handled differently below.
+        let is_primary: HashMap<String, bool> = known_rows
+            .iter()
+            .map(|(_, path, _, primary)| (path.clone(), *primary))
+            .collect();
+        let known: Vec<KnownFile> = known_rows
             .into_iter()
-            .map(|(photo_id, path, fingerprint)| KnownFile {
+            .map(|(photo_id, path, fingerprint, _)| KnownFile {
                 photo_id,
                 path,
                 fingerprint,
@@ -1230,42 +1267,96 @@ impl Coordinator {
             .collect();
         let outcomes = relink::reconcile(&found, &known);
 
-        let (mut confirmed, mut changed, mut relinked, mut missing, mut ambiguous) =
-            (0, 0, 0, 0, 0);
+        let (
+            mut confirmed,
+            mut changed,
+            mut relinked,
+            mut missing,
+            mut ambiguous,
+            mut second_locations,
+        ) = (0, 0, 0, 0, 0, 0);
         let mut new = Vec::new();
         for outcome in outcomes {
             match outcome {
+                // Always safe, never only for the primary path: `reconcile` reports a genuinely missing known
+                // path (if any) as a trailing `Missing` *after* every found-derived outcome of this same pass, so
+                // if the primary is truly unreachable this scan, its flags are correctly reasserted later below,
+                // regardless of what an unrelated secondary's `Confirmed` cleared here first.
                 ScanOutcome::Confirmed { photo_id } => {
                     self.catalogue.mark_original_changed(&photo_id, false)?;
                     self.catalogue.mark_missing(&photo_id, false)?;
                     confirmed += 1;
                 }
-                ScanOutcome::OriginalChanged { photo_id, .. } => {
-                    self.catalogue.mark_original_changed(&photo_id, true)?;
+                ScanOutcome::OriginalChanged { photo_id, path } => {
+                    if is_primary.get(&path).copied().unwrap_or(true) {
+                        self.catalogue.mark_original_changed(&photo_id, true)?;
+                    } else {
+                        // Not the same content any more: not a verified duplicate. Nothing on disk is touched.
+                        self.catalogue
+                            .remove_location(&photo_id, &source_id, &path)?;
+                    }
                     changed += 1;
                 }
-                ScanOutcome::Relinked { photo_id, to, .. } => {
+                ScanOutcome::Relinked { photo_id, from, to } => {
                     let filename = to.rsplit('/').next().unwrap_or(&to).to_string();
                     let fingerprint = found
                         .iter()
                         .find(|f| f.path == to)
                         .map(|f| f.fingerprint)
                         .expect("the relink target was just found");
-                    self.catalogue.apply_relink(
-                        &photo_id,
-                        &source_id,
-                        &to,
-                        &filename,
-                        &fingerprint,
-                    )?;
+                    if is_primary.get(&from).copied().unwrap_or(true) {
+                        self.catalogue.apply_relink(
+                            &photo_id,
+                            &source_id,
+                            &to,
+                            &filename,
+                            &fingerprint,
+                        )?;
+                    } else {
+                        // A secondary location moved or was renamed within its source: follow it in `location`,
+                        // never touch the photo's own row.
+                        self.catalogue
+                            .remove_location(&photo_id, &source_id, &from)?;
+                        if let Some(hash) = self.catalogue.photo_hash(&photo_id)? {
+                            self.catalogue.insert_location(
+                                &photo_id,
+                                &source_id,
+                                &to,
+                                &filename,
+                                &fingerprint,
+                                &hash,
+                            )?;
+                        }
+                    }
                     relinked += 1;
                 }
-                ScanOutcome::Missing { photo_id, .. } => {
-                    self.catalogue.mark_missing(&photo_id, true)?;
+                ScanOutcome::Missing { photo_id, path } => {
+                    if is_primary.get(&path).copied().unwrap_or(true) {
+                        self.catalogue.mark_missing(&photo_id, true)?;
+                    } else {
+                        // The copy is simply gone: nothing to report about it any more (nothing was deleted by
+                        // Auroraw; this only prunes Auroraw's own record of where a copy had been seen).
+                        self.catalogue
+                            .remove_location(&photo_id, &source_id, &path)?;
+                    }
                     missing += 1;
                 }
                 ScanOutcome::New { path } => new.push(path),
                 ScanOutcome::Ambiguous { .. } => ambiguous += 1,
+                ScanOutcome::SecondLocation { photo_id, path } => {
+                    let fingerprint = found
+                        .iter()
+                        .find(|f| f.path == path)
+                        .map(|f| f.fingerprint)
+                        .expect("the second-location path was just found");
+                    if self.confirm_second_location(photo_id, source_id, &path, fingerprint)? {
+                        second_locations += 1;
+                    } else {
+                        // The sampled fingerprint collided: not actually the same file (D-108's own residual
+                        // risk, confirmed away). It is simply a new, unrelated photo.
+                        new.push(path);
+                    }
+                }
             }
         }
         let _ = self.events.send(Event::SourceScanned {
@@ -1277,6 +1368,7 @@ impl Coordinator {
             missing,
             new: new.clone(),
             ambiguous,
+            second_locations,
         });
         Ok(Outcome::Scanned {
             reachable: true,
@@ -1286,7 +1378,125 @@ impl Coordinator {
             missing,
             new,
             ambiguous,
+            second_locations,
         })
+    }
+
+    /// A found file's fingerprint matched exactly one existing photo, whose old location is also still present
+    /// (D-036, D-108): before recording anything, confirm with the **whole-file hash** of both copies (a sampled
+    /// fingerprint alone is not proof enough to invite someone to go delete a file over it, design note 004's own
+    /// residual-risk table). `true` when confirmed and recorded (the sidecar and the catalogue both); `false` on a
+    /// hash mismatch (an astronomically unlikely collision: not the same file after all) or if either file could
+    /// not be read (nothing recorded either way, silently — the next scan tries again).
+    fn confirm_second_location(
+        &mut self,
+        photo_id: PhotoId,
+        source_id: SourceId,
+        path: &str,
+        fingerprint: auroraw_types::Fingerprint,
+    ) -> Result<bool> {
+        let Some(root) = crate::thumbnails::source_root(&self.workspace, source_id) else {
+            return Ok(false);
+        };
+        let Ok(bytes) = std::fs::read(root.join(path.replace('/', std::path::MAIN_SEPARATOR_STR)))
+        else {
+            return Ok(false);
+        };
+        let Ok((_, found_hash)) =
+            auroraw_format::fingerprint::content_hash(&mut std::io::Cursor::new(&bytes))
+        else {
+            return Ok(false);
+        };
+        let primary_hash = match self.catalogue.photo_hash(&photo_id)? {
+            Some(hash) => hash,
+            None => {
+                let Some(row) = self.catalogue.photo(&photo_id)? else {
+                    return Ok(false);
+                };
+                let (Some(primary_source), Some(primary_path)) = (row.source_id, row.path) else {
+                    return Ok(false);
+                };
+                let Some(primary_root) =
+                    crate::thumbnails::source_root(&self.workspace, primary_source)
+                else {
+                    return Ok(false);
+                };
+                let Ok(primary_bytes) = std::fs::read(
+                    primary_root.join(primary_path.replace('/', std::path::MAIN_SEPARATOR_STR)),
+                ) else {
+                    return Ok(false);
+                };
+                let Ok((_, hash)) = auroraw_format::fingerprint::content_hash(
+                    &mut std::io::Cursor::new(&primary_bytes),
+                ) else {
+                    return Ok(false);
+                };
+                self.catalogue.apply_hash(&photo_id, &hash)?;
+                hash
+            }
+        };
+        if primary_hash != found_hash {
+            return Ok(false);
+        }
+        let filename = path.rsplit('/').next().unwrap_or(path).to_string();
+        let _guard = self.workspace.sidecar_guard();
+        let Some(mut photo) = self
+            .workspace
+            .read_photo(&photo_id)
+            .ok()
+            .flatten()
+            .and_then(|loaded| loaded.current())
+        else {
+            return Ok(false);
+        };
+        for file in &mut photo.files {
+            if file.fingerprint == fingerprint {
+                file.hash.get_or_insert(found_hash);
+                if !file
+                    .locations
+                    .iter()
+                    .any(|l| l.source == source_id && l.path == path)
+                {
+                    file.locations.push(Location {
+                        source: source_id,
+                        path: path.to_string(),
+                        seen: Some(Timestamp::now()),
+                        extra: Vec::new(),
+                    });
+                }
+            }
+        }
+        if self.workspace.write_photo(&photo).is_err() {
+            return Ok(false);
+        }
+        self.catalogue.insert_location(
+            &photo_id,
+            &source_id,
+            path,
+            &filename,
+            &fingerprint,
+            &found_hash,
+        )?;
+        Ok(true)
+    }
+
+    /// A file about to be confirmed as a new photo (`AddNewPhotos`) whose fingerprint already matches an existing
+    /// one, from any source (D-036, D-108): `find_by_fingerprint` is not source-scoped, unlike `scan_source`'s own
+    /// check. Confirmed the same way, by a whole-file hash. `Some(photo_id)` when joined (nothing new is added for
+    /// this path); `None` on no candidate or no confirmed match, in which case it becomes its own new photo as
+    /// usual.
+    fn try_join_new_file(
+        &mut self,
+        source_id: SourceId,
+        path: &str,
+        fingerprint: auroraw_types::Fingerprint,
+    ) -> Result<Option<PhotoId>> {
+        for candidate in self.catalogue.find_by_fingerprint(&fingerprint)? {
+            if self.confirm_second_location(candidate.photo_id, source_id, path, fingerprint)? {
+                return Ok(Some(candidate.photo_id));
+            }
+        }
+        Ok(None)
     }
 
     fn add_new_photos(&mut self, source_id: SourceId, paths: Vec<String>) -> Result<Outcome> {
@@ -1295,6 +1505,12 @@ impl Coordinator {
         let mut added = Vec::new();
         for path in paths {
             let fingerprint = source.fingerprint_of(&path)?;
+            if self
+                .try_join_new_file(source_id, &path, fingerprint)?
+                .is_some()
+            {
+                continue;
+            }
             let stat = source.stat(&path)?;
             let filename = path.rsplit('/').next().unwrap_or(&path).to_string();
             let photo_id = PhotoId::random();

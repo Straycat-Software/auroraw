@@ -112,3 +112,71 @@ fn a_folder_is_added_edited_outside_and_survives_unplug_and_replug() {
         "the photo survived the whole scenario: {out}"
     );
 }
+
+/// The m1-plan's own "two locations" scenario (D-036, D-108): the same working folder added a second time (as its
+/// backup), through the CLI's manual `source add`/`scan`/`add-new` flow — a different path than `Engine::add_source`'s
+/// convenience (the one `crates/engine/tests/duplicates.rs` exercises), so both are covered.
+#[test]
+fn adding_the_same_folder_a_second_time_as_a_backup_makes_one_photo_with_two_locations() {
+    let dir = temp_dir();
+    let workspace = dir.path().join("Main");
+    let catalogue = dir.path().join("main.sqlite");
+    let ws = workspace.to_str().unwrap();
+    let cat = catalogue.to_str().unwrap();
+    ok(&cli(&["create", ws, cat, "Main"]));
+
+    let working = dir.path().join("Working");
+    fs::create_dir_all(&working).unwrap();
+    fs::write(
+        working.join("a.jpg"),
+        b"the same photo's bytes, byte for byte",
+    )
+    .unwrap();
+
+    let out = ok(&cli(&[
+        "source",
+        "add",
+        ws,
+        cat,
+        working.to_str().unwrap(),
+        "Working",
+    ]));
+    let source_id = out.split_whitespace().nth(2).unwrap().to_string();
+    ok(&cli(&["source", "scan", ws, cat, &source_id]));
+    let out = ok(&cli(&["source", "add-new", ws, cat, &source_id, "--all"]));
+    assert!(out.contains("1/1 added"), "{out}");
+
+    let backup = dir.path().join("Backup");
+    fs::create_dir_all(&backup).unwrap();
+    fs::write(
+        backup.join("a_copy.jpg"),
+        b"the same photo's bytes, byte for byte",
+    )
+    .unwrap();
+
+    let out = ok(&cli(&[
+        "source",
+        "add",
+        ws,
+        cat,
+        backup.to_str().unwrap(),
+        "Backup disk",
+    ]));
+    let backup_id = out.split_whitespace().nth(2).unwrap().to_string();
+    let out = ok(&cli(&["source", "scan", ws, cat, &backup_id]));
+    assert!(out.contains("new: a_copy.jpg"), "{out}");
+    let out = ok(&cli(&["source", "add-new", ws, cat, &backup_id, "--all"]));
+    assert!(
+        out.contains("0/1 added"),
+        "joined to the existing photo, not added as a new one: {out}"
+    );
+
+    let out = ok(&cli(&["list", ws, cat]));
+    assert_eq!(out.lines().last().unwrap(), "1 photo(s)", "{out}");
+
+    let out = ok(&cli(&["duplicates", ws, cat]));
+    assert!(out.contains("a.jpg"), "{out}");
+    assert!(out.contains("Working — a.jpg"), "{out}");
+    assert!(out.contains("Backup disk — a_copy.jpg"), "{out}");
+    assert_eq!(out.lines().last().unwrap(), "1 duplicate photo(s)", "{out}");
+}

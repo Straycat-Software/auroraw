@@ -106,6 +106,9 @@ pub enum Event {
         new: Vec<String>,
         /// How many found files were ambiguous (ambiguity is never resolved automatically).
         ambiguous: usize,
+        /// How many found files were confirmed (whole-file hash) second locations of an existing photo (D-036,
+        /// D-108): the exact duplicates report.
+        second_locations: usize,
     },
     /// Confirmed new files became photos.
     PhotosAdded {
@@ -158,6 +161,9 @@ pub enum Event {
         known: usize,
         /// Files that could not be read.
         failed: usize,
+        /// Files that turned out to be a confirmed second location of an existing photo, from a *different* source
+        /// (D-036, D-108): joined to it instead of becoming a new photo.
+        second_locations: usize,
     },
     /// An index job could not run at all (the source is not reachable, or cannot be listed).
     IndexAborted {

@@ -220,6 +220,14 @@ fn similar_photos_are_suggested_and_grouped() {
     run_suite("similar", home.path(), None);
 }
 
+/// The duplicates report: a photo found at two locations, listed with both, "Show in file manager" per location.
+#[test]
+fn exact_duplicates_are_reported_with_every_location() {
+    let home = temp_dir();
+    support::machine_with_duplicate(home.path(), 20);
+    run_suite("duplicates", home.path(), None);
+}
+
 /// Comparing frames: pages, marks, resolving from the comparison, linked zoom, the aids, the thumbnail size.
 #[test]
 fn comparing_frames_and_the_quality_aids() {

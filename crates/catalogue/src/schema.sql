@@ -126,6 +126,22 @@ CREATE INDEX idx_photo_source ON photo(source_id);
 -- fingerprint index rather than added later against a populated column).
 CREATE INDEX idx_photo_hash ON photo(hash);
 
+-- A photo's secondary locations (D-108, WP9, D-036's "one photo, several locations"): `photo`'s own
+-- source_id/path stay the primary location, unchanged everywhere else; a location here is confirmed by a
+-- whole-file hash match before it is added (a sampled fingerprint alone is not proof enough to invite
+-- someone to go delete a file over it).
+CREATE TABLE location(
+  photo_id TEXT NOT NULL REFERENCES photo(id),
+  source_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  seen INTEGER,
+  PRIMARY KEY(photo_id, source_id, path)
+) WITHOUT ROWID;
+CREATE INDEX location_source ON location(source_id);
+
 CREATE TABLE version(
   id TEXT PRIMARY KEY,
   photo_id TEXT NOT NULL REFERENCES photo(id),

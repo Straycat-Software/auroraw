@@ -242,6 +242,29 @@ pub(crate) fn insert_photo(
         "INSERT INTO photo_fts(rowid, filename, caption, title, keywords) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![rowid, original_file.map(|f| f.name.as_str()).unwrap_or_default(), photo.meta.caption, photo.meta.title, keyword_names],
     )?;
+    // The original file's other locations, if it has any (D-108, exact duplicates): only once its whole-file hash is
+    // known, so that only a confirmed duplicate is indexed here, never a location added to the sidecar some other
+    // way, unconfirmed. `insert_photo` runs both for a fresh photo and for a rebuild, so this is the one place that
+    // needs to preserve them.
+    if let Some(file) = original_file
+        && let Some(hash) = &file.hash
+    {
+        for location in file.locations.iter().skip(1) {
+            tx.execute(
+                "INSERT OR IGNORE INTO location(photo_id, source_id, path, filename, fingerprint, hash, seen)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![
+                    photo.photo_id.to_string(),
+                    location.source.to_string(),
+                    location.path,
+                    file.name,
+                    file.fingerprint.to_string(),
+                    hash.to_string(),
+                    location.seen.map(|t| t.unix()),
+                ],
+            )?;
+        }
+    }
     Ok(())
 }
 

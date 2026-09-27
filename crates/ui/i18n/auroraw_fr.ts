@@ -335,11 +335,16 @@
     </message>
     <message>
         <location filename="../qml/AppActions.qml" line="169"/>
+        <source>Duplicate photos…</source>
+        <translation>Photos en double&#xa0;…</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="176"/>
         <source>Invert selection</source>
         <translation>Inverser la sélection</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="177"/>
+        <location filename="../qml/AppActions.qml" line="184"/>
         <source>About Auroraw</source>
         <translation>À propos d&apos;Auroraw</translation>
     </message>
@@ -357,7 +362,7 @@
         <translation>&amp;Édition</translation>
     </message>
     <message>
-        <location filename="../qml/AppMenu.qml" line="54"/>
+        <location filename="../qml/AppMenu.qml" line="56"/>
         <source>&amp;Help</source>
         <translation>&amp;Aide</translation>
     </message>
@@ -626,6 +631,37 @@
         <location filename="../qml/ComparePane.qml" line="252"/>
         <source>Mark this photo to keep (K)</source>
         <translation>Marquer cette photo à garder (K)</translation>
+    </message>
+</context>
+<context>
+    <name>DuplicatesDialog</name>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="16"/>
+        <source>Duplicate photos</source>
+        <translation>Photos en double</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/DuplicatesDialog.qml" line="30"/>
+        <source>%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</source>
+        <translation>
+            <numerusform>%n photo trouvée à plus d&apos;un endroit. Auroraw ne supprime jamais rien lui-même&#xa0;: utilisez «&#xa0;Montrer dans le gestionnaire de fichiers&#xa0;» pour aller y faire le ménage.</numerusform>
+            <numerusform>%n photos trouvées à plus d&apos;un endroit. Auroraw ne supprime jamais rien lui-même&#xa0;: utilisez «&#xa0;Montrer dans le gestionnaire de fichiers&#xa0;» pour aller y faire le ménage.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="31"/>
+        <source>No duplicate photo found.</source>
+        <translation>Aucune photo en double trouvée.</translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="82"/>
+        <source>Show in file manager</source>
+        <translation>Montrer dans le gestionnaire de fichiers</translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="96"/>
+        <source>Close</source>
+        <translation>Fermer</translation>
     </message>
 </context>
 <context>
@@ -1286,42 +1322,42 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="145"/>
+        <location filename="../qml/Main.qml" line="147"/>
         <source>Cannot open the workspace: %1</source>
         <translation>Impossible d&apos;ouvrir le workspace : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="256"/>
+        <location filename="../qml/Main.qml" line="258"/>
         <source>Menu</source>
         <translation>Menu</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="271"/>
+        <location filename="../qml/Main.qml" line="273"/>
         <source>Catalogue</source>
         <translation>Catalogue</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="277"/>
+        <location filename="../qml/Main.qml" line="279"/>
         <source>Cull</source>
         <translation>Trier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="282"/>
+        <location filename="../qml/Main.qml" line="284"/>
         <source>Develop</source>
         <translation>Développer</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="283"/>
+        <location filename="../qml/Main.qml" line="285"/>
         <source>Publish</source>
         <translation>Publier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="371"/>
+        <location filename="../qml/Main.qml" line="375"/>
         <source>Choose a folder in the folder dialog…</source>
         <translation>Choisissez un dossier dans la fenêtre de sélection…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="382"/>
+        <location filename="../qml/Main.qml" line="386"/>
         <source>Open a workspace</source>
         <translation>Ouvrir un workspace</translation>
     </message>

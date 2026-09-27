@@ -455,7 +455,10 @@ fn a_rename_refresh_and_a_source_removal_together_leave_no_sidecar_behind() {
     let folder = dir.path().join("Trip");
     std::fs::create_dir_all(&folder).unwrap();
     for i in 0..40u8 {
-        let img = ImageBuffer::from_fn(16, 12, |x, y| Rgb([(x as u8) ^ i, y as u8, i]));
+        // A pattern that never collides after JPEG's lossy quantization, unlike a plainer one tried here once
+        // (two of forty ended up bit-identical files, wrongly joined as one photo once this test's job-wide
+        // duplicate check, D-108, could see across the whole catalogue rather than only within its own batch).
+        let img = ImageBuffer::from_fn(32, 24, |x, y| Rgb([(x * 8) as u8 ^ i, (y * 9) as u8, i]));
         DynamicImage::ImageRgb8(img)
             .save_with_format(folder.join(format!("p{i}.jpg")), ImageFormat::Jpeg)
             .unwrap();

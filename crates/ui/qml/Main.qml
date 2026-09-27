@@ -55,6 +55,7 @@ ApplicationWindow {
     property alias newDialog: newDialog
     property alias settingsDialog: settingsDialog
     property alias aboutDialog: aboutDialog
+    property alias duplicatesDialog: duplicatesDialog
     property alias openDialog: openDialog
     property alias importDialog: importDialog
     property alias cardBanner: cardBanner
@@ -98,7 +99,7 @@ ApplicationWindow {
     readonly property bool nativeDialogOpen: nativeDialogForced || openDialog.visible || catalogueFlow.browsing || newDialog.browsing
                                             || importDialog.browsing || libraryView.exportDialog.visible
     readonly property bool dialogOpen: newDialog.visible || settingsDialog.visible || importDialog.visible || libraryView.dialogOpen
-                                       || aboutDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
+                                       || aboutDialog.visible || duplicatesDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
     readonly property bool inWorkspace: launcher.screen === "workspace"
     // The grid is what the person is looking at and can act on: the selection commands mean something.
     readonly property bool gridActive: inWorkspace && currentTask === "cull" && !dialogOpen && photoGrid.count > 0
@@ -119,6 +120,7 @@ ApplicationWindow {
     function openWorkspace() { openDialog.pick() }
     function showSettings() { settingsDialog.open() }
     function showAbout() { aboutDialog.open() }
+    function showDuplicates() { duplicatesDialog.open() }
     // Ctrl+K: the keyboard goes to the keyword field.
     function focusKeywords() { libraryView.focusKeywords() }
     // The grid's selection commands (`all`, `none`, `invert`).
@@ -353,6 +355,8 @@ ApplicationWindow {
         hostWindow: window
     }
     AboutDialog { id: aboutDialog; launcher: launcher }
+    DuplicatesDialog { id: duplicatesDialog; duplicates: duplicates }
+    Duplicates { id: duplicates }
 
     Popup {
         id: waiting

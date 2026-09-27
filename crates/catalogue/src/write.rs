@@ -178,8 +178,13 @@ impl Catalogue {
     }
 
     /// Takes a source out of the catalogue's list. Its photos are the caller's business (remove
-    /// them first, or move them, as the sources' owner decides).
+    /// them first, or move them, as the sources' owner decides). Also drops any secondary
+    /// location this source held (D-108): nothing should outlive the source it names.
     pub fn remove_source(&mut self, source_id: &SourceId) -> Result<()> {
+        self.conn.execute(
+            "DELETE FROM location WHERE source_id = ?1",
+            [source_id.to_string()],
+        )?;
         self.conn
             .execute("DELETE FROM source WHERE id = ?1", [source_id.to_string()])?;
         Ok(())
@@ -187,7 +192,10 @@ impl Catalogue {
 
     /// Updates an existing photo's file location after a reconcile relinks it (design note 004
     /// §6.4): the file moved or was renamed within its source, silently, since the match was
-    /// unique. Nothing about the photo's metadata changes.
+    /// unique. Nothing about the photo's metadata changes. Also drops any secondary location
+    /// (D-108) that now matches these same values: a location cannot be primary and also listed
+    /// as a secondary of the same photo (this covers a source removal promoting the photo's
+    /// remaining secondary location to primary, `remove_source`'s own caller in `engine`).
     pub fn apply_relink(
         &mut self,
         photo_id: &PhotoId,
@@ -214,6 +222,10 @@ impl Catalogue {
                 id: photo_id.to_string(),
             });
         }
+        self.conn.execute(
+            "DELETE FROM location WHERE photo_id = ?1 AND source_id = ?2 AND path = ?3",
+            params![photo_id.to_string(), source_id.to_string(), path],
+        )?;
         Ok(())
     }
 
@@ -524,7 +536,7 @@ mod tests {
         assert!(!row.original_missing);
 
         let known = cat.known_files_in_source(&source_id).unwrap();
-        assert_eq!(known, vec![(photo.photo_id, "a.jpg".to_string(), fp)]);
+        assert_eq!(known, vec![(photo.photo_id, "a.jpg".to_string(), fp, true)]);
     }
 
     #[test]

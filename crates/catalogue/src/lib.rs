@@ -20,6 +20,7 @@
 
 mod effective;
 mod error;
+mod location;
 mod open;
 mod populate;
 mod query;
@@ -34,9 +35,11 @@ pub mod dataset;
 
 pub use effective::{effective_flag, effective_rating};
 pub use error::CatalogueError;
+pub use location::{DuplicatePhoto, LocationRef};
 pub use open::{CURRENT_SCHEMA, Catalogue};
 pub use query::{
-    Cursor, Filter, FlagFilter, KeywordRow, PhotoRow, SeriesFilter, SourceCounts, SourceRow,
+    Cursor, Filter, FingerprintCandidate, FlagFilter, KeywordRow, PhotoRow, SeriesFilter,
+    SourceCounts, SourceRow,
 };
 pub use rebuild::{RebuildInput, keyword_paths, rebuild_to_file};
 pub use reconcile::ReconcileReport;

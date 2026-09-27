@@ -10,7 +10,7 @@ const SCHEMA: &str = include_str!("schema.sql");
 const INDEXES: &str = include_str!("indexes.sql");
 
 /// The schema version this crate reads and writes, written to `PRAGMA user_version`.
-pub const CURRENT_SCHEMA: u32 = 2;
+pub const CURRENT_SCHEMA: u32 = 3;
 
 /// An open catalogue.
 pub struct Catalogue {
@@ -82,6 +82,9 @@ impl Catalogue {
         if found < 2 {
             cat.migrate_to_2()?;
         }
+        if found < 3 {
+            cat.migrate_to_3()?;
+        }
         Ok(cat)
     }
 
@@ -110,6 +113,42 @@ impl Catalogue {
                 self.conn
                     .execute_batch("ALTER TABLE photo ADD COLUMN phash INTEGER")?;
                 self.conn.pragma_update(None, "user_version", 2)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(self.conn.execute_batch("COMMIT")?),
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
+
+    /// Schema 3 (D-108): a photo's secondary locations (D-036, exact duplicates), one row a location. Made under an
+    /// immediate transaction that looks again at the version, so that two connections opening an older file at once
+    /// do not both create the table.
+    fn migrate_to_3(&self) -> Result<()> {
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        let result = (|| -> Result<()> {
+            let found: u32 = self
+                .conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            if found < 3 {
+                self.conn.execute_batch(
+                    "CREATE TABLE location(
+                       photo_id TEXT NOT NULL REFERENCES photo(id),
+                       source_id TEXT NOT NULL,
+                       path TEXT NOT NULL,
+                       filename TEXT NOT NULL,
+                       fingerprint TEXT NOT NULL,
+                       hash TEXT NOT NULL,
+                       seen INTEGER,
+                       PRIMARY KEY(photo_id, source_id, path)
+                     ) WITHOUT ROWID;
+                     CREATE INDEX location_source ON location(source_id);",
+                )?;
+                self.conn.pragma_update(None, "user_version", 3)?;
             }
             Ok(())
         })();

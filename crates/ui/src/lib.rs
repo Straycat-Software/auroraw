@@ -13,6 +13,8 @@ mod bus;
 #[cfg(test)]
 mod commands;
 #[allow(unsafe_code)]
+mod duplicates;
+#[allow(unsafe_code)]
 mod files;
 #[allow(unsafe_code)]
 mod folders;

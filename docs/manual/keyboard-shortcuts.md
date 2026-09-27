@@ -19,6 +19,7 @@ The keys of the grid and of the image view apply to the selected photos, or to t
 | `Ctrl+Shift+A` | Select none |
 | `Ctrl+Shift+I` | Invert the selection |
 | `Ctrl+K` | Go to the keyword field |
+| `Ctrl+D` | Duplicate photos… |
 | `Ctrl+X`, `Ctrl+C`, `Ctrl+V`, `Del` | Cut, copy, paste and delete in a text field |
 
 `Alt` with a section's underlined letter (File, Edit, Help) opens that menu.

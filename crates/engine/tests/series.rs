@@ -432,13 +432,12 @@ fn a_series_shrinks_when_photos_leave_with_their_source_and_goes_with_the_last()
     )
     .unwrap();
     let mut sources = Vec::new();
-    for (name, count) in [("A", 3u8), ("B", 2u8)] {
+    for (base, (name, count)) in [("A", 3u8), ("B", 2u8)].into_iter().enumerate() {
         let folder = dir.path().join(name);
         for i in 0..count {
-            jpeg(
-                &folder.join(format!("{name}{i}.jpg")),
-                i + name.as_bytes()[0],
-            );
+            // Well apart from the other source's own seeds: two sources' files must not collide by content, or a
+            // scan now (rightly) treats them as the same photo at two locations (D-108) instead of two photos.
+            jpeg(&folder.join(format!("{name}{i}.jpg")), i + base as u8 * 50);
         }
         let added = engine
             .add_source(AddSourceRequest {

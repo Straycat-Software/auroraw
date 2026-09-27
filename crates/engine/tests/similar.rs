@@ -29,8 +29,12 @@ const PHOTOS: [(&str, u32, u8, u32); 7] = [
     ("p2.jpg", 1, 20, 20), // and again
     ("p3.jpg", 2, 0, 5),   // another scene, in between
     ("p4.jpg", 3, 0, 15),  // another scene
-    ("p5.jpg", 1, 0, 200), // the same scene, hours later
-    ("p6.jpg", 1, 5, 12),  // the same scene, in a resolved series
+    // The same scene, hours later: a lift of 1, not 0, so its file is not byte-identical to p0's (D-108 would
+    // otherwise join it to p0 as a confirmed duplicate instead of adding it as its own photo) — a shift this small
+    // moves no pixel far enough to change any of the dHash's neighbour comparisons, so its hash still matches p0's
+    // exactly, which is what this fixture needs.
+    ("p5.jpg", 1, 1, 200),
+    ("p6.jpg", 1, 5, 12), // the same scene, in a resolved series
 ];
 
 struct Library {

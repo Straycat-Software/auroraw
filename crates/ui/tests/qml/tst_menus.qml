@@ -40,7 +40,7 @@ AppTestCase {
         // New and Open, then Import, then Settings, then Quit.
         compare(kinds(file), ["New workspace…", "Open workspace…", "-", "Import…", "-", "Settings…", "-", "Quit"])
         // History, then the clipboard, then Select all.
-        compare(kinds(edit), ["Undo", "Redo", "-", "Cut", "Copy", "Paste", "Delete", "-", "Select all", "Select none", "Invert selection", "-", "Keywords"])
+        compare(kinds(edit), ["Undo", "Redo", "-", "Cut", "Copy", "Paste", "Delete", "-", "Select all", "Select none", "Invert selection", "-", "Keywords", "-", "Duplicate photos…"])
     }
 
     function test_every_command_shows_its_shortcut_the_way_the_platform_writes_it() {

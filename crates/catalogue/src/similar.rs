@@ -254,7 +254,7 @@ mod tests {
         {
             let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
             cat.conn
-                .execute_batch("ALTER TABLE photo DROP COLUMN phash")
+                .execute_batch("ALTER TABLE photo DROP COLUMN phash; DROP TABLE location;")
                 .unwrap();
             cat.conn.pragma_update(None, "user_version", 1).unwrap();
             insert(&cat, PhotoId::random(), 5, None);
@@ -264,7 +264,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(version, 2);
+        assert_eq!(version, 3);
         assert_eq!(
             cat.unhashed_count().unwrap(),
             1,

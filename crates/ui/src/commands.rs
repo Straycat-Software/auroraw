@@ -133,6 +133,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     command("edit.paste", "Paste", "Ctrl+V", true),
     command("edit.select-all", "Select all", "Ctrl+A", true),
     command("edit.keywords", "Keywords", "Ctrl+K", true),
+    command("edit.duplicates", "Duplicate photos", "Ctrl+D", true),
     command("edit.select-none", "Select none", "Ctrl+Shift+A", true),
     command(
         "edit.invert-selection",
@@ -175,6 +176,7 @@ mod tests {
             "edit.select-none" => "\"Ctrl+Shift+A\"",
             "edit.invert-selection" => "\"Ctrl+Shift+I\"",
             "edit.keywords" => "\"Ctrl+K\"",
+            "edit.duplicates" => "\"Ctrl+D\"",
             "file.settings" => "\"Ctrl+,\"",
             "file.import" => "\"Ctrl+I\"",
             other => panic!("{other} has no shortcut spelled in the test yet"),

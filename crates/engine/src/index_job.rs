@@ -20,7 +20,7 @@ use auroraw_format::sidecar::{FileEntry, FileRole, Location, PhotoSidecar};
 use auroraw_import::{DiscoveredFile, PairRule, PhotoGroup, pair_files};
 use auroraw_plugin_api::source::{Source, SourceState};
 use auroraw_sources::filesystem::FilesystemSource;
-use auroraw_types::{Fingerprint, PhotoId, SourceId, Timestamp};
+use auroraw_types::{ContentHash, Fingerprint, PhotoId, SourceId, Timestamp};
 use auroraw_workspace::{RemovedPhoto, Workspace};
 
 use crate::command::Command;
@@ -28,6 +28,7 @@ use crate::coordinator::Inbound;
 use crate::event::Event;
 use crate::import_job::{discover_one, stat_of};
 use crate::job::{CancelToken, JobId};
+use crate::thumbnails::source_root;
 
 pub(crate) struct IndexJob {
     pub job: JobId,
@@ -131,7 +132,7 @@ fn run(job: IndexJob) {
     };
     let mut known: HashSet<String> = catalogue
         .known_files_in_source(&job.source_id)
-        .map(|files| files.into_iter().map(|(_, path, _)| path).collect())
+        .map(|files| files.into_iter().map(|(_, path, _, _)| path).collect())
         .unwrap_or_default();
     // Photos of sources being merged in become this source's own before anything is listed; their
     // new paths are known here, whether or not the catalogue has caught up with them.
@@ -227,7 +228,7 @@ fn run(job: IndexJob) {
 
     let root = job.source.root().to_path_buf();
     let total = candidates.len();
-    let (mut added, mut restored) = (0, 0);
+    let (mut added, mut restored, mut second_locations) = (0, 0, 0);
     let mut versions_came_back = false;
     for (done, mut candidate) in candidates.into_iter().enumerate() {
         if job.cancel.is_cancelled() {
@@ -236,6 +237,16 @@ fn run(job: IndexJob) {
         }
         let outcome = match candidate.removed.filter(|_| restore) {
             Some(index) => restore_one(&job, &removed[index], &candidate),
+            None if candidate.group.companion.is_none()
+                && try_join_existing_photo(
+                    &job,
+                    &catalogue,
+                    &candidate.group.original.path,
+                    candidate.original_fingerprint,
+                ) =>
+            {
+                Ok(Landed::Joined)
+            }
             None => {
                 let (_, metadata) = discover_one(&root, &candidate.group.original.path);
                 candidate.metadata = metadata;
@@ -248,6 +259,7 @@ fn run(job: IndexJob) {
                 restored += 1;
                 versions_came_back |= versions > 0;
             }
+            Ok(Landed::Joined) => second_locations += 1,
             Err(()) => failed += 1,
         }
         let _ = job.events.send(Event::JobProgress {
@@ -270,6 +282,7 @@ fn run(job: IndexJob) {
         restored,
         known: known_groups.len(),
         failed,
+        second_locations,
     }));
     let _ = job
         .inbound
@@ -337,7 +350,140 @@ fn merge_sources(job: &IndexJob, catalogue: &Catalogue) -> Vec<String> {
 
 enum Landed {
     Added,
-    Restored { versions: usize },
+    Restored {
+        versions: usize,
+    },
+    /// The file joined an existing photo from a different source as a second location, instead of becoming a new
+    /// photo (D-036, D-108).
+    Joined,
+}
+
+/// A single-file candidate's fingerprint matches a photo the catalogue already has, at a *different* source
+/// (`known_files_in_source`, scoped to this source alone, cannot see it — that is `index_job`'s own reason this
+/// check exists, on top of `coordinator::scan_source`'s: a fresh source's first index never revisits a file once it
+/// has become its own photo). Confirms with the whole-file hash of both copies before joining anything (D-108: a
+/// sampled fingerprint alone is not proof enough to invite someone to go delete a file over it). `true` when a
+/// location was recorded (the sidecar and the catalogue both, through `Inbound::LocationAdded`) and the file is
+/// therefore not going to become a new photo.
+fn try_join_existing_photo(
+    job: &IndexJob,
+    catalogue: &Catalogue,
+    path: &str,
+    fingerprint: Fingerprint,
+) -> bool {
+    let Ok(candidates) = catalogue.find_by_fingerprint(&fingerprint) else {
+        return false;
+    };
+    if candidates.is_empty() {
+        return false;
+    }
+    let full = job
+        .source
+        .root()
+        .join(path.replace('/', std::path::MAIN_SEPARATOR_STR));
+    let Ok(bytes) = std::fs::read(&full) else {
+        return false;
+    };
+    let Ok((_, found_hash)) =
+        auroraw_format::fingerprint::content_hash(&mut std::io::Cursor::new(&bytes))
+    else {
+        return false;
+    };
+    for candidate in candidates {
+        let primary_hash = match candidate.hash {
+            Some(hash) => hash,
+            None => match hash_of_existing(job, &candidate) {
+                Some(hash) => {
+                    // Backfilled for later: the same reasoning `import_job::find_duplicate` already relies on.
+                    let _ = job.inbound.send(Inbound::Imported {
+                        photo: None,
+                        stat: None,
+                        backfill: Some((candidate.photo_id, hash)),
+                    });
+                    hash
+                }
+                None => continue,
+            },
+        };
+        if primary_hash != found_hash {
+            continue;
+        }
+        if record_second_location(job, candidate.photo_id, path, fingerprint, found_hash) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Reads and hashes an existing candidate's own file, when its hash is not already known.
+fn hash_of_existing(
+    job: &IndexJob,
+    candidate: &auroraw_catalogue::FingerprintCandidate,
+) -> Option<ContentHash> {
+    let root = source_root(&job.workspace, candidate.source_id?)?;
+    let bytes = std::fs::read(
+        root.join(
+            candidate
+                .path
+                .as_ref()?
+                .replace('/', std::path::MAIN_SEPARATOR_STR),
+        ),
+    )
+    .ok()?;
+    let (_, hash) =
+        auroraw_format::fingerprint::content_hash(&mut std::io::Cursor::new(&bytes)).ok()?;
+    Some(hash)
+}
+
+/// Pushes a new `Location` onto the existing photo's sidecar (under the guard) and tells the coordinator to
+/// record it in the catalogue too.
+fn record_second_location(
+    job: &IndexJob,
+    photo_id: PhotoId,
+    path: &str,
+    fingerprint: Fingerprint,
+    hash: ContentHash,
+) -> bool {
+    let filename = file_name(path);
+    let _guard = job.workspace.sidecar_guard();
+    let Some(mut photo) = job
+        .workspace
+        .read_photo(&photo_id)
+        .ok()
+        .flatten()
+        .and_then(|loaded| loaded.current())
+    else {
+        return false;
+    };
+    for file in &mut photo.files {
+        if file.fingerprint == fingerprint {
+            file.hash.get_or_insert(hash);
+            if !file
+                .locations
+                .iter()
+                .any(|l| l.source == job.source_id && l.path == path)
+            {
+                file.locations.push(Location {
+                    source: job.source_id,
+                    path: path.to_string(),
+                    seen: Some(Timestamp::now()),
+                    extra: Vec::new(),
+                });
+            }
+        }
+    }
+    if job.workspace.write_photo(&photo).is_err() {
+        return false;
+    }
+    let _ = job.inbound.send(Inbound::LocationAdded {
+        photo_id,
+        source_id: job.source_id,
+        path: path.to_string(),
+        filename,
+        fingerprint,
+        hash,
+    });
+    true
 }
 
 fn register(job: &IndexJob, photo: PhotoSidecar) -> Result<(), ()> {

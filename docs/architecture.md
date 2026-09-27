@@ -270,6 +270,11 @@ The **effective rating is stored in the photo row** and kept in step, in one pla
 or a version's rating changes (D-063); computing it by a join costs three times more to count.
 The grid pages by **keyset** (`capture_time < ?`), never by offset; a count is kept beside.
 
+`photo`'s own `source_id`/`path` stay its **primary** location; a `location` table (schema 3, D-108) holds only a
+photo's confirmed **secondary** ones (the exact-duplicates report, D-036), each with the whole-file hash that
+confirmed it. Rebuildable like everything else: `populate::insert_photo` indexes a sidecar's extra `Location`s
+alongside the primary one.
+
 ### 5.7 Thumbnails and previews [decided, D-075, provisional]
 
 A separate database per catalogue, with 32 KB pages, in the cache. A thumbnail is 256 px on its

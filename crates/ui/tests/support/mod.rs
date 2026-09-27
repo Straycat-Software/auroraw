@@ -8,15 +8,37 @@ use std::time::{Duration, Instant};
 use auroraw_engine::{AddSourceRequest, Command, Engine, Event, LocalDirs};
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgb};
 
-/// Writes `count` small distinct JPEGs named `<prefix>_NNNN.jpg` in `folder`.
+/// Writes `count` small distinct JPEGs named `<prefix>_NNNN.jpg` in `folder`. Several suites call this more than
+/// once, on different folders, for one workspace (a source, then another to add): the image's content is seeded
+/// from the folder's own path as well as the index, so two calls never produce byte-identical files even when their
+/// indices overlap (a single scalar byte driving the whole picture, tried here once, is not enough — JPEG's lossy
+/// quantization collapsed a few of them to identical files in practice, which D-108's duplicate detection then
+/// correctly, but confusingly for a test expecting distinct photos, joined into one).
 pub fn write_photos(folder: &Path, prefix: &str, count: u32) {
     std::fs::create_dir_all(folder).unwrap();
+    let folder_seed = folder.to_string_lossy().bytes().fold(0u64, |acc, b| {
+        acc.wrapping_mul(131).wrapping_add(u64::from(b))
+    });
     for n in 0..count {
+        // 64 pseudo-random bytes (an 8x8 grid of blocks), not one: the picture's content varies enough that two
+        // different (folder, index) pairs are not going to collide after JPEG's lossy encoding.
+        let mut state = folder_seed
+            .wrapping_add(u64::from(n))
+            .wrapping_mul(2_654_435_761)
+            .wrapping_add(12_345);
+        let mut blocks = [0u8; 64];
+        for b in &mut blocks {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            *b = (state >> 56) as u8;
+        }
         let img = ImageBuffer::from_fn(160, 120, |x, y| {
+            let block = blocks[((y * 8 / 120) * 8 + (x * 8 / 160)) as usize];
             Rgb([
-                (x as u8).wrapping_mul(2) ^ (n as u8).wrapping_mul(37),
+                (x as u8).wrapping_mul(2) ^ block,
                 (y as u8).wrapping_mul(2),
-                (n as u8).wrapping_mul(11),
+                block,
             ])
         });
         DynamicImage::ImageRgb8(img)
@@ -227,4 +249,38 @@ pub fn machine_with_similar(home: &Path, photos: u32) {
         .engine
         .submit_and_wait(Command::DetectSeries { regroup: false })
         .unwrap();
+}
+
+/// [`machine_with_photos`] with an extra "Backup" source holding an exact copy of `IMG_0000.jpg` (WP9, D-036,
+/// D-108): one photo ends up with two confirmed locations, "Card" (its primary) and "Backup".
+pub fn machine_with_duplicate(home: &Path, photos: u32) {
+    let dirs = LocalDirs {
+        data: home.join("data"),
+        cache: home.join("cache"),
+    };
+    let card = home.join("Card");
+    write_photos(&card, "IMG", photos);
+    let backup = home.join("Backup");
+    std::fs::create_dir_all(&backup).unwrap();
+    std::fs::copy(card.join("IMG_0000.jpg"), backup.join("IMG_0000_copy.jpg")).unwrap();
+
+    let root: PathBuf = home.join("Pictures").join("Auroraw").join("Main");
+    let opened = Engine::create_workspace(&root, "Main", &dirs).unwrap();
+    for (name, folder) in [("Card", card), ("Backup", backup)] {
+        let added = opened
+            .engine
+            .add_source(AddSourceRequest {
+                root: folder,
+                name: Some(name.into()),
+                merge: false,
+            })
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(120);
+        loop {
+            match opened.events.recv_timeout(Duration::from_millis(200)) {
+                Some(Event::IndexFinished { job, .. }) if job == added.job => break,
+                _ => assert!(Instant::now() < deadline, "the scan never finished"),
+            }
+        }
+    }
 }

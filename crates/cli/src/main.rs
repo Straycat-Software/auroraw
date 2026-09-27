@@ -43,7 +43,8 @@ usage: auroraw-cli --version
        auroraw-cli source list <workspace-dir> <catalogue-file>
        auroraw-cli source scan <workspace-dir> <catalogue-file> <source-id>
        auroraw-cli source add-new <workspace-dir> <catalogue-file> <source-id> --all
-       auroraw-cli source add-new <workspace-dir> <catalogue-file> <source-id> <path>...";
+       auroraw-cli source add-new <workspace-dir> <catalogue-file> <source-id> <path>...
+       auroraw-cli duplicates <workspace-dir> <catalogue-file>";
 
 enum CliError {
     Usage,
@@ -85,6 +86,7 @@ fn run(args: &[String]) -> Result<(), CliError> {
         Some("flag") => cmd_flag(&args[1..]),
         Some("keyword") => cmd_keyword(&args[1..]),
         Some("source") => cmd_source(&args[1..]),
+        Some("duplicates") => cmd_duplicates(&args[1..]),
         _ => Err(CliError::Usage),
     }
 }
@@ -156,6 +158,22 @@ fn cmd_verify(args: &[String]) -> Result<(), CliError> {
         Outcome::Applied => println!("verified"),
         other => unreachable!("Reconcile always returns Applied, got {other:?}"),
     }
+    Ok(())
+}
+
+/// Every photo with more than one confirmed location (D-036, D-108): read-only, like `list`.
+fn cmd_duplicates(args: &[String]) -> Result<(), CliError> {
+    let (workspace, catalogue) = paths2(args)?;
+    let (engine, _events) = open(&workspace, &catalogue)?;
+    let duplicates = engine.duplicate_photos()?;
+    for photo in &duplicates {
+        println!("{}", photo.filename);
+        println!("  {} — {}", photo.primary.source_name, photo.primary.path);
+        for extra in &photo.extra {
+            println!("  {} — {}", extra.source_name, extra.path);
+        }
+    }
+    println!("{} duplicate photo(s)", duplicates.len());
     Ok(())
 }
 
@@ -375,6 +393,7 @@ fn print_scan_report(engine: &Engine, source_id: SourceId) -> Result<(), CliErro
         missing,
         new,
         ambiguous,
+        second_locations,
     } = engine.submit_and_wait(Command::ScanSource { source_id })?
     else {
         unreachable!("ScanSource always returns Scanned");
@@ -384,7 +403,7 @@ fn print_scan_report(engine: &Engine, source_id: SourceId) -> Result<(), CliErro
         return Ok(());
     }
     println!(
-        "confirmed={confirmed} changed={changed} relinked={relinked} missing={missing} ambiguous={ambiguous}"
+        "confirmed={confirmed} changed={changed} relinked={relinked} missing={missing} ambiguous={ambiguous} second_locations={second_locations}"
     );
     for path in &new {
         println!("  new: {path}");

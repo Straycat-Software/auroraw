@@ -3,11 +3,13 @@
 //! (design note 004 §6.3-§6.4): change detection, relinking, and reporting new and missing files.
 //!
 //! Scoped to one source at a time, deliberately: the design note's relinking table also covers a
-//! file moving *between* sources and exact duplicates becoming one photo with two locations
-//! (D-036), but the catalogue does not yet index more than one location per photo (WP2's schema),
-//! and duplicates are WP9's job (spec §5.3), not this one's. A found file whose match is still
-//! present at its old path too is therefore reported [`ScanOutcome::Ambiguous`] rather than
-//! silently linked: a person decides, and nothing is lost either way (D-019, D-031).
+//! file moving *between* sources, which this does not model. A found file whose fingerprint
+//! matches exactly one known file, while that file's old location is *also* still present, is
+//! [`ScanOutcome::SecondLocation`] (D-036, D-108: one photo, two locations) — the caller confirms
+//! it with a whole-file hash before recording anything, since a fingerprint alone is not proof
+//! enough to invite someone to go delete a file over it. A match against *several* different known
+//! files stays [`ScanOutcome::Ambiguous`]: genuinely undecidable here, a person decides, and
+//! nothing is lost either way (D-019, D-031).
 
 use std::collections::{HashMap, HashSet};
 
@@ -66,14 +68,23 @@ pub enum ScanOutcome {
         /// Where it is now.
         to: String,
     },
-    /// A found file's fingerprint matches more than one known file, or matches exactly one whose
-    /// old location is still there too (a second location this work package does not model,
-    /// deliberately conservative rather than merging or overwriting anything).
+    /// A found file's fingerprint matches more than one known file: genuinely undecidable here.
     Ambiguous {
         /// The found file's path.
         path: String,
         /// The known photos it might belong to.
         candidates: Vec<PhotoId>,
+    },
+    /// A found file's fingerprint matches exactly one known file, whose own old location is also
+    /// still present right now (that old path gets its own ordinary [`Self::Confirmed`] from this
+    /// same pass): a candidate second location of that photo (D-036, D-108). The caller confirms
+    /// with a whole-file hash before recording it; on a mismatch (an astronomically unlikely
+    /// sampled-fingerprint collision) this path is simply unrelated and belongs in `New` instead.
+    SecondLocation {
+        /// The existing photo.
+        photo_id: PhotoId,
+        /// The found file's path.
+        path: String,
     },
     /// A found file that matches nothing the catalogue knows: offered for adding, never added on
     /// its own (D-019).
@@ -117,9 +128,9 @@ pub fn reconcile(found: &[FoundFile], known: &[KnownFile]) -> Vec<ScanOutcome> {
                 }),
                 [only] if found_by_path.contains_key(only.path.as_str()) => {
                     // The old location and this one both exist right now: a second location.
-                    outcomes.push(ScanOutcome::Ambiguous {
+                    outcomes.push(ScanOutcome::SecondLocation {
+                        photo_id: only.photo_id,
                         path: f.path.clone(),
-                        candidates: vec![only.photo_id],
                     });
                 }
                 [only] => {
@@ -233,7 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn a_match_whose_old_location_is_still_there_is_ambiguous_not_a_silent_second_location() {
+    fn a_match_whose_old_location_is_still_there_is_a_second_location() {
         let known = vec![KnownFile {
             photo_id: photo(1),
             path: "a.jpg".into(),
@@ -253,11 +264,42 @@ mod tests {
             reconcile(&found, &known),
             vec![
                 ScanOutcome::Confirmed { photo_id: photo(1) },
-                ScanOutcome::Ambiguous {
-                    path: "backup/a.jpg".into(),
-                    candidates: vec![photo(1)]
+                ScanOutcome::SecondLocation {
+                    photo_id: photo(1),
+                    path: "backup/a.jpg".into()
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn a_second_locations_path_is_not_also_reported_missing_or_new() {
+        let known = vec![KnownFile {
+            photo_id: photo(1),
+            path: "a.jpg".into(),
+            fingerprint: fp(1),
+        }];
+        let found = vec![
+            FoundFile {
+                path: "a.jpg".into(),
+                fingerprint: fp(1),
+            },
+            FoundFile {
+                path: "backup/a.jpg".into(),
+                fingerprint: fp(1),
+            },
+        ];
+        let outcomes = reconcile(&found, &known);
+        assert_eq!(outcomes.len(), 2, "{outcomes:?}");
+        assert!(
+            !outcomes
+                .iter()
+                .any(|o| matches!(o, ScanOutcome::Missing { .. }))
+        );
+        assert!(
+            !outcomes
+                .iter()
+                .any(|o| matches!(o, ScanOutcome::New { .. }))
         );
     }
 

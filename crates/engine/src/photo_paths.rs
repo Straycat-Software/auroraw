@@ -60,10 +60,10 @@ mod tests {
     use super::*;
     use crate::{Command, Engine, Outcome};
 
-    fn write_jpeg(path: &std::path::Path) {
+    fn write_jpeg(path: &std::path::Path, seed: u8) {
         use image::{DynamicImage, ImageBuffer, ImageFormat, Rgb};
         DynamicImage::ImageRgb8(ImageBuffer::from_fn(16, 16, |x, y| {
-            Rgb([x as u8, y as u8, 0])
+            Rgb([(x as u8) ^ seed, (y as u8) ^ seed, seed])
         }))
         .save_with_format(path, ImageFormat::Jpeg)
         .unwrap();
@@ -80,8 +80,8 @@ mod tests {
         .unwrap();
         let card = dir.path().join("Card");
         std::fs::create_dir_all(&card).unwrap();
-        write_jpeg(&card.join("a.jpg"));
-        write_jpeg(&card.join("b.jpg"));
+        write_jpeg(&card.join("a.jpg"), 1);
+        write_jpeg(&card.join("b.jpg"), 2);
         let Outcome::SourceAdded(source_id) = engine
             .submit_and_wait(Command::AddSource {
                 name: "Card".into(),

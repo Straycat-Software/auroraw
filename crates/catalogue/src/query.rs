@@ -529,26 +529,33 @@ impl Catalogue {
         })
     }
 
-    /// Every photo the catalogue has on record for `source_id`: its identifier, path and
-    /// fingerprint, for a reconcile scan (design note 004 §6.4) to compare against a fresh
-    /// listing. `catalogue` does not depend on `sources` (both sit beside each other under
-    /// `engine`, architecture §3.2), so the caller wraps each tuple into a
+    /// Every photo the catalogue has on record for `source_id`, its primary location (`photo`)
+    /// and its secondary ones (`location`, D-108) both: identifier, path, fingerprint and whether
+    /// this is its primary location, for a reconcile scan (design note 004 §6.4) to compare
+    /// against a fresh listing. `catalogue` does not depend on `sources` (both sit beside each
+    /// other under `engine`, architecture §3.2), so the caller wraps each tuple into a
     /// `sources::relink::KnownFile` itself. A photo with no fingerprint or path yet is left out:
     /// nothing to match it against.
     pub fn known_files_in_source(
         &self,
         source_id: &SourceId,
-    ) -> Result<Vec<(PhotoId, String, Fingerprint)>> {
-        let mut stmt = self.conn.prepare("SELECT id, path, fingerprint FROM photo WHERE source_id = ?1 AND fingerprint IS NOT NULL AND path IS NOT NULL")?;
+    ) -> Result<Vec<(PhotoId, String, Fingerprint, bool)>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, path, fingerprint, 1 FROM photo
+               WHERE source_id = ?1 AND fingerprint IS NOT NULL AND path IS NOT NULL
+             UNION ALL
+             SELECT photo_id, path, fingerprint, 0 FROM location WHERE source_id = ?1",
+        )?;
         let rows = stmt.query_map([source_id.to_string()], |r| {
             let id: String = r.get(0)?;
             let path: String = r.get(1)?;
             let fingerprint: String = r.get(2)?;
-            Ok((id, path, fingerprint))
+            let is_primary: bool = r.get(3)?;
+            Ok((id, path, fingerprint, is_primary))
         })?;
         let mut out = Vec::new();
         for row in rows {
-            let (id, path, fingerprint) = row?;
+            let (id, path, fingerprint, is_primary) = row?;
             let photo_id = id.parse().map_err(|_| {
                 rusqlite::Error::InvalidColumnType(0, "id".into(), rusqlite::types::Type::Text)
             })?;
@@ -559,7 +566,7 @@ impl Catalogue {
                     rusqlite::types::Type::Text,
                 )
             })?;
-            out.push((photo_id, path, fingerprint));
+            out.push((photo_id, path, fingerprint, is_primary));
         }
         Ok(out)
     }

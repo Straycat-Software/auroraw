@@ -335,11 +335,16 @@
     </message>
     <message>
         <location filename="../qml/AppActions.qml" line="169"/>
+        <source>Duplicate photos…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="176"/>
         <source>Invert selection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="177"/>
+        <location filename="../qml/AppActions.qml" line="184"/>
         <source>About Auroraw</source>
         <translation type="unfinished"></translation>
     </message>
@@ -357,7 +362,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AppMenu.qml" line="54"/>
+        <location filename="../qml/AppMenu.qml" line="56"/>
         <source>&amp;Help</source>
         <translation type="unfinished"></translation>
     </message>
@@ -625,6 +630,37 @@
     <message>
         <location filename="../qml/ComparePane.qml" line="252"/>
         <source>Mark this photo to keep (K)</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>DuplicatesDialog</name>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="16"/>
+        <source>Duplicate photos</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/DuplicatesDialog.qml" line="30"/>
+        <source>%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</source>
+        <translation>
+            <numerusform>%n photo found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</numerusform>
+            <numerusform>%n photos found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="31"/>
+        <source>No duplicate photo found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="82"/>
+        <source>Show in file manager</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="96"/>
+        <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1286,42 +1322,42 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="145"/>
+        <location filename="../qml/Main.qml" line="147"/>
         <source>Cannot open the workspace: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="256"/>
+        <location filename="../qml/Main.qml" line="258"/>
         <source>Menu</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="271"/>
+        <location filename="../qml/Main.qml" line="273"/>
         <source>Catalogue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="277"/>
+        <location filename="../qml/Main.qml" line="279"/>
         <source>Cull</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="282"/>
+        <location filename="../qml/Main.qml" line="284"/>
         <source>Develop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="283"/>
+        <location filename="../qml/Main.qml" line="285"/>
         <source>Publish</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="371"/>
+        <location filename="../qml/Main.qml" line="375"/>
         <source>Choose a folder in the folder dialog…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="382"/>
+        <location filename="../qml/Main.qml" line="386"/>
         <source>Open a workspace</source>
         <translation type="unfinished"></translation>
     </message>
