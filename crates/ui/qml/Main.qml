@@ -96,7 +96,7 @@ ApplicationWindow {
     // (`nativeDialogForced` stands for one in the tests: none can open off screen.)
     property bool nativeDialogForced: false
     readonly property bool nativeDialogOpen: nativeDialogForced || openDialog.visible || catalogueFlow.browsing || newDialog.browsing
-                                            || importDialog.browsing
+                                            || importDialog.browsing || libraryView.exportDialog.visible
     readonly property bool dialogOpen: newDialog.visible || settingsDialog.visible || importDialog.visible || libraryView.dialogOpen
                                        || aboutDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
     readonly property bool inWorkspace: launcher.screen === "workspace"
@@ -332,6 +332,7 @@ ApplicationWindow {
                 visible: window.inWorkspace && window.currentTask === "cull"
                 photoGrid: photoGrid
                 launcher: launcher
+                hostWindow: window
             }
         }
     }

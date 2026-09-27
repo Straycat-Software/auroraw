@@ -57,11 +57,19 @@ A photo you reject **stays where it is, dimmed**, until the list is next read (a
 the grid does not shift under you while you cull. **Refresh** reads the list again: photos that arrived, rejected
 photos that were left in place.
 
+**Export the list…**, next to Refresh, writes the file of every photo the grid lists **right now**, one absolute path
+a line, to a text file you name. It follows whatever filters are active, so it exports the rejected photos when you
+have filtered to *Rejected*, the photos of a keyword when you have filtered to it, and so on; it is greyed out when
+the grid lists nothing. Nothing is deleted or moved by this: the list is for tidying up (in a file manager, a script)
+outside Auroraw, which never touches your originals on its own (D-018).
+
 ## The menu on a photo
 
-A right click on a photo opens a menu: open it in the [image view](04-culling.md), give it a colour (including
-purple, which has no key), pick, reject or clear its flag, show the [similar photos](05-series.md#similar-photos), and
-the series commands.
+A right click on a photo opens a menu: open it in the [image view](04-culling.md), **show it in the file manager**
+(the file's folder, selected on macOS and Windows; on Linux, which has no portable way to select a file, only the
+folder opens), give it a colour (including purple, which has no key), pick, reject or clear its flag, show the
+[similar photos](05-series.md#similar-photos), and the series commands. The image view's own menu has the same rows,
+for the photo it shows.
 
 ![The menu of a photo](images/grid-menu.png)
 

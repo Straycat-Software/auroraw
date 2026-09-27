@@ -366,4 +366,34 @@ AppTestCase {
                     clickWhereItIs(index, "scroll " + scroll + ", sizes " + sizes)
         }
     }
+
+    function test_show_in_file_manager_records_the_photos_file_from_the_cell_menu_and_the_view_menu() {
+        const name = app.photos.infoAt(0).split(" ")[0]
+        app.library.revealCell(0)
+        compare(app.photos.lastRevealedPath(), home + "/Card/" + name)
+        // The image view's menu acts on the photo it shows, the same way.
+        app.library.openView(1)
+        tryVerify(() => app.library.viewing)
+        const shown = app.photos.infoAt(1).split(" ")[0]
+        app.library.revealCell(-1)
+        compare(app.photos.lastRevealedPath(), home + "/Card/" + shown)
+        keyClick(Qt.Key_Escape)
+    }
+
+    function test_export_writes_every_listed_photos_file_one_a_line_and_follows_the_filter() {
+        const path = home + "/list.txt"
+        verify(app.library.exportButton.enabled)
+        verify(app.photos.exportListedTo(path))
+        let lines = files.read(path).trim().split("\n")
+        compare(lines.length, 80)
+        verify(lines.every(line => line.indexOf(home + "/Card/IMG_") === 0))
+        // A stricter filter (nothing is rated yet) exports fewer, and none once it is empty.
+        app.library.filterBy(5)
+        tryCompare(app.photos, "count", 0)
+        verify(!app.library.exportButton.enabled, "nothing to export")
+        verify(app.photos.exportListedTo(path))
+        compare(files.read(path), "")
+        app.library.filterBy(0)
+        tryCompare(app.photos, "count", 80)
+    }
 }

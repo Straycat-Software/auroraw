@@ -39,6 +39,7 @@ fn main() {
         QmlFile::from("qml/ComparePane.qml"),
         QmlFile::from("qml/Compare.qml"),
         QmlFile::from("qml/SimilarPanel.qml"),
+        QmlFile::from("qml/FileSaveDialog.qml"),
     ];
     let mut builder = CxxQtBuilder::new_qml_module(QmlModule::new("org.auroraw.ui").qml_files(qml))
         .qt_module("Quick")

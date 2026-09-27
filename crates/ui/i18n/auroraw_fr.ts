@@ -629,6 +629,19 @@
     </message>
 </context>
 <context>
+    <name>FileSaveDialog</name>
+    <message>
+        <location filename="../qml/FileSaveDialog.qml" line="16"/>
+        <source>Text files (*.txt)</source>
+        <translation>Fichiers texte (*.txt)</translation>
+    </message>
+    <message>
+        <location filename="../qml/FileSaveDialog.qml" line="16"/>
+        <source>All files (*)</source>
+        <translation>Tous les fichiers (*)</translation>
+    </message>
+</context>
+<context>
     <name>Histogram</name>
     <message>
         <location filename="../qml/Histogram.qml" line="68"/>
@@ -1016,7 +1029,7 @@
 <context>
     <name>Library</name>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="30"/>
+        <location filename="../qml/Library.qml" line="31"/>
         <source>%n photo(s)</source>
         <translation>
             <numerusform>%n photo</numerusform>
@@ -1024,27 +1037,27 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="128"/>
+        <location filename="../qml/Library.qml" line="129"/>
         <source>Not rejected</source>
         <translation>Non refusées</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="128"/>
+        <location filename="../qml/Library.qml" line="129"/>
         <source>All photos</source>
         <translation>Toutes les photos</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="129"/>
+        <location filename="../qml/Library.qml" line="130"/>
         <source>Picked</source>
         <translation>Retenues</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="129"/>
+        <location filename="../qml/Library.qml" line="130"/>
         <source>Rejected</source>
         <translation>Refusées</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="29"/>
+        <location filename="../qml/Library.qml" line="30"/>
         <source>%n photo(s) selected</source>
         <translation>
             <numerusform>%n photo sélectionnée</numerusform>
@@ -1052,133 +1065,143 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="98"/>
+        <location filename="../qml/Library.qml" line="99"/>
         <source>Red</source>
         <translation>Rouge</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="99"/>
+        <location filename="../qml/Library.qml" line="100"/>
         <source>Yellow</source>
         <translation>Jaune</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="100"/>
+        <location filename="../qml/Library.qml" line="101"/>
         <source>Green</source>
         <translation>Vert</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="101"/>
+        <location filename="../qml/Library.qml" line="102"/>
         <source>Blue</source>
         <translation>Bleu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="102"/>
+        <location filename="../qml/Library.qml" line="103"/>
         <source>Purple</source>
         <translation>Violet</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="104"/>
+        <location filename="../qml/Library.qml" line="105"/>
         <source>No colour</source>
         <translation>Aucune couleur</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="116"/>
+        <location filename="../qml/Library.qml" line="117"/>
         <source>Series</source>
         <translation>Séries</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="116"/>
+        <location filename="../qml/Library.qml" line="117"/>
         <source>In a series</source>
         <translation>Dans une série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="117"/>
+        <location filename="../qml/Library.qml" line="118"/>
         <source>Unresolved series</source>
         <translation>Séries non résolues</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="117"/>
+        <location filename="../qml/Library.qml" line="118"/>
         <source>Resolved series</source>
         <translation>Séries résolues</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="489"/>
+        <location filename="../qml/Library.qml" line="497"/>
         <source>All</source>
         <translation>Tout</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="489"/>
+        <location filename="../qml/Library.qml" line="497"/>
         <source>1+</source>
         <translation>1+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="489"/>
+        <location filename="../qml/Library.qml" line="497"/>
         <source>2+</source>
         <translation>2+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="490"/>
+        <location filename="../qml/Library.qml" line="498"/>
         <source>3+</source>
         <translation>3+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="490"/>
+        <location filename="../qml/Library.qml" line="498"/>
         <source>4+</source>
         <translation>4+</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="490"/>
+        <location filename="../qml/Library.qml" line="498"/>
         <source>5</source>
         <translation>5</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="507"/>
+        <location filename="../qml/Library.qml" line="515"/>
         <source>Show photos by flag</source>
         <translation>Afficher les photos selon le drapeau</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="530"/>
+        <location filename="../qml/Library.qml" line="538"/>
         <source>Only the photos labelled %1</source>
         <translation>Seulement les photos étiquetées %1</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="553"/>
+        <location filename="../qml/Library.qml" line="561"/>
         <source>Show photos by series</source>
         <translation>Afficher les photos selon les séries</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="568"/>
+        <location filename="../qml/Library.qml" line="576"/>
         <source>Close all</source>
         <translation>Tout fermer</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="568"/>
+        <location filename="../qml/Library.qml" line="576"/>
         <source>Open all</source>
         <translation>Tout ouvrir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="571"/>
+        <location filename="../qml/Library.qml" line="579"/>
         <source>Open or close every series (E for the one under the cursor)</source>
         <translation>Ouvrir ou fermer toutes les séries (E pour celle sous le curseur)</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="579"/>
+        <location filename="../qml/Library.qml" line="587"/>
         <source>Keyword: %1</source>
         <translation>Mot-clé : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="594"/>
-        <location filename="../qml/Library.qml" line="596"/>
+        <location filename="../qml/Library.qml" line="602"/>
+        <location filename="../qml/Library.qml" line="604"/>
         <source>Thumbnail size</source>
         <translation>Taille des vignettes</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="610"/>
+        <location filename="../qml/Library.qml" line="618"/>
         <source>Refresh</source>
         <translation>Actualiser</translation>
     </message>
+    <message>
+        <location filename="../qml/Library.qml" line="629"/>
+        <source>Export the list…</source>
+        <translation>Exporter la liste …</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="633"/>
+        <source>Writes the file of every listed photo to a text file, one path a line</source>
+        <translation>Écrit le fichier de chaque photo affichée dans un fichier texte, un chemin par ligne</translation>
+    </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="884"/>
+        <location filename="../qml/Library.qml" line="906"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n étoile</numerusform>
@@ -1186,70 +1209,76 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="884"/>
+        <location filename="../qml/Library.qml" line="906"/>
         <source>Photo</source>
         <translation>Photo</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="931"/>
+        <location filename="../qml/Library.qml" line="953"/>
         <source>No preview</source>
         <translation>Aucun aperçu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1001"/>
+        <location filename="../qml/Library.qml" line="1023"/>
         <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
         <translation>%1 des %2 photos de la série sont affichées (les filtres cachent les autres)</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1105"/>
+        <location filename="../qml/Library.qml" line="1127"/>
         <source>Open in the image view</source>
         <translation>Ouvrir dans la vue image</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1107"/>
+        <location filename="../qml/Library.qml" line="1128"/>
+        <location filename="../qml/Library.qml" line="1153"/>
+        <source>Show in file manager</source>
+        <translation>Montrer dans le gestionnaire de fichiers</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1130"/>
         <source>Similar photos</source>
         <translation>Photos similaires</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1108"/>
+        <location filename="../qml/Library.qml" line="1131"/>
         <source>Open or close the series</source>
         <translation>Ouvrir ou fermer la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1109"/>
+        <location filename="../qml/Library.qml" line="1132"/>
         <source>Group as a series</source>
         <translation>Grouper en série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1110"/>
+        <location filename="../qml/Library.qml" line="1133"/>
         <source>Take out of the series</source>
         <translation>Sortir de la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1111"/>
+        <location filename="../qml/Library.qml" line="1134"/>
         <source>Resolve the series</source>
         <translation>Résoudre la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1112"/>
+        <location filename="../qml/Library.qml" line="1135"/>
         <source>Reopen the series</source>
         <translation>Rouvrir la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1121"/>
-        <location filename="../qml/Library.qml" line="1137"/>
+        <location filename="../qml/Library.qml" line="1144"/>
+        <location filename="../qml/Library.qml" line="1162"/>
         <source>Pick</source>
         <translation>Retenir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1122"/>
-        <location filename="../qml/Library.qml" line="1138"/>
+        <location filename="../qml/Library.qml" line="1145"/>
+        <location filename="../qml/Library.qml" line="1163"/>
         <source>Reject</source>
         <translation>Refuser</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1123"/>
-        <location filename="../qml/Library.qml" line="1139"/>
+        <location filename="../qml/Library.qml" line="1146"/>
+        <location filename="../qml/Library.qml" line="1164"/>
         <source>Clear the flag</source>
         <translation>Effacer le drapeau</translation>
     </message>
@@ -1287,12 +1316,12 @@
         <translation>Publier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="370"/>
+        <location filename="../qml/Main.qml" line="371"/>
         <source>Choose a folder in the folder dialog…</source>
         <translation>Choisissez un dossier dans la fenêtre de sélection…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="381"/>
+        <location filename="../qml/Main.qml" line="382"/>
         <source>Open a workspace</source>
         <translation>Ouvrir un workspace</translation>
     </message>
@@ -1480,22 +1509,22 @@
     <message>
         <location filename="../qml/SettingsDialog.qml" line="81"/>
         <source>Photos are similar when at most this many of the 64 bits of their pictures&apos; fingerprints differ:</source>
-        <translation>Des photos sont similaires si, au plus, ce nombre des 64 bits de l&apos;empreinte de leur image diffèrent :</translation>
+        <translation>Des photos sont similaires si, au plus, ce nombre des 64 bits de l&apos;empreinte de leur image diffèrent&#xa0;:</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="91"/>
         <source>Similar photos: how many bits may differ</source>
-        <translation>Photos similaires : combien de bits peuvent différer</translation>
+        <translation>Photos similaires&#xa0;: combien de bits peuvent différer</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="98"/>
         <source>...and they were taken at most this many minutes apart:</source>
-        <translation>...et elles ont été prises à au plus ce nombre de minutes d&apos;écart :</translation>
+        <translation>...et elles ont été prises à au plus ce nombre de minutes d&apos;écart&#xa0;:</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="108"/>
         <source>Similar photos: how many minutes apart</source>
-        <translation>Photos similaires : combien de minutes d&apos;écart</translation>
+        <translation>Photos similaires&#xa0;: combien de minutes d&apos;écart</translation>
     </message>
     <message>
         <location filename="../qml/SettingsDialog.qml" line="116"/>

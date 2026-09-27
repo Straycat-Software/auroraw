@@ -31,6 +31,7 @@ mod keyword_list;
 mod launcher;
 #[allow(unsafe_code)]
 mod models;
+mod reveal;
 mod selection;
 mod session;
 #[allow(unsafe_code)]

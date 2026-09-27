@@ -13,6 +13,7 @@ FocusScope {
     id: root
     required property var photoGrid
     required property var launcher
+    property var hostWindow: null
 
     // The rating's star (a literal U+2605: a regression test reads it back, since a compiler that
     // took the source for a legacy code page once turned it into mojibake on Windows).
@@ -249,6 +250,13 @@ FocusScope {
         keepingTheView(() => photoGrid.expandAll(open))
         allOpen = open
         updateSummary()
+    }
+
+    // Shows the photo's original in the platform's file manager (the cursor's when `index` is -1).
+    function revealCell(index) {
+        const row = index >= 0 ? index : grid.currentIndex
+        if (row >= 0)
+            photoGrid.showInFileManager(photoGrid.idAt(row))
     }
 
     // Groups what is selected into a series (one step), or takes it out of its series.
@@ -611,6 +619,20 @@ FocusScope {
                         focusPolicy: Qt.NoFocus
                         onClicked: {
                             root.reload()
+                            grid.forceActiveFocus()
+                        }
+                    }
+                    // Exports the file of every photo the grid lists right now (whatever the filters are), one path
+                    // a line: not only for the Rejected view, for tidying up outside Auroraw with any list (D-106).
+                    AppButton {
+                        id: exportButton
+                        text: qsTr("Export the list…")
+                        enabled: root.photoGrid.count > 0
+                        focusPolicy: Qt.NoFocus
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Writes the file of every listed photo to a text file, one path a line")
+                        onClicked: {
+                            exportDialog.pick()
                             grid.forceActiveFocus()
                         }
                     }
@@ -1103,6 +1125,7 @@ FocusScope {
     AppSubMenu {
         id: cellMenu
         MarkItem { text: qsTr("Open in the image view"); keyHint: "↵"; onTriggered: root.openView(-1) }
+        MarkItem { text: qsTr("Show in file manager"); onTriggered: root.revealCell(-1) }
         MenuSeparator {}
         MarkItem { text: qsTr("Similar photos"); keyHint: "M"; onTriggered: root.showSimilar(!root.similarShown) }
         MarkItem { text: qsTr("Open or close the series"); keyHint: "E"; onTriggered: root.toggleSeries(-1) }
@@ -1127,6 +1150,8 @@ FocusScope {
     // hidden row, which leaves a gap).
     AppSubMenu {
         id: viewMenu
+        MarkItem { text: qsTr("Show in file manager"); onTriggered: root.revealCell(-1) }
+        MenuSeparator {}
         MarkItem { text: root.colourTitle("red"); colour: "red"; keyHint: "6"; onTriggered: root.label("red") }
         MarkItem { text: root.colourTitle("yellow"); colour: "yellow"; keyHint: "7"; onTriggered: root.label("yellow") }
         MarkItem { text: root.colourTitle("green"); colour: "green"; keyHint: "8"; onTriggered: root.label("green") }
@@ -1137,6 +1162,15 @@ FocusScope {
         MarkItem { text: qsTr("Pick"); enabled: root.canFlag; keyHint: "P"; onTriggered: root.flag("pick") }
         MarkItem { text: qsTr("Reject"); enabled: root.canFlag; keyHint: "X"; onTriggered: root.flag("reject") }
         MarkItem { text: qsTr("Clear the flag"); enabled: root.canFlag; keyHint: "U"; onTriggered: root.flag("clear") }
+    }
+
+    property alias exportButton: exportButton
+    property alias exportDialog: exportDialog
+    FileSaveDialog {
+        id: exportDialog
+        hostWindow: root.hostWindow
+        defaultFileName: "photos.txt"
+        onChosen: path => root.photoGrid.exportListedTo(path)
     }
 
     // Two to four photos side by side (spec §5.3, D-103).

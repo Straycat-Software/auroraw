@@ -125,6 +125,25 @@ pub mod qobject {
         #[cxx_name = "selectIds"]
         fn select_ids(self: Pin<&mut PhotoGrid>, ids: &QString);
 
+        /// Opens the photo's original file in the platform's file manager (D-106); `false` when the file cannot be
+        /// found (an offline source, or none at all) rather than a dialog. On Linux this opens the containing folder,
+        /// not the file itself (no portable way to select it).
+        #[qinvokable]
+        #[cxx_name = "showInFileManager"]
+        fn show_in_file_manager(self: &PhotoGrid, id: &QString) -> bool;
+
+        /// What the last call to `showInFileManager` was asked to show, under the QML suites only (in production
+        /// nothing is ever recorded here, since the file manager itself opens instead).
+        #[qinvokable]
+        #[cxx_name = "lastRevealedPath"]
+        fn last_revealed_path(self: &PhotoGrid) -> QString;
+
+        /// Writes every currently listed photo's file (one absolute path a line, a photo whose file cannot be found
+        /// left out) to `path`. `false` on a write failure (the folder does not exist, no permission...).
+        #[qinvokable]
+        #[cxx_name = "exportListedTo"]
+        fn export_listed_to(self: &PhotoGrid, path: &QString) -> bool;
+
         /// Marks a photo to keep (a draft, in memory: what `R` keeps when a series is resolved) or takes the mark
         /// off; whether it is marked now. `markSerial` changes with every mark, for what shows them.
         #[qinvokable]
@@ -680,6 +699,7 @@ use cxx_qt_lib::{
 
 use crate::grid_items::{self, Item};
 use crate::keyword_list::KeywordListRust;
+use crate::reveal;
 use crate::selection::Selection;
 use crate::session;
 use crate::source_list::SourceListRust;
@@ -1296,6 +1316,42 @@ impl qobject::PhotoGrid {
         }
         self.as_mut().rust_mut().selection.set(rows);
         self.selection_changed();
+    }
+
+    pub fn show_in_file_manager(&self, id: &QString) -> bool {
+        let (Some(session), Ok(photo)) = (session::current(), PhotoId::from_str(&id.to_string()))
+        else {
+            return false;
+        };
+        let Ok(Some(path)) = session.engine.original_path(photo) else {
+            return false;
+        };
+        reveal::reveal(&path);
+        true
+    }
+
+    pub fn last_revealed_path(&self) -> QString {
+        reveal::last_revealed().map_or_else(QString::default, |path| {
+            QString::from(path.to_string_lossy().as_ref())
+        })
+    }
+
+    pub fn export_listed_to(&self, path: &QString) -> bool {
+        let Some(session) = session::current() else {
+            return false;
+        };
+        let all_rows: Vec<usize> = (0..self.items.len()).collect();
+        let ids = self.photos_of(&all_rows);
+        let Ok(resolved) = session.engine.original_paths(&ids) else {
+            return false;
+        };
+        let text = resolved
+            .into_iter()
+            .flatten()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect::<Vec<_>>()
+            .join("\n");
+        std::fs::write(path.to_string(), text).is_ok()
     }
 
     pub fn is_marked(&self, id: &QString) -> bool {

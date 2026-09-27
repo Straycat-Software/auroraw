@@ -24,6 +24,7 @@ mod import_job;
 mod index_job;
 mod job;
 pub mod paths;
+mod photo_paths;
 mod refresh;
 mod remove_job;
 mod series_detect;
