@@ -106,6 +106,17 @@ pub mod qobject {
         #[cxx_name = "seriesGap"]
         fn series_gap(self: &Launcher) -> i32;
 
+        /// What to do at launch (issue #11): `"reopen"` (the default, the last workspace) or `"list"` (the
+        /// Welcome screen's known workspaces).
+        #[qinvokable]
+        #[cxx_name = "startupBehavior"]
+        fn startup_behavior(self: &Launcher) -> QString;
+
+        /// Remembers the startup behavior.
+        #[qinvokable]
+        #[cxx_name = "setStartupBehavior"]
+        fn set_startup_behavior(self: &Launcher, value: &QString);
+
         /// Remembers the series gap and tells the engine (series formed later use it).
         #[qinvokable]
         #[cxx_name = "setSeriesGap"]
@@ -278,7 +289,11 @@ impl qobject::Launcher {
             }
             return;
         }
-        if let Some(last) = Engine::last_opened_workspace(&launch.dirs) {
+        // Issue #11: skip straight to the Welcome screen's known-workspaces list when that is
+        // what was asked for, instead of reopening the last workspace.
+        if settings.startup_behavior != "list"
+            && let Some(last) = Engine::last_opened_workspace(&launch.dirs)
+        {
             let shown = last.found && self.as_mut().open_root(&last.path).is_none();
             if !shown {
                 let note = format!("lost:{}", last.path.display());
@@ -485,6 +500,23 @@ impl qobject::Launcher {
                 .engine
                 .submit(auroraw_engine::Command::SetSeriesGap { seconds });
         }
+    }
+
+    pub fn startup_behavior(&self) -> QString {
+        text(&self.settings_now().startup_behavior)
+    }
+
+    pub fn set_startup_behavior(&self, value: &QString) {
+        if self.dirs.is_none() {
+            return;
+        }
+        let path = self.settings_path();
+        let mut settings = AppSettings::load(&path);
+        settings.startup_behavior = match value.to_string().as_str() {
+            "list" => "list".into(),
+            _ => "reopen".into(),
+        };
+        settings.save(&path);
     }
 
     pub fn regroup_series(&self) {

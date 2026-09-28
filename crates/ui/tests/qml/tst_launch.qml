@@ -54,6 +54,25 @@ AppTestCase {
         compare(files.canonical(app.newDialog.folderField.text), files.canonical(custom))
     }
 
+    function test_the_startup_behavior_setting_controls_whether_the_last_workspace_reopens() {
+        // Issue #11: asking for the list instead is honoured on the next launch.
+        const machine = freshMachine()
+        launch(machine)
+        createWorkspace("Main")
+        compare(app.launcher.screen, "workspace")
+
+        app.showSettings()
+        wait(150)
+        click(app.settingsDialog.startupButtons.itemAt(1))
+        app.settingsDialog.close()
+        wait(150)
+
+        launch(machine)
+        compare(app.launcher.screen, "welcome", "asked to see the list instead of reopening")
+        app.known.refresh()
+        compare(app.known.count, 1, "the workspace is still known")
+    }
+
     function test_the_preview_follows_the_name_and_the_folder_and_the_folder_is_left_alone() {
         const machine = freshMachine()
         launch(machine)

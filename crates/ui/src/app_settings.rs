@@ -45,6 +45,9 @@ pub struct AppSettings {
     pub last_workspace_folder: String,
     /// The folder the Add Source dialog last added, empty for none yet (issue #10).
     pub last_source_folder: String,
+    /// What to do at launch, when none was named on the command line (issue #11): `"reopen"` (the
+    /// last workspace) or `"list"` (the Welcome screen's known workspaces).
+    pub startup_behavior: String,
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
@@ -70,6 +73,7 @@ impl Default for AppSettings {
             similar_minutes: 30,
             last_workspace_folder: String::new(),
             last_source_folder: String::new(),
+            startup_behavior: "reopen".into(),
         }
     }
 }
@@ -95,6 +99,9 @@ impl AppSettings {
                 settings.compare_panes = settings.compare_panes.clamp(2, 4);
                 settings.similar_distance = settings.similar_distance.clamp(1, 24);
                 settings.similar_minutes = settings.similar_minutes.clamp(1, 10_080);
+                if settings.startup_behavior != "list" {
+                    settings.startup_behavior = "reopen".into();
+                }
                 settings
             })
             .unwrap_or_default()
@@ -159,6 +166,7 @@ mod tests {
             similar_minutes: 45,
             last_workspace_folder: "/home/patrick/Pictures".into(),
             last_source_folder: "/mnt/backup".into(),
+            startup_behavior: "list".into(),
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);

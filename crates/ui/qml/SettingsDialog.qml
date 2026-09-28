@@ -15,9 +15,29 @@ AppDialog {
     property alias regroupButton: regroupButton
     property alias similarDistanceBox: similarDistanceBox
     property alias similarMinutesBox: similarMinutesBox
+    property alias startupButtons: startup
 
     contentItem: ColumnLayout {
         spacing: 10
+        Label {
+            text: qsTr("Startup")
+            font.bold: true
+        }
+        RowLayout {
+            spacing: 8
+            Repeater {
+                id: startup
+                model: ["reopen", "list"]
+                delegate: AppButton {
+                    required property string modelData
+                    text: modelData === "reopen" ? qsTr("Reopen the last workspace") : qsTr("Show the list of workspaces")
+                    checkable: true
+                    autoExclusive: true
+                    checked: dialog.launcher.startupBehavior() === modelData
+                    onClicked: dialog.launcher.setStartupBehavior(modelData)
+                }
+            }
+        }
         Label {
             text: qsTr("Language")
             font.bold: true

@@ -45,6 +45,7 @@ recent list. Opening a workspace that already holds photos shows them in the **C
 
 **File ▸ Settings…** (`Ctrl+,`) holds:
 
+- **Startup**: reopen the last workspace (the default), or show the list of known workspaces instead.
 - **Language**: *System* (follow the computer), *English* or *Français*. The change is immediate.
 - **Series**: the largest gap between two photos of a series, and a button to regroup the series
   (see [Series](05-series.md)).

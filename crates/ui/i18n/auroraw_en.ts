@@ -47,42 +47,42 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="42"/>
+        <location filename="../qml/AddSourceDialog.qml" line="43"/>
         <source>Kind: Folder (local, or a network share that is mounted)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="45"/>
+        <location filename="../qml/AddSourceDialog.qml" line="46"/>
         <source>Folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="52"/>
+        <location filename="../qml/AddSourceDialog.qml" line="53"/>
         <source>Browse…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="55"/>
+        <location filename="../qml/AddSourceDialog.qml" line="56"/>
         <source>Name (optional)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="83"/>
+        <location filename="../qml/AddSourceDialog.qml" line="84"/>
         <source>Add</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="91"/>
+        <location filename="../qml/AddSourceDialog.qml" line="92"/>
         <source>Merge and add</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="97"/>
+        <location filename="../qml/AddSourceDialog.qml" line="98"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AddSourceDialog.qml" line="107"/>
+        <location filename="../qml/AddSourceDialog.qml" line="108"/>
         <source>Choose the folder to add to the catalogue</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1485,67 +1485,82 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="22"/>
+        <location filename="../qml/SettingsDialog.qml" line="23"/>
+        <source>Startup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="33"/>
+        <source>Reopen the last workspace</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="33"/>
+        <source>Show the list of workspaces</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/SettingsDialog.qml" line="42"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="34"/>
+        <location filename="../qml/SettingsDialog.qml" line="54"/>
         <source>System</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="44"/>
+        <location filename="../qml/SettingsDialog.qml" line="64"/>
         <source>Series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="51"/>
+        <location filename="../qml/SettingsDialog.qml" line="71"/>
         <source>Photos of one camera at most this many seconds apart form a series:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="61"/>
+        <location filename="../qml/SettingsDialog.qml" line="81"/>
         <source>Series gap in seconds</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="67"/>
+        <location filename="../qml/SettingsDialog.qml" line="87"/>
         <source>Regroup the series now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="70"/>
+        <location filename="../qml/SettingsDialog.qml" line="90"/>
         <source>Forms the series that were made by themselves again with this gap. Series made by hand or resolved stay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="74"/>
+        <location filename="../qml/SettingsDialog.qml" line="94"/>
         <source>Similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="81"/>
+        <location filename="../qml/SettingsDialog.qml" line="101"/>
         <source>Photos are similar when at most this many of the 64 bits of their pictures&apos; fingerprints differ:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="91"/>
+        <location filename="../qml/SettingsDialog.qml" line="111"/>
         <source>Similar photos: how many bits may differ</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="98"/>
+        <location filename="../qml/SettingsDialog.qml" line="118"/>
         <source>...and they were taken at most this many minutes apart:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="108"/>
+        <location filename="../qml/SettingsDialog.qml" line="128"/>
         <source>Similar photos: how many minutes apart</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="116"/>
+        <location filename="../qml/SettingsDialog.qml" line="136"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
