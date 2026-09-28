@@ -3,6 +3,11 @@
 //! engine's event receiver and queues each event onto the GUI thread, where the `Bus` emits it; QML
 //! and the other objects connect to what they care about. Each milestone adds the events its screens need.
 
+// `index_finished`'s own arguments land one over clippy's default limit (cxx_qt's macro-generated
+// code counts them as one more than the plain Rust signature does): `Bus` is a plain event relay,
+// not a place to invent a struct just to carry six plain numbers.
+#![allow(clippy::too_many_arguments)]
+
 #[cxx_qt::bridge]
 pub mod qobject {
     unsafe extern "C++" {
@@ -86,7 +91,9 @@ pub mod qobject {
         #[cxx_name = "jobCancelled"]
         fn job_cancelled(self: Pin<&mut Bus>, job: &QString);
 
-        /// A scan of a source finished.
+        /// A scan of a source finished. `duplicates` (issue #16) is how many files turned out to
+        /// be a confirmed second location of an existing photo: joined to it, not added as their
+        /// own.
         #[qsignal]
         #[cxx_name = "indexFinished"]
         fn index_finished(
@@ -96,6 +103,7 @@ pub mod qobject {
             restored: i32,
             known: i32,
             failed: i32,
+            duplicates: i32,
         );
     }
 
@@ -208,6 +216,7 @@ fn dispatch(event: Event, session: &Session) {
             restored,
             known,
             failed,
+            second_locations,
             ..
         } => {
             let job = job.to_string();
@@ -218,6 +227,7 @@ fn dispatch(event: Event, session: &Session) {
                     restored as i32,
                     known as i32,
                     failed as i32,
+                    second_locations as i32,
                 )
             });
         }

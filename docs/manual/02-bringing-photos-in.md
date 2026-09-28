@@ -39,7 +39,9 @@ stay in the catalogue with their thumbnails and everything you did to them; only
 
 **Rescan** reads the source again: new files are added, and files that were renamed or moved inside the source
 are recognised by their content and keep everything you did to them. A scan that was cancelled or stopped picks up
-where it stopped when you rescan.
+where it stopped when you rescan. If a rescan finds a file that is already in the catalogue under another name
+or location, its Done message says how many, e.g. *Done: 2 added, 0 restored, 3 already known, 0 not readable,
+1 duplicate(s) found.*
 
 ### Removing a source
 

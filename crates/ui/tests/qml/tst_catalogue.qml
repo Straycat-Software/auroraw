@@ -203,6 +203,19 @@ AppTestCase {
         compare(app.catalogue.list.itemAtIndex(0).photos, 2)
     }
 
+    function test_a_rescan_that_finds_a_duplicate_says_so_in_the_done_message() {
+        // Issue #16.
+        const card = begin("One")
+        addSource(card)
+        waitForTheScan()
+        files.copyFile(card + "/NEW_0000.jpg", card + "/NEW_0000_copy.jpg")
+
+        click(app.catalogue.list.itemAtIndex(0).rescanButton)
+        waitForTheScan()
+        compare(app.flow.status, "Done: 0 added, 0 restored, 1 already known, 0 not readable, 1 duplicate(s) found.")
+        compare(app.catalogue.list.itemAtIndex(0).photos, 1, "joined, not added again")
+    }
+
     function test_a_scan_in_progress_disables_the_buttons_and_the_tabs_wait_for_a_dialog() {
         const card = begin("Template3")
         click(app.catalogue.addButton)

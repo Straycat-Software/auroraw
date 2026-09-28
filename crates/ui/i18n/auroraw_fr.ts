@@ -466,17 +466,22 @@
         <translation>Ce dossier contient les sources %1. Les fusionner dans la nouvelle ? Leurs photos sont conservées, avec leurs cotes et versions.</translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="128"/>
+        <location filename="../qml/CatalogueFlow.qml" line="131"/>
+        <source>Done: %1 added, %2 restored, %3 already known, %4 not readable, %5 duplicate(s) found.</source>
+        <translation>Terminé : %1 ajoutées, %2 restaurées, %3 déjà connues, %4 illisibles, %5 doublon(s) trouvé(s).</translation>
+    </message>
+    <message>
+        <location filename="../qml/CatalogueFlow.qml" line="133"/>
         <source>Done: %1 added, %2 restored, %3 already known, %4 not readable.</source>
         <translation>Terminé : %1 ajoutées, %2 restaurées, %3 déjà connues, %4 illisibles.</translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="135"/>
+        <location filename="../qml/CatalogueFlow.qml" line="140"/>
         <source>The scan stopped: %1</source>
         <translation>L&apos;analyse s&apos;est arrêtée : %1</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/CatalogueFlow.qml" line="141"/>
+        <location filename="../qml/CatalogueFlow.qml" line="146"/>
         <source>Source &quot;%1&quot; removed; %n photo(s) left the catalogue.</source>
         <translation>
             <numerusform>Source « %1 » retirée ; %n photo a quitté le catalogue.</numerusform>
@@ -484,12 +489,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="148"/>
+        <location filename="../qml/CatalogueFlow.qml" line="153"/>
         <source>Scan cancelled. Rescanning the source picks up where it stopped.</source>
         <translation>Analyse annulée. Réanalyser la source reprend là où elle s&apos;était arrêtée.</translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="169"/>
+        <location filename="../qml/CatalogueFlow.qml" line="174"/>
         <source>The removal could not start: %1</source>
         <translation>Le retrait n&apos;a pas pu démarrer : %1</translation>
     </message>
@@ -730,8 +735,8 @@
     </message>
     <message>
         <location filename="../qml/ImportDialog.qml" line="146"/>
-        <source>Reading the card…</source>
-        <translation>Lecture de la carte…</translation>
+        <source>Reading the source…</source>
+        <translation>Lecture de la source…</translation>
     </message>
     <message>
         <location filename="../qml/ImportDialog.qml" line="156"/>

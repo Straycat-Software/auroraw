@@ -122,11 +122,16 @@ Item {
             flow.progress = done / total
             flow.status = qsTr("Reading photos: %1 of %2…").arg(done).arg(total)
         }
-        function onIndexFinished(job, added, restored, known, failed) {
+        function onIndexFinished(job, added, restored, known, failed, duplicates) {
             if (job !== flow.sources.job)
                 return
-            flow.status = qsTr("Done: %1 added, %2 restored, %3 already known, %4 not readable.")
-                .arg(added).arg(restored).arg(known).arg(failed)
+            // Issue #16: a separate sentence, not a clause tacked onto the usual one, so nothing about
+            // word order is assumed across languages; the usual one is untouched when nothing joined.
+            flow.status = duplicates > 0
+                ? qsTr("Done: %1 added, %2 restored, %3 already known, %4 not readable, %5 duplicate(s) found.")
+                      .arg(added).arg(restored).arg(known).arg(failed).arg(duplicates)
+                : qsTr("Done: %1 added, %2 restored, %3 already known, %4 not readable.")
+                      .arg(added).arg(restored).arg(known).arg(failed)
             flow.finish()
         }
         function onIndexAborted(job, reason) {

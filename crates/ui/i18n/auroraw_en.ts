@@ -466,17 +466,22 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="128"/>
+        <location filename="../qml/CatalogueFlow.qml" line="131"/>
+        <source>Done: %1 added, %2 restored, %3 already known, %4 not readable, %5 duplicate(s) found.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/CatalogueFlow.qml" line="133"/>
         <source>Done: %1 added, %2 restored, %3 already known, %4 not readable.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="135"/>
+        <location filename="../qml/CatalogueFlow.qml" line="140"/>
         <source>The scan stopped: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/CatalogueFlow.qml" line="141"/>
+        <location filename="../qml/CatalogueFlow.qml" line="146"/>
         <source>Source &quot;%1&quot; removed; %n photo(s) left the catalogue.</source>
         <translation>
             <numerusform>Source &quot;%1&quot; removed; %n photo left the catalogue.</numerusform>
@@ -484,12 +489,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="148"/>
+        <location filename="../qml/CatalogueFlow.qml" line="153"/>
         <source>Scan cancelled. Rescanning the source picks up where it stopped.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/CatalogueFlow.qml" line="169"/>
+        <location filename="../qml/CatalogueFlow.qml" line="174"/>
         <source>The removal could not start: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -730,7 +735,7 @@
     </message>
     <message>
         <location filename="../qml/ImportDialog.qml" line="146"/>
-        <source>Reading the card…</source>
+        <source>Reading the source…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

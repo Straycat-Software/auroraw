@@ -143,7 +143,7 @@ AppDialog {
         }
         finished = false
         progress = 0
-        status = qsTr("Reading the card…")
+        status = qsTr("Reading the source…")
         sources.refresh()
     }
 
