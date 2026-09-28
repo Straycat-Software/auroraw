@@ -116,16 +116,31 @@ pub(crate) enum Inbound {
     /// catalogue writes it queued are ahead of it in this queue, so whoever reacts to the event by
     /// reading the catalogue sees them all.
     Report(Event),
-    /// A remove job took a photo's sidecar out of the workspace (recoverably): take its row out of
-    /// the catalogue.
+    /// A remove job decided a photo has no other location: move its version files and its own sidecar to
+    /// `removed/` (recoverably), then take its row out of the catalogue. The coordinator's own writer, not
+    /// the job's: the decision and this message are sent adjacent to each other, so nothing else gets a
+    /// chance to write this exact photo in between.
     Removed { photo_id: PhotoId },
-    /// A remove job dropped a source from a photo that has another location: point its row at it.
+    /// A remove job decided a photo also has a location outside the source being removed (`dropped_source`):
+    /// drop that source's `Location`s from a fresh read of the sidecar and point the catalogue at what
+    /// remains. An index job merging sources sends [`Inbound::MergeLocations`] instead (it rewrites rather
+    /// than drops).
     Relocated {
         photo_id: PhotoId,
+        dropped_source: SourceId,
         source_id: SourceId,
         path: String,
         filename: String,
         fingerprint: auroraw_types::Fingerprint,
+    },
+    /// An index job merging sources decided a photo's `Location`s under `from_source` now belong to
+    /// `into_source`, with `prefix` ahead of their path (the merged folder's place in the surviving
+    /// source): rewrite them in a fresh read of the sidecar and point the catalogue at the new primary one.
+    MergeLocations {
+        photo_id: PhotoId,
+        from_source: SourceId,
+        into_source: SourceId,
+        prefix: String,
     },
     /// A remove job is done with a source's photos (or an index job merged them into another
     /// source): take the source itself out. `announce` is whether `Event::SourceRemoved` is
@@ -140,8 +155,9 @@ pub(crate) enum Inbound {
     /// A thumbnail worker made the perceptual hash of a photo's thumbnail (D-105): record it.
     Hashed { photo_id: PhotoId, phash: u64 },
     /// An index job confirmed (by whole-file hash) that a file it was about to add is really a second location of
-    /// an existing photo from a *different* source (D-036, D-108): its sidecar already carries the new `Location`
-    /// (written by the job, under the guard); record it in the catalogue too.
+    /// an existing photo from a *different* source (D-036, D-108): push or update that `Location` in a fresh
+    /// read of the sidecar (setting the file's own hash too, now that it is known), write it, and record it in
+    /// the catalogue.
     LocationAdded {
         photo_id: PhotoId,
         source_id: SourceId,
@@ -163,10 +179,13 @@ pub(crate) enum Inbound {
         command: Command,
         reply: Option<Reply>,
     },
-    /// A background job refreshed one sidecar: read it again and bring the catalogue's row in line, on the
-    /// coordinator thread, like everything else (what the job read may be older than what a person did
-    /// to the photo since, so the message carries no metadata).
-    Refreshed { photo_id: PhotoId },
+    /// A keyword path-refresh job asks that one photo's `keyword_paths` be brought in line with `paths`
+    /// (identifier to fresh path): a fresh read, the substitution, the write, all on the coordinator thread,
+    /// like every other edit (the job itself no longer touches the sidecar).
+    Refreshed {
+        photo_id: PhotoId,
+        paths: Arc<HashMap<KeywordId, String>>,
+    },
     /// The path-refresh job that was running is over (finished or cancelled): the next one may start.
     RefreshDone,
     /// An import job (`crate::import_job`) landed one photo, or discovered (while checking a
@@ -291,6 +310,26 @@ impl Coordinator {
                     fingerprint,
                     hash,
                 } => {
+                    if let Ok((mut photo, _)) = self.read_photo(&photo_id) {
+                        for file in &mut photo.files {
+                            if file.fingerprint == fingerprint {
+                                file.hash.get_or_insert(hash);
+                                if !file
+                                    .locations
+                                    .iter()
+                                    .any(|l| l.source == source_id && l.path == path)
+                                {
+                                    file.locations.push(Location {
+                                        source: source_id,
+                                        path: path.clone(),
+                                        seen: Some(Timestamp::now()),
+                                        extra: Vec::new(),
+                                    });
+                                }
+                            }
+                        }
+                        let _ = self.persist_photo(photo);
+                    }
                     let _ = self.catalogue.insert_location(
                         &photo_id,
                         &source_id,
@@ -304,6 +343,13 @@ impl Coordinator {
                     let _ = self.apply_catalogue_action(action);
                 }
                 Inbound::Removed { photo_id } => {
+                    for version in self.workspace.version_files_of(&photo_id) {
+                        let _ = self.workspace.remove_recoverably(&version);
+                    }
+                    let sidecar_path = self.workspace.photo_path(&photo_id);
+                    if sidecar_path.exists() {
+                        let _ = self.workspace.remove_recoverably(&sidecar_path);
+                    }
                     // A photo that leaves a series shrinks it, and it leaves its collections (both read the
                     // catalogue's rows about the photo, so before they go).
                     self.leave_series_on_removal(photo_id);
@@ -316,11 +362,18 @@ impl Coordinator {
                 }
                 Inbound::Relocated {
                     photo_id,
+                    dropped_source,
                     source_id,
                     path,
                     filename,
                     fingerprint,
                 } => {
+                    if let Ok((mut photo, _)) = self.read_photo(&photo_id) {
+                        for file in &mut photo.files {
+                            file.locations.retain(|l| l.source != dropped_source);
+                        }
+                        let _ = self.persist_photo(photo);
+                    }
                     let _ = self.catalogue.apply_relink(
                         &photo_id,
                         &source_id,
@@ -328,6 +381,44 @@ impl Coordinator {
                         &filename,
                         &fingerprint,
                     );
+                }
+                Inbound::MergeLocations {
+                    photo_id,
+                    from_source,
+                    into_source,
+                    prefix,
+                } => {
+                    let mut primary = None;
+                    if let Ok((mut photo, _)) = self.read_photo(&photo_id) {
+                        for file in &mut photo.files {
+                            for location in &mut file.locations {
+                                if location.source == from_source {
+                                    location.source = into_source;
+                                    location.path = format!("{prefix}/{}", location.path);
+                                }
+                            }
+                            if primary.is_none()
+                                && file.role == FileRole::Original
+                                && let Some(location) = file.locations.first()
+                            {
+                                primary = Some((
+                                    file.name.clone(),
+                                    file.fingerprint,
+                                    location.path.clone(),
+                                ));
+                            }
+                        }
+                        let _ = self.persist_photo(photo);
+                    }
+                    if let Some((filename, fingerprint, path)) = primary {
+                        let _ = self.catalogue.apply_relink(
+                            &photo_id,
+                            &into_source,
+                            &path,
+                            &filename,
+                            &fingerprint,
+                        );
+                    }
                 }
                 Inbound::SourceGone {
                     job,
@@ -337,7 +428,7 @@ impl Coordinator {
                     announce,
                 } => self.finish_remove_source(job, source_id, removed, kept, announce),
                 Inbound::Command { command, reply } => self.handle_command(command, reply),
-                Inbound::Refreshed { photo_id } => self.handle_refreshed(photo_id),
+                Inbound::Refreshed { photo_id, paths } => self.handle_refreshed(photo_id, &paths),
                 Inbound::RefreshDone => {
                     self.refresh_running = false;
                     if let Some(next) = self.refresh_queue.pop_front() {
@@ -608,8 +699,6 @@ impl Coordinator {
         photo_id: PhotoId,
         edit: impl FnOnce(&mut auroraw_format::sidecar::Metadata) -> Option<Change>,
     ) -> Result<Option<Change>> {
-        let workspace = self.workspace.clone();
-        let _guard = workspace.sidecar_guard();
         let (mut photo, _) = self.read_photo(&photo_id)?;
         let change = edit(&mut photo.meta);
         // (A same-value edit still writes: it is how a sidecar that was changed outside is written back.)
@@ -745,8 +834,6 @@ impl Coordinator {
         let photo_id = change
             .photo()
             .expect("a change that is not about the vocabulary has a photo");
-        let workspace = self.workspace.clone();
-        let _guard = workspace.sidecar_guard();
         let (mut photo, _) = self.read_photo(&photo_id)?;
         change.apply(&mut photo.meta, direction);
         self.persist_photo(photo)
@@ -896,7 +983,6 @@ impl Coordinator {
         self.refresh_running = true;
         crate::refresh::spawn(
             request.job,
-            self.workspace.clone(),
             request.photo_ids,
             request.paths,
             self.events.clone(),
@@ -1107,23 +1193,22 @@ impl Coordinator {
         Ok(Outcome::Applied)
     }
 
-    fn handle_refreshed(&mut self, id: PhotoId) {
-        let workspace = self.workspace.clone();
-        let _guard = workspace.sidecar_guard();
+    fn handle_refreshed(&mut self, id: PhotoId, paths: &HashMap<KeywordId, String>) {
         // A photo that has gone since (a removed source) is not an error: reconcile would catch it.
-        let Ok((photo, stat)) = self.read_photo(&id) else {
+        let Ok((mut photo, _)) = self.read_photo(&id) else {
             return;
         };
-        let Ok(main_version) = self.main_version_of(&photo) else {
-            return;
-        };
-        if self
-            .catalogue
-            .apply_photo_metadata(&photo, stat, main_version.as_ref())
-            .is_ok()
+        for (path, keyword_id) in photo
+            .meta
+            .keyword_paths
+            .iter_mut()
+            .zip(photo.meta.keyword_ids.iter())
         {
-            let _ = self.events.send(Event::PhotoChanged(id));
+            if let Some(fresh) = paths.get(keyword_id) {
+                *path = fresh.clone();
+            }
         }
+        let _ = self.persist_photo(photo);
     }
 
     fn rebuild(&mut self) -> Result<Outcome> {
@@ -1614,7 +1699,6 @@ impl Coordinator {
             return Ok(false);
         }
         let filename = path.rsplit('/').next().unwrap_or(path).to_string();
-        let _guard = self.workspace.sidecar_guard();
         let Some(mut photo) = self
             .workspace
             .read_photo(&photo_id)

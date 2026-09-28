@@ -2,7 +2,6 @@
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use auroraw_format::sidecar::{PhotoSidecar, VersionSidecar};
 use auroraw_format::state::{
@@ -45,8 +44,6 @@ pub struct Workspace {
     sync: bool,
     /// Held for as long as the workspace is open for writing; released on drop.
     _lock: Option<File>,
-    /// Taken for each read-modify-write of one photo's files (see [`Workspace::sidecar_guard`]).
-    sidecar_lock: Mutex<()>,
 }
 
 fn io_err(path: &Path) -> impl FnOnce(io::Error) -> WorkspaceError + '_ {
@@ -101,7 +98,6 @@ impl Workspace {
             access: Access::ReadWrite,
             sync: false,
             _lock: lock,
-            sidecar_lock: Mutex::new(()),
         };
         ws.write_bytes(&layout::marker(root), &write_state(&ws.marker))?;
         ws.write_bytes(&root.join(layout::README), layout::README_TEXT.as_bytes())?;
@@ -140,7 +136,6 @@ impl Workspace {
             access,
             sync: false,
             _lock: lock,
-            sidecar_lock: Mutex::new(()),
         };
         if ws.access == Access::ReadWrite {
             ws.remove_leftovers();
@@ -274,17 +269,6 @@ impl Workspace {
     /// Writes a photo sidecar (canonical bytes; untouched if nothing changed).
     pub fn write_photo(&self, photo: &PhotoSidecar) -> Result<WriteOutcome, WorkspaceError> {
         self.write_bytes(&self.photo_path(&photo.photo_id), &photo.to_bytes())
-    }
-
-    /// The guard every read-modify-write of one photo's files holds: the coordinator's edits, a background
-    /// job refreshing a keyword's path snapshot, the removal of a source (which moves sidecars away). Without
-    /// it, a job that read a sidecar just before another moved it would write it back (a photo the catalogue
-    /// no longer has), and two writers would overwrite each other's change. Held per photo, never across a
-    /// whole job, and not re-entrant: do not ask for it again while holding it.
-    pub fn sidecar_guard(&self) -> MutexGuard<'_, ()> {
-        self.sidecar_lock
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Writes a version sidecar.

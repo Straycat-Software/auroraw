@@ -204,7 +204,11 @@ fn run(job: IndexJob) {
     let mut new_groups = Vec::new();
     for outcome in relink::reconcile(&found, &known) {
         if job.cancel.is_cancelled() {
-            let _ = job.events.send(Event::JobCancelled(job.job));
+            // Through `inbound`, not `events`, directly: `merge_sources`, just above, may have messages
+            // still queued (`Inbound::Report`'s own doc comment).
+            let _ = job
+                .inbound
+                .send(Inbound::Report(Event::JobCancelled(job.job)));
             return;
         }
         match outcome {
@@ -296,7 +300,9 @@ fn run(job: IndexJob) {
     let mut claimed: HashSet<usize> = HashSet::new();
     for group in new_groups {
         if job.cancel.is_cancelled() {
-            let _ = job.events.send(Event::JobCancelled(job.job));
+            let _ = job
+                .inbound
+                .send(Inbound::Report(Event::JobCancelled(job.job)));
             return;
         }
         // Fingerprinted once already, above, to feed `reconcile`.
@@ -333,7 +339,9 @@ fn run(job: IndexJob) {
         match wait_for_answer(&job) {
             Some(answer) => answer,
             None => {
-                let _ = job.events.send(Event::JobCancelled(job.job));
+                let _ = job
+                    .inbound
+                    .send(Inbound::Report(Event::JobCancelled(job.job)));
                 return;
             }
         }
@@ -347,7 +355,11 @@ fn run(job: IndexJob) {
     let mut versions_came_back = false;
     for (done, mut candidate) in candidates.into_iter().enumerate() {
         if job.cancel.is_cancelled() {
-            let _ = job.events.send(Event::JobCancelled(job.job));
+            // Through `inbound`: an earlier candidate in this same loop may have a `LocationAdded` still
+            // queued ahead of it.
+            let _ = job
+                .inbound
+                .send(Inbound::Report(Event::JobCancelled(job.job)));
             return;
         }
         let outcome = match candidate.removed.filter(|_| restore) {
@@ -415,7 +427,6 @@ fn merge_sources(job: &IndexJob, catalogue: &Catalogue) -> Vec<KnownFile> {
     for (inner, prefix) in &job.merge {
         let mut moved = 0;
         for photo_id in catalogue.photos_in_source(inner).unwrap_or_default() {
-            let _guard = job.workspace.sidecar_guard();
             let Some(mut photo) = job
                 .workspace
                 .read_photo(&photo_id)
@@ -425,6 +436,10 @@ fn merge_sources(job: &IndexJob, catalogue: &Catalogue) -> Vec<KnownFile> {
             else {
                 continue;
             };
+            // This in-memory copy is only to work out the photo's new primary location, needed synchronously
+            // below (`known`/`is_primary`, fed to this job's own reconciliation right after); the sidecar
+            // itself is rewritten by the coordinator, from a fresh read of its own (`Inbound::MergeLocations`,
+            // the coordinator's the only writer, note 001 §5.4/D-099).
             let mut primary = None;
             for file in &mut photo.files {
                 for location in &mut file.locations {
@@ -440,16 +455,12 @@ fn merge_sources(job: &IndexJob, catalogue: &Catalogue) -> Vec<KnownFile> {
                     primary = Some((file.name.clone(), file.fingerprint, location.path.clone()));
                 }
             }
-            if job.workspace.write_photo(&photo).is_err() {
-                continue;
-            }
-            if let Some((filename, fingerprint, path)) = primary {
-                let _ = job.inbound.send(Inbound::Relocated {
+            if let Some((_, fingerprint, path)) = primary {
+                let _ = job.inbound.send(Inbound::MergeLocations {
                     photo_id,
-                    source_id: job.source_id,
-                    path: path.clone(),
-                    filename,
-                    fingerprint,
+                    from_source: *inner,
+                    into_source: job.source_id,
+                    prefix: prefix.clone(),
                 });
                 moved_files.push(KnownFile {
                     photo_id,
@@ -594,8 +605,9 @@ fn hash_of_existing(
     Some(hash)
 }
 
-/// Pushes a new `Location` onto the existing photo's sidecar (under the guard) and tells the coordinator to
-/// record it in the catalogue too.
+/// Tells the coordinator to push a new `Location` onto the photo's sidecar (a fresh read of its own) and
+/// record it in the catalogue: nothing here needs a read first, every field is already decided by the
+/// caller (D-036, D-108).
 fn record_second_location(
     job: &IndexJob,
     photo_id: PhotoId,
@@ -604,36 +616,6 @@ fn record_second_location(
     hash: ContentHash,
 ) -> bool {
     let filename = file_name(path);
-    let _guard = job.workspace.sidecar_guard();
-    let Some(mut photo) = job
-        .workspace
-        .read_photo(&photo_id)
-        .ok()
-        .flatten()
-        .and_then(|loaded| loaded.current())
-    else {
-        return false;
-    };
-    for file in &mut photo.files {
-        if file.fingerprint == fingerprint {
-            file.hash.get_or_insert(hash);
-            if !file
-                .locations
-                .iter()
-                .any(|l| l.source == job.source_id && l.path == path)
-            {
-                file.locations.push(Location {
-                    source: job.source_id,
-                    path: path.to_string(),
-                    seen: Some(Timestamp::now()),
-                    extra: Vec::new(),
-                });
-            }
-        }
-    }
-    if job.workspace.write_photo(&photo).is_err() {
-        return false;
-    }
     let _ = job.inbound.send(Inbound::LocationAdded {
         photo_id,
         source_id: job.source_id,

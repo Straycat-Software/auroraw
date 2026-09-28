@@ -43,13 +43,17 @@ fn run(job: RemoveJob) {
     let (mut removed, mut kept) = (0, 0);
     for (done, photo_id) in photos.into_iter().enumerate() {
         if job.cancel.is_cancelled() {
-            // What was removed stays removed and the source stays: running it again finishes.
-            let _ = job.events.send(Event::JobCancelled(job.job));
+            // What was removed stays removed and the source stays: running it again finishes. Through
+            // `inbound`, not `events`, directly: it must not be observed as done before the coordinator has
+            // drained every `Relocated`/`Removed` message already sent for photos before this one
+            // (`Inbound::Report`'s own doc comment).
+            let _ = job
+                .inbound
+                .send(Inbound::Report(Event::JobCancelled(job.job)));
             return;
         }
-        // Read, then rewritten or moved away, without another writer in between (a path refresh that read
-        // this sidecar just before would otherwise write it back after it has left).
-        let _guard = job.workspace.sidecar_guard();
+        // Only a read, to decide which of the two the coordinator should do (it is the one that actually
+        // drops the locations or moves the files away, on its own thread, fresh, its own single writer).
         let sidecar = job
             .workspace
             .read_photo(&photo_id)
@@ -64,39 +68,26 @@ fn run(job: RemoveJob) {
                     .map(|l| (file.clone(), l.clone()))
             })
         });
-        match (sidecar, other_location) {
+        match other_location {
             // Also somewhere else: keep the photo, drop this source's locations, and move its
             // catalogue row to the location that remains.
-            (Some(mut photo), Some((file, location))) => {
-                for file in &mut photo.files {
-                    file.locations.retain(|l| l.source != job.source_id);
-                }
-                if job.workspace.write_photo(&photo).is_ok() {
-                    let _ = job.inbound.send(Inbound::Relocated {
-                        photo_id,
-                        source_id: location.source,
-                        path: location.path.clone(),
-                        filename: file.name.clone(),
-                        fingerprint: file.fingerprint,
-                    });
-                    kept += 1;
-                }
+            Some((file, location)) => {
+                let _ = job.inbound.send(Inbound::Relocated {
+                    photo_id,
+                    dropped_source: job.source_id,
+                    source_id: location.source,
+                    path: location.path.clone(),
+                    filename: file.name.clone(),
+                    fingerprint: file.fingerprint,
+                });
+                kept += 1;
             }
-            // Only here: the sidecar and its versions go to `removed/`, the row leaves the
-            // catalogue.
-            _ => {
-                let mut ok = true;
-                for version in job.workspace.version_files_of(&photo_id) {
-                    ok &= job.workspace.remove_recoverably(&version).is_ok();
-                }
-                let sidecar_path = job.workspace.photo_path(&photo_id);
-                if sidecar_path.exists() {
-                    ok &= job.workspace.remove_recoverably(&sidecar_path).is_ok();
-                }
-                if ok {
-                    let _ = job.inbound.send(Inbound::Removed { photo_id });
-                    removed += 1;
-                }
+            // Only here (including a sidecar that could not be read at all): the sidecar and its versions
+            // go to `removed/`, the row leaves the catalogue, exactly as when it is a plain read failure
+            // today (the coordinator's own handler no-ops on whatever it does not find).
+            None => {
+                let _ = job.inbound.send(Inbound::Removed { photo_id });
+                removed += 1;
             }
         }
         let _ = job.events.send(Event::JobProgress {

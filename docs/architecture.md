@@ -179,9 +179,11 @@ runs in a separate helper process, so that its crash or corruption stays out of 
   grouping, taking out, dissolving, resolving (with the flag changes of the photos, in one entry) and reopening are
   undone and redone as one operation. Detection (`series_detect`, pure) runs on the coordinator when an index or an
   import finishes and forms series among the photos that are in none; it is not a step.
-- **Sidecar edits are serialised** (D-099): every read-modify-write of one photo's files, from the coordinator or
-  from a background job (the path refresh after a keyword edit, the removal of a source, an index merge), holds
-  `Workspace::sidecar_guard()`; refresh jobs run one at a time, in the order asked.
+- **The coordinator is the only sidecar writer** (D-099, D-126): a background job (the path refresh after a
+  keyword edit, the removal of a source, an index merge) reads only what it needs to *decide*, then sends a
+  small message describing the write's intent; the coordinator does its own fresh read, applies it and writes,
+  on its one thread, the same as every other edit. No lock arbitrates a job against the coordinator any more,
+  since the coordinator alone ever writes; refresh jobs still run one at a time, in the order asked.
 - The grid's list is **one composed catalogue query** (`Filter` and `Catalogue::list_filtered`, D-098):
   minimum rating, flag view (not rejected, all, picked, rejected) and keyword (with its descendants)
   are conditions joined in one keyset-paged statement, so a new filter is a field, not a function.

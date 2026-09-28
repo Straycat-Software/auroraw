@@ -782,14 +782,15 @@ detection and its confirmation (D-047, §6 item 9), **XMP export to source folde
 opt-in), offline **place names** and the place filter. *Stretch*: importing a vocabulary from
 another application.
 
-**Carried over from D-099, to settle here:** sidecars of *existing* photos are edited by two kinds of
-writer, the coordinator and background jobs (the keyword path refresh, the removal of a source, an index
-merge), kept apart by `Workspace::sidecar_guard()`, a lock held per photo. The architecture's own rule is a
-single writer: when this package turns keyword deletion and batch edits into background jobs with progress
-(they need to be split into messages anyway), move those writes to the coordinator (a job sends "rewrite
-this photo's paths" or "move this sidecar to `removed/`" in small messages, and does only the slow reading
-itself) and **remove the lock**, so that a new job cannot forget to take it. Decided with Patrick on
-2026-09-26: keep the lock until then.
+**Carried over from D-099, settled 2026-09-28 (D-126):** sidecars of *existing* photos used to be edited by
+two kinds of writer, the coordinator and background jobs (the keyword path refresh, the removal of a source,
+an index merge), kept apart by `Workspace::sidecar_guard()`, a lock held per photo. Each of the three jobs
+now only reads to decide, and sends the coordinator a small message describing the write's intent (a
+rewritten keyword path, a dropped or merged source location, a photo with no other location); the
+coordinator does its own fresh read and writes, its one thread the only writer, and the lock is gone.
+Turning keyword deletion and batch edits into background jobs with progress themselves (they still run
+synchronously on the coordinator) is separate, later work, with its own product questions (cancellation
+policy, whether every small interactive batch becomes asynchronous) — not part of this.
 
 Done when: a keyword hierarchy and a rating round trip through ExifTool and one other
 application; an external change to a sidecar is detected, shown and applied on confirmation
