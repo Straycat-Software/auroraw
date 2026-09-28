@@ -731,6 +731,7 @@ const ROLE_SERIES_OPEN: i32 = 0x0109;
 const ROLE_SERIES_EDGE: i32 = 0x010A;
 const ROLE_MARKED: i32 = 0x010B;
 const ROLE_IS_RAW: i32 = 0x010C;
+const ROLE_IS_MISSING: i32 = 0x010D;
 
 /// A label's code: 0 for none, or a label that is not one of the five (another program's).
 fn label_code(label: Option<&str>) -> u8 {
@@ -831,6 +832,7 @@ fn load_items(filter: &Filter) -> (Vec<Item>, HashMap<SeriesId, auroraw_catalogu
                 label_code(row.label.as_deref()),
                 row.series_id,
                 is_raw_original,
+                row.original_missing,
             )
         }));
     }
@@ -2126,6 +2128,7 @@ impl qobject::PhotoGrid {
                 QVariant::from(&item.photos().iter().any(|photo| self.marks.contains(photo)))
             }
             ROLE_IS_RAW => QVariant::from(&item.is_raw_original),
+            ROLE_IS_MISSING => QVariant::from(&item.is_missing),
             _ => QVariant::default(),
         }
     }
@@ -2145,6 +2148,7 @@ impl qobject::PhotoGrid {
         roles.insert(ROLE_SERIES_EDGE, QByteArray::from("seriesEdge"));
         roles.insert(ROLE_MARKED, QByteArray::from("marked"));
         roles.insert(ROLE_IS_RAW, QByteArray::from("isRawOriginal"));
+        roles.insert(ROLE_IS_MISSING, QByteArray::from("isMissing"));
         roles
     }
 

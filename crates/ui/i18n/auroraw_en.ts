@@ -636,12 +636,12 @@
 <context>
     <name>DuplicatesDialog</name>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="23"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="22"/>
         <source>Duplicate photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/DuplicatesDialog.qml" line="47"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="37"/>
         <source>%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</source>
         <translation>
             <numerusform>%n photo found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</numerusform>
@@ -649,27 +649,27 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="48"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="38"/>
         <source>No duplicate photo found.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="99"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="88"/>
         <source>Show in file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="158"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="104"/>
         <source>Export the list…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="162"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="107"/>
         <source>Writes the report to a text file, the same one the CLI&apos;s own duplicates command prints</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="166"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="111"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1229,7 +1229,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="919"/>
+        <location filename="../qml/Library.qml" line="920"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n star</numerusform>
@@ -1237,81 +1237,86 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="919"/>
+        <location filename="../qml/Library.qml" line="920"/>
         <source>Photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="966"/>
+        <location filename="../qml/Library.qml" line="969"/>
         <source>No preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1036"/>
+        <location filename="../qml/Library.qml" line="978"/>
+        <source>Missing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1048"/>
         <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1055"/>
+        <location filename="../qml/Library.qml" line="1067"/>
         <source>No RAW</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1159"/>
+        <location filename="../qml/Library.qml" line="1171"/>
         <source>Open in the image view</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1160"/>
-        <location filename="../qml/Library.qml" line="1185"/>
+        <location filename="../qml/Library.qml" line="1172"/>
+        <location filename="../qml/Library.qml" line="1197"/>
         <source>Show in file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1162"/>
+        <location filename="../qml/Library.qml" line="1174"/>
         <source>Similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1163"/>
+        <location filename="../qml/Library.qml" line="1175"/>
         <source>Open or close the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1164"/>
+        <location filename="../qml/Library.qml" line="1176"/>
         <source>Group as a series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1165"/>
+        <location filename="../qml/Library.qml" line="1177"/>
         <source>Take out of the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1166"/>
+        <location filename="../qml/Library.qml" line="1178"/>
         <source>Resolve the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1167"/>
+        <location filename="../qml/Library.qml" line="1179"/>
         <source>Reopen the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1176"/>
-        <location filename="../qml/Library.qml" line="1194"/>
+        <location filename="../qml/Library.qml" line="1188"/>
+        <location filename="../qml/Library.qml" line="1206"/>
         <source>Pick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1177"/>
-        <location filename="../qml/Library.qml" line="1195"/>
+        <location filename="../qml/Library.qml" line="1189"/>
+        <location filename="../qml/Library.qml" line="1207"/>
         <source>Reject</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1178"/>
-        <location filename="../qml/Library.qml" line="1196"/>
+        <location filename="../qml/Library.qml" line="1190"/>
+        <location filename="../qml/Library.qml" line="1208"/>
         <source>Clear the flag</source>
         <translation type="unfinished"></translation>
     </message>

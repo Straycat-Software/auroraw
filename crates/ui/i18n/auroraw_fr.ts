@@ -636,12 +636,12 @@
 <context>
     <name>DuplicatesDialog</name>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="23"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="22"/>
         <source>Duplicate photos</source>
         <translation>Photos en double</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/DuplicatesDialog.qml" line="47"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="37"/>
         <source>%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</source>
         <translation>
             <numerusform>%n photo trouvée à plus d&apos;un endroit. Auroraw ne supprime jamais rien lui-même&#xa0;: utilisez «&#xa0;Montrer dans le gestionnaire de fichiers&#xa0;» pour aller y faire le ménage.</numerusform>
@@ -649,27 +649,27 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="48"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="38"/>
         <source>No duplicate photo found.</source>
         <translation>Aucune photo en double trouvée.</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="99"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="88"/>
         <source>Show in file manager</source>
         <translation>Montrer dans le gestionnaire de fichiers</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="158"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="104"/>
         <source>Export the list…</source>
         <translation>Exporter la liste&#xa0;…</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="162"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="107"/>
         <source>Writes the report to a text file, the same one the CLI&apos;s own duplicates command prints</source>
         <translation>Écrit le rapport dans un fichier texte, le même que celui que la commande duplicates du CLI affiche</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="166"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="111"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -1229,7 +1229,7 @@
         <translation>Écrit le fichier de chaque photo affichée dans un fichier texte, un chemin par ligne</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="919"/>
+        <location filename="../qml/Library.qml" line="920"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n étoile</numerusform>
@@ -1237,81 +1237,86 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="919"/>
+        <location filename="../qml/Library.qml" line="920"/>
         <source>Photo</source>
         <translation>Photo</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="966"/>
+        <location filename="../qml/Library.qml" line="969"/>
         <source>No preview</source>
         <translation>Aucun aperçu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1036"/>
+        <location filename="../qml/Library.qml" line="978"/>
+        <source>Missing</source>
+        <translation>Manquante</translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1048"/>
         <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
         <translation>%1 des %2 photos de la série sont affichées (les filtres cachent les autres)</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1055"/>
+        <location filename="../qml/Library.qml" line="1067"/>
         <source>No RAW</source>
         <translation>Sans RAW</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1159"/>
+        <location filename="../qml/Library.qml" line="1171"/>
         <source>Open in the image view</source>
         <translation>Ouvrir dans la vue image</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1160"/>
-        <location filename="../qml/Library.qml" line="1185"/>
+        <location filename="../qml/Library.qml" line="1172"/>
+        <location filename="../qml/Library.qml" line="1197"/>
         <source>Show in file manager</source>
         <translation>Montrer dans le gestionnaire de fichiers</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1162"/>
+        <location filename="../qml/Library.qml" line="1174"/>
         <source>Similar photos</source>
         <translation>Photos similaires</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1163"/>
+        <location filename="../qml/Library.qml" line="1175"/>
         <source>Open or close the series</source>
         <translation>Ouvrir ou fermer la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1164"/>
+        <location filename="../qml/Library.qml" line="1176"/>
         <source>Group as a series</source>
         <translation>Grouper en série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1165"/>
+        <location filename="../qml/Library.qml" line="1177"/>
         <source>Take out of the series</source>
         <translation>Sortir de la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1166"/>
+        <location filename="../qml/Library.qml" line="1178"/>
         <source>Resolve the series</source>
         <translation>Résoudre la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1167"/>
+        <location filename="../qml/Library.qml" line="1179"/>
         <source>Reopen the series</source>
         <translation>Rouvrir la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1176"/>
-        <location filename="../qml/Library.qml" line="1194"/>
+        <location filename="../qml/Library.qml" line="1188"/>
+        <location filename="../qml/Library.qml" line="1206"/>
         <source>Pick</source>
         <translation>Retenir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1177"/>
-        <location filename="../qml/Library.qml" line="1195"/>
+        <location filename="../qml/Library.qml" line="1189"/>
+        <location filename="../qml/Library.qml" line="1207"/>
         <source>Reject</source>
         <translation>Refuser</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1178"/>
-        <location filename="../qml/Library.qml" line="1196"/>
+        <location filename="../qml/Library.qml" line="1190"/>
+        <location filename="../qml/Library.qml" line="1208"/>
         <source>Clear the flag</source>
         <translation>Effacer le drapeau</translation>
     </message>

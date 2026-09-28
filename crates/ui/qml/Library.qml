@@ -902,6 +902,7 @@ FocusScope {
                     required property int seriesEdge
                     required property bool marked
                     required property bool isRawOriginal
+                    required property bool isMissing
                     // A series is one thumbnail with a count, that opens in place.
                     readonly property bool inSeries: cell.seriesId !== "" && cell.seriesTotal > 1
                     // What the series' badge says: a tick once resolved, the arrow, the photos listed, and of how many when the
@@ -956,15 +957,26 @@ FocusScope {
                             source: "image://thumbs/" + cell.photoId
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
-                            // A rejected photo is dimmed, and stays where it is until the list is read again.
-                            opacity: cell.flag === 2 ? 0.35 : 1
+                            // A rejected photo is dimmed, and stays where it is until the list is read again; a
+                            // missing one more so, since its thumbnail (kept from before its file went away) is
+                            // now only a memory of it.
+                            opacity: cell.isMissing ? 0.3 : (cell.flag === 2 ? 0.35 : 1)
                         }
                         // A photo no thumbnail can be made for (an unreadable file, a RAW without a preview).
                         Label {
                             anchors.centerIn: parent
-                            visible: cell.unavailable
+                            visible: cell.unavailable && !cell.isMissing
                             text: qsTr("No preview")
                             color: Theme.grey.placeholder
+                        }
+                        // The last scan of this photo's source no longer found its file there (issue #7): its
+                        // thumbnail may still be the one cached from before, so this is said outright rather than
+                        // left to "No preview" (which would not even show when a cached thumbnail still loads).
+                        Label {
+                            anchors.centerIn: parent
+                            visible: cell.isMissing
+                            text: qsTr("Missing")
+                            color: Theme.danger
                         }
                         // What is selected is tinted, so that a set reads at a glance.
                         Rectangle {

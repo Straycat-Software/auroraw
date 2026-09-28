@@ -236,4 +236,20 @@ AppTestCase {
         verify(flags.includes(true), "the RAW+JPEG pair has no badge")
         verify(flags.includes(false), "the JPEG-only photo is marked")
     }
+
+    function test_a_photo_whose_file_is_deleted_is_marked_missing_after_a_rescan() {
+        // Issue #7: rescanning a source used not to detect a photo removed from it. It does now
+        // (the engine's own tests cover the catalogue side); this is the grid saying so.
+        const card = begin("Template3")
+        addSource(card)
+        waitForTheScan()
+        files.remove(card + "/IMG_0001.jpg")
+
+        click(app.catalogue.list.itemAtIndex(0).rescanButton)
+        waitForTheScan()
+        app.currentTask = "cull"
+        tryCompare(app.photos, "count", 3)
+        const missing = [0, 1, 2].map(i => app.library.grid.itemAtIndex(i).isMissing)
+        compare(missing.filter(m => m).length, 1, "exactly the deleted photo is marked missing")
+    }
 }

@@ -13,6 +13,9 @@ it, a strip below it that describes what is selected, and the [keyword panel](06
 - A **green ring** when you have marked the photo to keep (see [Series](05-series.md)).
 - **No RAW**, at the bottom left, for a photo whose only file is a JPEG (or another standard format): there is no
   RAW left to develop for it.
+- **Missing**, over a dimmed thumbnail, for a photo whose file the last rescan of its source no longer found (an
+  unplugged card, a deleted or moved picture): nothing about the photo itself is lost, and a later rescan clears
+  this the moment the file reappears where it was, or is relinked to its new place.
 
 The **slider** in the filter bar sets the **size of the thumbnails**, from small (many photos on screen) to large
 (256 pixels on the long side, the size of the stored thumbnail); the grid keeps the size you chose. Resizing the thumbnails after scrolling keeps

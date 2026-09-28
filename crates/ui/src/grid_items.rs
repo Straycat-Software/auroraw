@@ -35,6 +35,11 @@ pub struct Item {
     /// Whether the photo's original file is a camera RAW (issue #5): a collapsed series' row shows
     /// its cover's own, the same way its rating, flag and label are the cover's own.
     pub is_raw_original: bool,
+    /// Whether the last scan of the photo's source no longer found its file there (issue #7): the
+    /// catalogue's own record (rating, keywords, series) is untouched, only the file itself is gone
+    /// (an unplugged card, a deleted or moved picture). The next rescan clears this the moment the
+    /// file reappears where it was, or is relinked to its new place.
+    pub is_missing: bool,
 }
 
 impl Item {
@@ -45,6 +50,7 @@ impl Item {
         label: u8,
         series: Option<SeriesId>,
         is_raw_original: bool,
+        is_missing: bool,
     ) -> Self {
         Self {
             id,
@@ -59,6 +65,7 @@ impl Item {
             series_open: false,
             series_edge: 0,
             is_raw_original,
+            is_missing,
         }
     }
 
@@ -167,7 +174,7 @@ mod tests {
     use super::*;
 
     fn photo(n: u8, series: Option<SeriesId>) -> Item {
-        Item::photo(PhotoId::from_bytes([n; 16]), 0, 0, 0, series, false)
+        Item::photo(PhotoId::from_bytes([n; 16]), 0, 0, 0, series, false, false)
     }
 
     fn info(id: SeriesId, cover: u8, members: usize, resolved: bool) -> (SeriesId, SeriesInfo) {
