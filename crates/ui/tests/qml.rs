@@ -206,6 +206,15 @@ fn the_info_panel_shows_a_photos_technical_metadata() {
     run_suite("info", home.path(), None);
 }
 
+/// The collections tab (WP10, slice 3): made from the field with the selection in it, the tri-state check,
+/// collections inside collections, the list filtered by one, rename, move, drag and drop, delete, undo, French.
+#[test]
+fn collections_in_the_tab() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 40);
+    run_suite("collections", home.path(), None);
+}
+
 /// Reorganising the vocabulary: drag and drop, the Move dialog, deleting a branch, undo.
 #[test]
 fn reorganising_the_keyword_tree() {

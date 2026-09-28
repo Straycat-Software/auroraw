@@ -38,6 +38,7 @@ pub mod qobject {
         #[qproperty(i32, selected_count, cxx_name = "selectedCount")]
         #[qproperty(i32, flag_filter, cxx_name = "flagFilter")]
         #[qproperty(QString, keyword_filter, cxx_name = "keywordFilter")]
+        #[qproperty(QString, collection_filter, cxx_name = "collectionFilter")]
         #[qproperty(QString, label_filter, cxx_name = "labelFilter")]
         #[qproperty(i32, total)]
         #[qproperty(i32, series_count, cxx_name = "seriesCount")]
@@ -67,6 +68,12 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "filterKeyword"]
         fn filter_keyword(self: Pin<&mut PhotoGrid>, keyword: &QString);
+
+        /// Lists only the photos in this collection or in one inside it (an identifier; empty for no
+        /// collection filter). The other filters stay; nothing is selected any more.
+        #[qinvokable]
+        #[cxx_name = "filterCollection"]
+        fn filter_collection(self: Pin<&mut PhotoGrid>, collection: &QString);
 
         /// Lists photos by series: 0 all, 1 those in a series, 2 those of an unresolved series, 3 those of a resolved
         /// one. The other filters stay; nothing is selected any more.
@@ -245,6 +252,29 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "createKeywordSelection"]
         fn create_keyword_selection(
+            self: Pin<&mut PhotoGrid>,
+            name: &QString,
+            parent: &QString,
+        ) -> QString;
+
+        /// For each collection a selected photo is in, how many selected photos are in it, as JSON
+        /// (`{"<collection id>": 3}`): what the collections panel shows as none, some or all.
+        #[qinvokable]
+        #[cxx_name = "collectionUsage"]
+        fn collection_usage(self: &PhotoGrid) -> QString;
+
+        /// Adds every selected photo to a collection (an identifier), or takes them out, as one action.
+        /// How many photos.
+        #[qinvokable]
+        #[cxx_name = "collectionSelection"]
+        fn collection_selection(self: Pin<&mut PhotoGrid>, collection: &QString, add: bool) -> i32;
+
+        /// Makes the collection `name` under `parent` (an identifier; empty for the top level) with every
+        /// selected photo in it, as one action (one step of the history). Its identifier, or `error:` and
+        /// why not.
+        #[qinvokable]
+        #[cxx_name = "createCollectionSelection"]
+        fn create_collection_selection(
             self: Pin<&mut PhotoGrid>,
             name: &QString,
             parent: &QString,
@@ -647,6 +677,137 @@ pub mod qobject {
         #[base = QAbstractListModel]
         #[qml_element]
         #[qproperty(i32, count)]
+        type CollectionList = super::CollectionListRust;
+
+        /// Reads the manual collections and how many photos each holds again.
+        #[qinvokable]
+        fn refresh(self: Pin<&mut CollectionList>);
+
+        /// Shows the collections whose name contains `text` (any case) with their ancestors; nothing typed
+        /// shows the whole tree, with what was collapsed.
+        #[qinvokable]
+        #[cxx_name = "setFilter"]
+        fn set_filter(self: Pin<&mut CollectionList>, text: &QString);
+
+        /// Collapses or expands the collection in `row`.
+        #[qinvokable]
+        #[cxx_name = "toggleExpanded"]
+        fn toggle_expanded(self: Pin<&mut CollectionList>, row: i32);
+
+        /// Tells which collections the selection is in (`collectionUsage` JSON) and how many photos it has.
+        #[qinvokable]
+        #[cxx_name = "applyUsage"]
+        fn apply_usage(self: Pin<&mut CollectionList>, usage: &QString, selected: i32);
+
+        /// The collection in `row` (its identifier) and its name.
+        #[qinvokable]
+        #[cxx_name = "idAt"]
+        fn id_at(self: &CollectionList, row: i32) -> QString;
+        #[qinvokable]
+        #[cxx_name = "nameAt"]
+        fn name_at(self: &CollectionList, row: i32) -> QString;
+
+        /// The row of the best match for what was typed (the name itself, else the first that starts with
+        /// it, else the first that contains it), -1 when there is none.
+        #[qinvokable]
+        #[cxx_name = "bestMatch"]
+        fn best_match(self: &CollectionList, text: &QString) -> i32;
+
+        /// Makes an empty collection under `parent` (an identifier; empty for the top level); its
+        /// identifier, or the existing one's when that name is there already, or `error:` and why not.
+        #[qinvokable]
+        fn create(self: Pin<&mut CollectionList>, name: &QString, parent: &QString) -> QString;
+
+        /// Renames the collection in `row`; empty, or why not.
+        #[qinvokable]
+        fn rename(self: Pin<&mut CollectionList>, row: i32, name: &QString) -> QString;
+
+        /// The identifier of the collection named `name` (any case) under `parent` (empty for the top
+        /// level), or empty when there is none.
+        #[qinvokable]
+        #[cxx_name = "findSibling"]
+        fn find_sibling(self: &CollectionList, name: &QString, parent: &QString) -> QString;
+
+        /// The name of the collection `id`, or empty when there is none.
+        #[qinvokable]
+        #[cxx_name = "nameOf"]
+        fn name_of(self: &CollectionList, id: &QString) -> QString;
+
+        /// Whether the collection `id` still exists.
+        #[qinvokable]
+        #[cxx_name = "hasCollection"]
+        fn has_collection(self: &CollectionList, id: &QString) -> bool;
+
+        /// Whether the collection `id` can be put under `parent` (empty for the top level).
+        #[qinvokable]
+        #[cxx_name = "canMove"]
+        fn can_move(self: &CollectionList, id: &QString, parent: &QString) -> bool;
+
+        /// Where `id` can go (JSON `[{"id", "path"}]`), for the Move dialog.
+        #[qinvokable]
+        #[cxx_name = "moveTargets"]
+        fn move_targets(self: &CollectionList, id: &QString) -> QString;
+
+        /// What deleting `id` takes with it (JSON `{"name", "collections", "photos"}`).
+        #[qinvokable]
+        fn branch(self: &CollectionList, id: &QString) -> QString;
+
+        /// Puts `id` under `parent` (empty for the top level); empty, or why not.
+        #[qinvokable]
+        #[cxx_name = "moveCollection"]
+        fn move_collection(
+            self: Pin<&mut CollectionList>,
+            id: &QString,
+            parent: &QString,
+        ) -> QString;
+
+        /// Deletes `id` and the collections inside it; empty, or why not.
+        #[qinvokable]
+        fn remove(self: Pin<&mut CollectionList>, id: &QString) -> QString;
+    }
+
+    unsafe extern "RustQt" {
+        #[inherit]
+        #[cxx_name = "beginResetModel"]
+        unsafe fn begin_reset_model(self: Pin<&mut CollectionList>);
+        #[inherit]
+        #[cxx_name = "endResetModel"]
+        unsafe fn end_reset_model(self: Pin<&mut CollectionList>);
+        #[inherit]
+        #[qsignal]
+        #[cxx_name = "dataChanged"]
+        fn data_changed(
+            self: Pin<&mut CollectionList>,
+            top_left: &QModelIndex,
+            bottom_right: &QModelIndex,
+            roles: &QVector_i32,
+        );
+        #[inherit]
+        fn index(self: &CollectionList, row: i32, column: i32, parent: &QModelIndex)
+        -> QModelIndex;
+    }
+
+    extern "RustQt" {
+        #[qinvokable]
+        #[cxx_override]
+        fn data(self: &CollectionList, index: &QModelIndex, role: i32) -> QVariant;
+
+        #[qinvokable]
+        #[cxx_override]
+        #[cxx_name = "roleNames"]
+        fn role_names(self: &CollectionList) -> QHash_i32_QByteArray;
+
+        #[qinvokable]
+        #[cxx_override]
+        #[cxx_name = "rowCount"]
+        fn row_count(self: &CollectionList, _parent: &QModelIndex) -> i32;
+    }
+
+    extern "RustQt" {
+        #[qobject]
+        #[base = QAbstractListModel]
+        #[qml_element]
+        #[qproperty(i32, count)]
         #[qproperty(QString, job)]
         type SourceList = super::SourceListRust;
 
@@ -751,6 +912,7 @@ use cxx_qt_lib::{
     QByteArray, QHash, QHashPair_i32_QByteArray, QModelIndex, QString, QVariant, QVector,
 };
 
+use crate::collection_list::CollectionListRust;
 use crate::grid_items::{self, Item};
 use crate::keyword_list::KeywordListRust;
 use crate::reveal;
@@ -807,6 +969,7 @@ pub struct PhotoGridRust {
     min_rating: i32,
     flag_filter: i32,
     keyword_filter: QString,
+    collection_filter: QString,
     label_filter: QString,
     /// Everything the filters list, in order (the rows are derived from it: a collapsed series is one of them).
     all: Vec<Item>,
@@ -1054,7 +1217,8 @@ impl qobject::PhotoGrid {
                 .parse::<auroraw_engine::ColourLabel>()
                 .ok()
                 .map(|colour| colour.name().to_string()),
-            collection: None,
+            collection: auroraw_types::CollectionId::from_str(&self.collection_filter.to_string())
+                .ok(),
         }
     }
 
@@ -1066,6 +1230,12 @@ impl qobject::PhotoGrid {
 
     pub fn filter_keyword(mut self: Pin<&mut Self>, keyword: &QString) {
         self.as_mut().set_keyword_filter(keyword.clone());
+        self.as_mut().rust_mut().selection.none();
+        self.load();
+    }
+
+    pub fn filter_collection(mut self: Pin<&mut Self>, collection: &QString) {
+        self.as_mut().set_collection_filter(collection.clone());
         self.as_mut().rust_mut().selection.none();
         self.load();
     }
@@ -1847,6 +2017,78 @@ impl qobject::PhotoGrid {
         match session.engine.submit_and_wait(command) {
             Ok(_) => QString::from(keyword_id.to_string().as_str()),
             Err(e) => QString::from(format!("error:{}", crate::keyword_list::reason(&e)).as_str()),
+        }
+    }
+
+    pub fn collection_usage(&self) -> QString {
+        let Some(session) = session::current() else {
+            return QString::from("{}");
+        };
+        let selected: Vec<PhotoId> = self.photos_of(&self.selected_rows());
+        let usage = session
+            .engine
+            .read_catalogue()
+            .ok()
+            .and_then(|catalogue| catalogue.collection_usage(&selected).ok())
+            .unwrap_or_default();
+        let map: serde_json::Map<String, serde_json::Value> = usage
+            .into_iter()
+            .map(|(id, count)| (id.to_string(), serde_json::Value::from(count)))
+            .collect();
+        QString::from(serde_json::Value::Object(map).to_string().as_str())
+    }
+
+    pub fn collection_selection(self: Pin<&mut Self>, collection: &QString, add: bool) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let Ok(collection_id) = auroraw_types::CollectionId::from_str(&collection.to_string())
+        else {
+            return 0;
+        };
+        let rows = self.selected_rows();
+        if rows.is_empty() {
+            return 0;
+        }
+        let photos = self.photos_of(&rows);
+        let command = if add {
+            Command::AddToCollection {
+                collection_id,
+                photos,
+            }
+        } else {
+            Command::RemoveFromCollection {
+                collection_id,
+                photos,
+            }
+        };
+        let _ = session.engine.submit(command);
+        rows.len() as i32
+    }
+
+    pub fn create_collection_selection(
+        self: Pin<&mut Self>,
+        name: &QString,
+        parent: &QString,
+    ) -> QString {
+        let Some(session) = session::current() else {
+            return QString::from("error:other:No workspace is open.");
+        };
+        let photos = self.photos_of(&self.selected_rows());
+        let parent = auroraw_types::CollectionId::from_str(&parent.to_string()).ok();
+        match session.engine.submit_and_wait(Command::CreateCollection {
+            name: name.to_string(),
+            parent,
+            id: None,
+            photos,
+        }) {
+            Ok(auroraw_engine::Outcome::CollectionCreated(id)) => {
+                QString::from(id.to_string().as_str())
+            }
+            Ok(other) => QString::from(format!("error:other:Unexpected answer {other:?}").as_str()),
+            Err(e) => {
+                QString::from(format!("error:{}", crate::collection_list::reason(&e)).as_str())
+            }
         }
     }
 

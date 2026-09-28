@@ -4,9 +4,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.auroraw.ui
 
-// The inspector, on the right of the grid, three tabs (WP10, slice 1 added Metadata, a later change
-// added Info; before that this was only the Keywords panel of spec §5.7, D-098, and the file kept that
-// name): the vocabulary as a tree, each keyword with a check that says whether the selected photos
+// The inspector, on the right of the grid, four tabs (WP10, slice 1 added Metadata, a later change
+// added Info, slice 3 Collections; before that this was only the Keywords panel of spec §5.7, D-098, and
+// the file kept that name): the vocabulary as a tree, each keyword with a check that says whether the selected photos
 // carry it none, some or all, and the number of photos that have it. A click on the check gives it to
 // the whole selection, or takes it off; the field above types ahead (it filters the tree), Enter assigns
 // the best match, and creates the keyword when nothing matches (Shift+Enter creates even when something
@@ -15,11 +15,12 @@ import org.auroraw.ui
 // (WP10 slice 2, Properties… in its menu). A keyword is moved by dragging it onto another (or onto any
 // place of the panel that has no keyword, for the top level), or from its menu. Metadata is
 // `MetadataPanel.qml`; Info, the grid's active photo's own technical metadata, read-only, is
-// `InfoPanel.qml`. This file keeps the shared chrome (the resizable, collapsible shell) every tab shows
+// `InfoPanel.qml`; the manual collections are `CollectionPanel.qml`. This file keeps the shared chrome (the resizable, collapsible shell) every tab shows
 // through.
 Rectangle {
     id: panel
     required property var keywords
+    required property var collections
     required property var photoGrid
     required property var library
     required property var launcher
@@ -42,11 +43,12 @@ Rectangle {
     property alias tabs: tabs
     property alias metadataPanel: metadataPanel
     property alias infoPanel: infoPanel
+    property alias collectionPanel: collectionPanel
     // A keyword is being dragged (the top-level strip shows).
     property bool dragging: false
 
     // The width the person dragged the panel to (double-click on the edge gives back the default).
-    readonly property int defaultWidth: 280
+    readonly property int defaultWidth: 320
     readonly property int minimumWidth: 200
     readonly property int maximumWidth: 640
     property int panelWidth: defaultWidth
@@ -59,6 +61,24 @@ Rectangle {
         }
     }
     property alias edge: edge
+
+    // A tab of the bar above, in its `slot`: its width is `tabRow.tabWidth`'s to decide (its label is cut short
+    // when there is no room).
+    component PanelTab: TabButton {
+        id: tab
+        required property int slot
+        text: tabRow.tabTexts[slot]
+        width: Math.ceil(tabRow.tabWidth(slot))
+        horizontalPadding: Math.min(4, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        contentItem: Label {
+            text: tab.text
+            font: tab.font
+            color: tab.palette.buttonText
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
 
     Layout.preferredWidth: expanded ? panelWidth : 30
     color: palette.window
@@ -207,6 +227,7 @@ Rectangle {
     property string note: ""
 
     ColumnLayout {
+        id: content
         anchors.fill: parent
         anchors.leftMargin: 8
         anchors.rightMargin: 6
@@ -216,14 +237,54 @@ Rectangle {
         visible: panel.expanded
 
         RowLayout {
+            id: tabRow
             Layout.fillWidth: true
+            // The tabs' labels, and (measured by labels of their own, out of the bar, which are never cut) how wide
+            // each needs to be shown whole. The four are wider than the panel's default width in French, and the
+            // person can narrow the panel: the tabs give up their padding first (down to 1 px), then the labels
+            // are cut short, all sharing what there is.
+            readonly property var tabTexts: [qsTr("Keywords"), qsTr("Metadata"), qsTr("Info"), qsTr("Collections")]
+            Repeater {
+                id: measures
+                model: tabRow.tabTexts
+                Label {
+                    required property string modelData
+                    visible: false
+                    text: modelData
+                }
+            }
+            function labelWidth(slot) {
+                const measure = measures.itemAt(slot)
+                return measure ? Math.ceil(measure.implicitWidth) : 0
+            }
+            readonly property real labelsTotal: {
+                let sum = 0
+                for (let i = 0; i < measures.count; i++)
+                    sum += labelWidth(i)
+                return sum
+            }
+            // What the panel's width leaves the bar. (Not the row's or the bar's own `width`: an item's width is its
+            // implicit width until a layout sets it, and the tabs' widths would depend on themselves, through the
+            // bar's implicit width.)
+            readonly property real room: panel.panelWidth - content.anchors.leftMargin - content.anchors.rightMargin
+                                         - collapseButton.implicitWidth - spacing
+            function tabWidth(slot) {
+                const n = Math.max(measures.count, 1)
+                const label = labelWidth(slot)
+                if (room >= labelsTotal + 8 * n)
+                    return label + 8
+                if (room >= labelsTotal + 2 * n)
+                    return label + 2 + (room - labelsTotal - 2 * n) / n
+                return labelsTotal > 0 ? Math.max(room, 0) * label / labelsTotal : label
+            }
             TabBar {
                 id: tabs
                 Layout.fillWidth: true
                 background: null
-                TabButton { text: qsTr("Keywords"); width: implicitWidth }
-                TabButton { text: qsTr("Metadata"); width: implicitWidth }
-                TabButton { text: qsTr("Info"); width: implicitWidth }
+                PanelTab { slot: 0 }
+                PanelTab { slot: 1 }
+                PanelTab { slot: 2 }
+                PanelTab { slot: 3 }
             }
             ToolButton {
                 id: collapseButton
@@ -428,6 +489,16 @@ Rectangle {
             visible: tabs.currentIndex === 2
             Layout.fillWidth: true
             Layout.fillHeight: true
+            photoGrid: panel.photoGrid
+            library: panel.library
+        }
+
+        CollectionPanel {
+            id: collectionPanel
+            visible: tabs.currentIndex === 3
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            collections: panel.collections
             photoGrid: panel.photoGrid
             library: panel.library
         }

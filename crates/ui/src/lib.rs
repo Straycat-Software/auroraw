@@ -10,6 +10,8 @@ mod app_settings;
 #[allow(unsafe_code)]
 mod bus;
 // The table is read by its own checks only, until a command palette reads it too.
+#[allow(unsafe_code)]
+mod collection_list;
 #[cfg(test)]
 mod commands;
 #[allow(unsafe_code)]

@@ -31,6 +31,7 @@ FocusScope {
     readonly property string status: qsTr("%n photo(s)", "", photoGrid.total)
     readonly property int selectedCount: photoGrid.selectedCount
     property alias keywords: keywordList
+    property alias collections: collectionList
     property alias viewer: viewer
     property alias compareView: compareView
     property alias similarPanel: similarPanel
@@ -64,11 +65,15 @@ FocusScope {
     property alias keywordPanel: keywordPanel
     // A dialog of the panel is open (the window's commands wait, as for every dialog).
     readonly property bool dialogOpen: keywordPanel.renameDialog.visible || keywordPanel.moveDialog.visible
-                                       || keywordPanel.deleteDialog.visible
+                                       || keywordPanel.deleteDialog.visible || keywordPanel.propertiesDialog.visible
+                                       || keywordPanel.collectionPanel.dialogOpen
     // The name of the keyword the list is filtered by, for its chip.
     property string keywordFilterName: ""
+    // The same for the collection the list is filtered by.
+    property string collectionFilterName: ""
 
     KeywordList { id: keywordList }
+    CollectionList { id: collectionList }
 
     // The keyword panel shows which keywords the selection carries, and the metadata panel its fields'
     // current values: both asked once a selection has settled.
@@ -77,6 +82,7 @@ FocusScope {
         interval: 60
         onTriggered: {
             keywordList.applyUsage(photoGrid.keywordUsage(), photoGrid.selectedCount)
+            collectionList.applyUsage(photoGrid.collectionUsage(), photoGrid.selectedCount)
             keywordPanel.metadataPanel.refresh()
         }
     }
@@ -85,6 +91,7 @@ FocusScope {
         // Every keyword added or removed, undone or redone, changes what the selection carries.
         function onHistoryChanged() {
             keywordList.refresh()
+            collectionList.refresh()
             usageTimer.restart()
             // The keyword the list is filtered by was deleted (or its creation undone): back to the whole list.
             if (photoGrid.keywordFilter !== "") {
@@ -93,6 +100,14 @@ FocusScope {
                     root.filterKeyword("", "")
                 else
                     keywordFilterName = name // it may have been renamed
+            }
+            // The same for the collection: deleted (or its creation undone), or renamed.
+            if (photoGrid.collectionFilter !== "") {
+                const name = collectionList.nameOf(photoGrid.collectionFilter)
+                if (name === "")
+                    root.filterCollection("", "")
+                else
+                    collectionFilterName = name
             }
         }
     }
@@ -404,6 +419,21 @@ FocusScope {
         keywordPanel.open()
     }
 
+    // Lists only the photos in this collection, or inside it (`""` for all).
+    function filterCollection(id, name) {
+        photoGrid.filterCollection(id)
+        collectionFilterName = name
+        grid.currentIndex = -1
+        grid.positionViewAtBeginning()
+        updateSummary()
+    }
+
+    // The collections changed without a step of the history (photos left with their source).
+    function collectionsWereChanged() {
+        collectionList.refresh()
+        usageTimer.restart()
+    }
+
     // Lists only the photos with this keyword, or under it (`""` for all).
     function filterKeyword(id, name) {
         photoGrid.filterKeyword(id)
@@ -436,6 +466,7 @@ FocusScope {
         const scrolled = grid.contentY
         photoGrid.load()
         keywordList.refresh()
+        collectionList.refresh()
         grid.currentIndex = cursor !== "" ? photoGrid.rowOf(cursor) : -1
         grid.contentY = scrolled
         grid.returnToBounds()
@@ -604,6 +635,15 @@ FocusScope {
                         focusPolicy: Qt.NoFocus
                         onClicked: {
                             root.filterKeyword("", "")
+                            grid.forceActiveFocus()
+                        }
+                    }
+                    AppButton {
+                        visible: root.photoGrid.collectionFilter !== ""
+                        text: qsTr("Collection: %1").arg(root.collectionFilterName) + " ×"
+                        focusPolicy: Qt.NoFocus
+                        onClicked: {
+                            root.filterCollection("", "")
                             grid.forceActiveFocus()
                         }
                     }
@@ -1137,6 +1177,7 @@ FocusScope {
             id: keywordPanel
             Layout.fillHeight: true
             keywords: root.keywords
+            collections: root.collections
             photoGrid: root.photoGrid
             library: root
             launcher: root.launcher

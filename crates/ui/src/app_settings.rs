@@ -54,7 +54,7 @@ pub struct AppSettings {
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
-pub const KEYWORD_PANEL_WIDTH: i32 = 280;
+pub const KEYWORD_PANEL_WIDTH: i32 = 320;
 pub const KEYWORD_PANEL_MIN: i32 = 200;
 pub const KEYWORD_PANEL_MAX: i32 = 640;
 

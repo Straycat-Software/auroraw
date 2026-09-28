@@ -310,27 +310,27 @@ AppTestCase {
 
     function test_the_panel_can_be_folded_away_and_brought_back() {
         const panel = app.keywordPanel
-        compare(panel.width, 280)
+        compare(panel.width, panel.defaultWidth)
         mouseClick(panel.collapseButton)
         tryCompare(panel, "width", 30)
         app.library.focusKeywords()
-        tryCompare(panel, "width", 280)
+        tryCompare(panel, "width", panel.defaultWidth)
     }
 
     function test_the_panel_is_widened_and_narrowed_by_its_edge() {
         const panel = app.keywordPanel
-        compare(panel.width, 280)
+        compare(panel.width, panel.defaultWidth)
         const edge = panel.edge
         mousePress(edge, 2, 100)
         mouseMove(edge, -78, 100)
         mouseRelease(edge, -78, 100)
-        tryCompare(panel, "width", 360)
+        tryCompare(panel, "width", panel.defaultWidth + 80)
         mousePress(edge, 2, 100)
         mouseMove(edge, 402, 100)
         mouseRelease(edge, 402, 100)
         tryCompare(panel, "width", panel.minimumWidth, 5000, "it does not get narrower than its minimum")
         mouseDoubleClickSequence(edge, 2, 100)
-        tryCompare(panel, "width", 280)
+        tryCompare(panel, "width", panel.defaultWidth)
     }
 
     function test_the_width_of_the_panel_is_remembered() {
@@ -338,16 +338,16 @@ AppTestCase {
         mousePress(edge, 2, 100)
         mouseMove(edge, -98, 100)
         mouseRelease(edge, -98, 100)
-        tryCompare(app.keywordPanel, "width", 380)
+        tryCompare(app.keywordPanel, "width", app.keywordPanel.defaultWidth + 100)
         // A window made later on the same machine has the panel as it was left.
         launch("")
         app.width = 1680
         wait(300)
-        tryCompare(app.keywordPanel, "width", 380)
+        tryCompare(app.keywordPanel, "width", app.keywordPanel.defaultWidth + 100)
         mouseDoubleClickSequence(app.keywordPanel.edge, 2, 100)
-        tryCompare(app.keywordPanel, "width", 280)
+        tryCompare(app.keywordPanel, "width", app.keywordPanel.defaultWidth)
         launch("")
-        tryCompare(app.keywordPanel, "width", 280, 5000, "the default is remembered too")
+        tryCompare(app.keywordPanel, "width", app.keywordPanel.defaultWidth, 5000, "the default is remembered too")
     }
 
     function test_the_panel_speaks_french() {

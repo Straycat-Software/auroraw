@@ -30,7 +30,9 @@ Item {
     // Reloads from the active photo's own current values: called on every cursor move and whenever the
     // grid's data changes (an edit, an undo or a redo, a rescan), `Viewer.qml`'s own `refreshInfo()`.
     function refresh() {
-        panel.info = panel.row >= 0 ? JSON.parse(panel.photoGrid.technicalInfoAt(panel.row)) : {}
+        // (An empty answer is a row that is not listed any more, or a photo the catalogue does not know.)
+        const answer = panel.row >= 0 ? panel.photoGrid.technicalInfoAt(panel.row) : ""
+        panel.info = answer === "" ? {} : JSON.parse(answer)
     }
 
     function formatShutter(s) {

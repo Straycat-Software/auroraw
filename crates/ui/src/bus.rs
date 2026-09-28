@@ -49,6 +49,12 @@ pub mod qobject {
         #[cxx_name = "seriesChanged"]
         fn series_changed(self: Pin<&mut Bus>);
 
+        /// A collection was made, changed or deleted, or a photo left its collections with its source: the
+        /// collections panel lists them differently now.
+        #[qsignal]
+        #[cxx_name = "collectionsChanged"]
+        fn collections_changed(self: Pin<&mut Bus>);
+
         /// A background job made progress.
         #[qsignal]
         #[cxx_name = "jobProgress"]
@@ -195,6 +201,7 @@ fn dispatch(event: Event, session: &Session) {
             });
         }
         Event::SeriesChanged => on_gui(|bus| bus.series_changed()),
+        Event::CollectionsChanged => on_gui(|bus| bus.collections_changed()),
         // A rebuilt catalogue has no hashes: they are made again from the thumbnails (D-105).
         Event::RebuildFinished { .. } => {
             session.thumbs.service().warm_unhashed();

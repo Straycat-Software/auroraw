@@ -37,6 +37,7 @@ fn main() {
         QmlFile::from("qml/KeywordPanel.qml"),
         QmlFile::from("qml/MetadataPanel.qml"),
         QmlFile::from("qml/InfoPanel.qml"),
+        QmlFile::from("qml/CollectionPanel.qml"),
         QmlFile::from("qml/Viewer.qml"),
         QmlFile::from("qml/Histogram.qml"),
         QmlFile::from("qml/ComparePane.qml"),

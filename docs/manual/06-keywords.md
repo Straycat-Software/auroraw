@@ -2,10 +2,10 @@
 
 Keywords describe what is in a photo (*Animals*, *Peru*, *Cusco*). Auroraw keeps one **vocabulary** of keywords,
 arranged as a tree (*Places ▸ Peru ▸ Cusco*), and you give photos the keywords they deserve. The panel on the
-right of the grid has three tabs, **Keywords**, **Metadata** and **Info**; `Ctrl+K` (**Tools ▸ Keywords**)
-switches to the first and puts the keyboard in its field, `Escape` gives it back to the grid, and the `«` and `»`
-buttons fold the panel away or bring it back. Drag its left edge to make it wider or narrower (a double click
-gives back the default width); it remembers its width, whichever tab is showing.
+right of the grid has four tabs, **Keywords**, **Metadata**, **Info** and **Collections**; `Ctrl+K`
+(**Tools ▸ Keywords**) switches to the first and puts the keyboard in its field, `Escape` gives it back to the
+grid, and the `«` and `»` buttons fold the panel away or bring it back. Drag its left edge to make it wider or
+narrower (a double click gives back the default width); it remembers its width, whichever tab is showing.
 
 ## Giving keywords to photos
 
@@ -72,6 +72,25 @@ them — read-only, and always for the one photo the grid's cursor is on, not a 
 does not carry (most photos have no GPS position, for instance) is left off the list rather than shown empty.
 
 ![The Info panel](images/info.png)
+
+## Collections
+
+The **Collections** tab groups photos by hand, for anything the vocabulary is not about — an album, a delivery,
+a shortlist. A collection can hold photos and also hold other collections (a folder inside a folder), shown as
+a tree the same way the keyword vocabulary is.
+
+Select photos and type a name in the field at the top: `Enter` puts the selection in the best-matching
+collection, or **creates** one with that name and puts the selection in it, as one step, the same as the
+keyword field. The check beside each collection shows **none, some or all** of the selected photos are in it;
+click it to put the whole selection in, or take it out. Right-click a collection (or use its menu) for
+**Rename…**, **Move to…** (or drag and drop it onto another collection, or onto empty space in the tab for the
+top level) and **Delete…**, which takes the collection and what is inside it away — the photos themselves are
+never touched, only their membership. **Show the photos in this collection** filters the grid by it and by
+whatever is inside it. Every one of these is undone with `Ctrl+Z`.
+
+![The collections tab](images/collections.png)
+
+Smart collections (filled automatically by a saved search) come later.
 
 ## Next
 

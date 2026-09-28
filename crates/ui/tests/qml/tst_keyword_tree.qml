@@ -281,6 +281,7 @@ AppTestCase {
         const dialog = app.keywordPanel.propertiesDialog
         dialog.openFor(rowOf("Redwood"), "Redwood")
         tryVerify(() => dialog.visible)
+        verify(app.dialogOpen, "the window's commands wait")
         compare(dialog.synonymsField.text, "", "no synonym yet")
         compare(dialog.doNotExportField.checked, false, "exported by default")
 

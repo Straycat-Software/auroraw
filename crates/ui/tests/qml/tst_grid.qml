@@ -34,8 +34,8 @@ AppTestCase {
         wait(60)
     }
 
-    // The keyword panel takes 280 px of the window; the grid has the rest.
-    readonly property int panelWidth: 280
+    // The keyword panel takes 320 px of the window; the grid has the rest.
+    readonly property int panelWidth: 320
     function shownWidth(columns) { return columns * 164 + panelWidth }
 
     // The tests share the machine, and a rating is kept in the catalogue: what a test rated is
