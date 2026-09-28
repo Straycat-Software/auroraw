@@ -32,9 +32,9 @@ recent list. Opening a workspace that already holds photos shows them in the **C
 
 ## The window
 
-- The **☰ menu** at the top left has **File** (new and open workspace, Settings, Import, Quit), **Edit** (undo and
-  redo, select all, keywords, cut, copy and paste in text fields) and **Help** (About). `Alt` and a section's
-  underlined letter open it from the keyboard.
+- The **☰ menu** at the top left has **File** (new and open workspace, Settings, Quit), **Edit** (undo and redo,
+  select all, cut, copy and paste in text fields), **Tools** (Import, Keywords, Duplicate photos) and **Help**
+  (About). `Alt` and a section's underlined letter open it from the keyboard.
 - The tabs beside it are the tasks: **Catalogue** (your sources), **Cull** (looking at photos and sorting them out).
   **Develop** and **Publish** are not available yet.
 - A line at the top shows notices, for example that a card was detected.

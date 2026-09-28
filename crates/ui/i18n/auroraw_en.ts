@@ -352,17 +352,22 @@
 <context>
     <name>AppMenu</name>
     <message>
-        <location filename="../qml/AppMenu.qml" line="27"/>
+        <location filename="../qml/AppMenu.qml" line="28"/>
         <source>&amp;File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AppMenu.qml" line="38"/>
+        <location filename="../qml/AppMenu.qml" line="37"/>
         <source>&amp;Edit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/AppMenu.qml" line="56"/>
+        <location filename="../qml/AppMenu.qml" line="51"/>
+        <source>&amp;Tools</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="59"/>
         <source>&amp;Help</source>
         <translation type="unfinished"></translation>
     </message>
@@ -682,12 +687,12 @@
 <context>
     <name>FileSaveDialog</name>
     <message>
-        <location filename="../qml/FileSaveDialog.qml" line="16"/>
+        <location filename="../qml/FileSaveDialog.qml" line="19"/>
         <source>Text files (*.txt)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/FileSaveDialog.qml" line="16"/>
+        <location filename="../qml/FileSaveDialog.qml" line="19"/>
         <source>All files (*)</source>
         <translation type="unfinished"></translation>
     </message>

@@ -2,9 +2,10 @@
 import QtQuick
 import QtQuick.Controls
 
-// The hamburger menu (D-090): File, Edit and Help as cascading submenus, each command with its
-// shortcut. Alt and the letter marked with & in a section's title open it (`openSection`), so the
-// letter follows the language (Alt+F, Alt+E, Alt+H; Alt+F, Alt+É, Alt+A in French).
+// The hamburger menu (D-090; a Tools section added by issue #14): File, Edit, Tools and Help as
+// cascading submenus, each command with its shortcut. Alt and the letter marked with & in a
+// section's title open it (`openSection`), so the letter follows the language (Alt+F, Alt+E,
+// Alt+T, Alt+H; Alt+F, Alt+É, Alt+O, Alt+A in French).
 AppSubMenu {
     id: root
     required property var actions
@@ -28,8 +29,6 @@ AppSubMenu {
         AppMenuItem { action: root.actions.newWorkspace }
         AppMenuItem { action: root.actions.openWorkspace }
         MenuSeparator {}
-        AppMenuItem { action: root.actions.importPhotos }
-        MenuSeparator {}
         AppMenuItem { action: root.actions.settings }
         MenuSeparator {}
         AppMenuItem { action: root.actions.quit }
@@ -47,6 +46,10 @@ AppSubMenu {
         AppMenuItem { action: root.actions.selectAll }
         AppMenuItem { action: root.actions.selectNone }
         AppMenuItem { action: root.actions.invertSelection }
+    }
+    AppSubMenu {
+        title: qsTr("&Tools")
+        AppMenuItem { action: root.actions.importPhotos }
         MenuSeparator {}
         AppMenuItem { action: root.actions.editKeywords }
         MenuSeparator {}

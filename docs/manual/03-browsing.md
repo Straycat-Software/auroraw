@@ -80,7 +80,7 @@ for the photo it shows.
 
 ## Duplicate photos
 
-**Edit ▸ Duplicate photos…** (`Ctrl+D`) lists every photo Auroraw has found at more than one place: the same folder
+**Tools ▸ Duplicate photos…** (`Ctrl+D`) lists every photo Auroraw has found at more than one place: the same folder
 added twice, or a working folder and its backup, for instance. Auroraw notices this itself, while adding or
 rescanning a source, and only after checking the whole file, not just a quick fingerprint — so what is listed here
 is a real, confirmed duplicate, not a guess. Each one shows where it lives, with a **Show in file manager** button

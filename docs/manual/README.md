@@ -24,7 +24,7 @@ And for reference: the [keyboard shortcuts](keyboard-shortcuts.md) and the [glos
 
 - Keys are written like `Ctrl+Z`. On macOS, `Ctrl` is the ⌘ key where the application follows the platform's own
   shortcut (the menus show the exact one).
-- **File ▸ Import…** means: open the menu (the ☰ button at the top left), then File, then Import….
+- **Tools ▸ Import…** means: open the menu (the ☰ button at the top left), then Tools, then Import….
 - A **workspace**, a **source**, a **sidecar** and other words that mean something precise are explained in the
   [glossary](glossary.md).
 - Everything you do to your photos (a rating, a flag, a keyword, a series) can be undone with `Ctrl+Z`.

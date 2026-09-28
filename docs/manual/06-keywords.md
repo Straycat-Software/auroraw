@@ -2,7 +2,7 @@
 
 Keywords describe what is in a photo (*Animals*, *Peru*, *Cusco*). Auroraw keeps one **vocabulary** of keywords,
 arranged as a tree (*Places ▸ Peru ▸ Cusco*), and you give photos the keywords they deserve. The keyword panel is on
-the right of the grid; `Ctrl+K` (**Edit ▸ Keywords**) puts the keyboard in its field, `Escape` gives it back to
+the right of the grid; `Ctrl+K` (**Tools ▸ Keywords**) puts the keyboard in its field, `Escape` gives it back to
 the grid, and the `«` and `»` buttons fold the panel away or bring it back. Drag its left edge to make it wider or
 narrower (a double click gives back the default width); it remembers its width.
 

@@ -234,7 +234,7 @@ ApplicationWindow {
 
     // Alt and a section's mnemonic open it.
     Repeater {
-        model: 3
+        model: 4
         Item {
             required property int index
             Shortcut {

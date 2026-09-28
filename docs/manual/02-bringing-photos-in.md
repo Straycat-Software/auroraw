@@ -55,7 +55,7 @@ add the files as new photos.
 
 ## Import
 
-**File ▸ Import…** (`Ctrl+I`) opens the import dialog. When a camera card with a `DCIM` folder is plugged in,
+**Tools ▸ Import…** (`Ctrl+I`) opens the import dialog. When a camera card with a `DCIM` folder is plugged in,
 a **card banner** at the top offers *Import…* or *Ignore*.
 
 ![The import dialog](images/import.png)

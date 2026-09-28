@@ -19,14 +19,14 @@ AppTestCase {
     function test_the_hamburger_menu_opens_lists_its_sections_and_runs_a_command() {
         launch(freshMachine())
         openMenu()
-        compare(app.menu.count, 3)
-        compare([0, 1, 2].map(sectionTitle), ["File", "Edit", "Help"])
+        compare(app.menu.count, 4)
+        compare([0, 1, 2, 3].map(sectionTitle), ["File", "Edit", "Tools", "Help"])
         // Choosing a section shows its commands; a click on one closes the menu and runs it.
         click(app.menu.itemAt(0))
         const file = app.menu.itemAt(0).subMenu
         verify(file.visible)
-        click(file.itemAt(5))
-        compare(file.itemAt(5).text, "Settings…")
+        click(file.itemAt(3))
+        compare(file.itemAt(3).text, "Settings…")
         wait(200)
         verify(app.settingsDialog.visible)
         verify(!app.menu.opened, "the menu closed")
@@ -36,23 +36,27 @@ AppTestCase {
         launch(freshMachine())
         const file = app.menu.itemAt(0).subMenu
         const edit = app.menu.itemAt(1).subMenu
+        const tools = app.menu.itemAt(2).subMenu
         const kinds = menu => Array.from({ length: menu.count }, (_, i) => isSeparator(menu.itemAt(i)) ? "-" : menu.itemAt(i).text)
-        // New and Open, then Import, then Settings, then Quit.
-        compare(kinds(file), ["New workspace…", "Open workspace…", "-", "Import…", "-", "Settings…", "-", "Quit"])
+        // New and Open, then Settings, then Quit.
+        compare(kinds(file), ["New workspace…", "Open workspace…", "-", "Settings…", "-", "Quit"])
         // History, then the clipboard, then Select all.
-        compare(kinds(edit), ["Undo", "Redo", "-", "Cut", "Copy", "Paste", "Delete", "-", "Select all", "Select none", "Invert selection", "-", "Keywords", "-", "Duplicate photos…"])
+        compare(kinds(edit), ["Undo", "Redo", "-", "Cut", "Copy", "Paste", "Delete", "-", "Select all", "Select none", "Invert selection"])
+        // Issue #14: Import, Keywords and Duplicate photos, grouped in their own section.
+        compare(kinds(tools), ["Import…", "-", "Keywords", "-", "Duplicate photos…"])
     }
 
     function test_every_command_shows_its_shortcut_the_way_the_platform_writes_it() {
         launch(freshMachine())
         const file = app.menu.itemAt(0).subMenu
+        const tools = app.menu.itemAt(2).subMenu
         const hint = item => item.contentItem.children[1].text
         const key = letter => Qt.platform.os === "osx" ? "⌘" + letter : "Ctrl+" + letter
         compare(hint(file.itemAt(0)), key("N"))
         compare(hint(file.itemAt(1)), key("O"))
-        compare(hint(file.itemAt(3)), key("I"))
-        compare(hint(file.itemAt(5)), key(","))
-        compare(hint(app.menu.itemAt(2).subMenu.itemAt(0)), "F1")
+        compare(hint(tools.itemAt(0)), key("I"))
+        compare(hint(file.itemAt(3)), key(","))
+        compare(hint(app.menu.itemAt(3).subMenu.itemAt(0)), "F1")
     }
 
     function test_the_shortcuts_reach_the_same_commands_as_the_menu() {
@@ -81,9 +85,14 @@ AppTestCase {
         verify(app.menu.itemAt(0).subMenu.visible, "Alt+F opens File")
         pressEscape()
         pressEscape()
+        keyClick(Qt.Key_T, Qt.AltModifier)
+        wait(250)
+        verify(app.menu.itemAt(2).subMenu.visible, "Alt+T opens Tools")
+        pressEscape()
+        pressEscape()
         keyClick(Qt.Key_H, Qt.AltModifier)
         wait(250)
-        verify(app.menu.itemAt(2).subMenu.visible, "Alt+H opens Help")
+        verify(app.menu.itemAt(3).subMenu.visible, "Alt+H opens Help")
     }
 
     function test_escape_closes_the_menu_and_the_dialogs() {
@@ -143,11 +152,11 @@ AppTestCase {
 
     function test_no_row_is_cut_short_the_first_time_a_menu_opens() {
         cutCount = 0
-        for (const section of [0, 1, 2, 0, 1, 2]) {
+        for (const section of [0, 1, 2, 3, 0, 1, 2, 3]) {
             launch(freshMachine())
             createWorkspace("Main")
-            // The first three in English, the others in French (the window is new every time).
-            app.launcher.chooseLanguage(section === undefined || cutCount++ < 3 ? "en" : "fr")
+            // The first four in English, the others in French (the window is new every time).
+            app.launcher.chooseLanguage(section === undefined || cutCount++ < 4 ? "en" : "fr")
             wait(250)
             app.menu.openSection(section)
             wait(300)
