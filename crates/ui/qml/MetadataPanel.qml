@@ -8,19 +8,21 @@ import org.auroraw.ui
 // caption and the rest of its plain-text metadata, on one photo or a whole selection. A field where the
 // selection disagrees shows "Multiple values" instead of a value; leaving the field (Tab, a click
 // elsewhere, or Enter for the single-line ones) applies what was typed to the whole selection as one
-// action (`PhotoGrid.setMetadataSelection`, the same shape `labelSelection` already has). Creator and
-// Persons take one name a line. GPS and place names are a later slice's; custom fields have no UI here
-// yet (the engine and the format already carry one end to end, WP10's own custom-field support).
+// action (`PhotoGrid.setMetadataSelection`, the same shape `labelSelection` already has). Persons shown
+// takes one name a line; Creator is a single line (Patrick's own call: almost every photo has exactly
+// one, and `MetadataField::Creator`'s own line-splitting get/set still holds underneath, a list of one).
+// GPS and place names are a later slice's; custom fields have no UI here yet (the engine and the format
+// already carry one end to end, WP10's own custom-field support).
 Item {
     id: panel
     required property var photoGrid
 
     // Every field a row shows, in order: its key (`MetadataField::key`) and its label; `multiline` for
-    // the two list fields.
+    // the fields whose text can run to more than a line (Creator is not one of them: see above).
     readonly property var fields: [
         { key: "title", label: qsTr("Title"), multiline: false },
         { key: "caption", label: qsTr("Caption"), multiline: true },
-        { key: "creator", label: qsTr("Creator"), multiline: true },
+        { key: "creator", label: qsTr("Creator"), multiline: false },
         { key: "rights", label: qsTr("Copyright"), multiline: false },
         { key: "usage-terms", label: qsTr("Usage terms"), multiline: false },
         { key: "web-statement", label: qsTr("Web statement of rights"), multiline: false },
@@ -108,6 +110,14 @@ Item {
                 wrapMode: TextArea.Wrap
                 placeholderText: row.mixed ? qsTr("Multiple values") : ""
                 onActiveFocusChanged: if (!activeFocus) row.apply(text)
+                // Unlike TextField, Fusion gives TextArea no background of its own: without one it read
+                // as bare text loose on the panel, not as a field (Patrick's own review caught this).
+                background: Rectangle {
+                    color: palette.base
+                    radius: 3
+                    border.width: 1
+                    border.color: multiLine.activeFocus ? palette.highlight : palette.mid
+                }
             }
         }
     }

@@ -98,15 +98,16 @@ AppTestCase {
         click(1)
         typeField("event", "Anniversary")
         selectFirst(2)
+        // The panel refreshes off the same debounced timer the keyword panel's own usage already does
+        // (Library.qml's usageTimer): a bare selection change needs a moment to reach it.
+        tryVerify(() => rowFor("event").mixed === true, 5000)
         const row = rowFor("event")
-        compare(row.mixed, true)
         compare(row.singleLine.placeholderText, "Multiple values")
         compare(row.singleLine.text, "", "no value is guessed at")
 
         click(0)
-        const same = rowFor("event")
-        compare(same.mixed, false)
-        compare(same.singleLine.text, "Wedding")
+        tryVerify(() => rowFor("event").mixed === false, 5000)
+        compare(rowFor("event").singleLine.text, "Wedding")
     }
 
     function test_undo_and_redo_the_panel_shows_it_too() {
@@ -120,16 +121,25 @@ AppTestCase {
         tryVerify(() => rowFor("headline").singleLine.text === "Dawn", 5000, "the panel follows the redo")
     }
 
-    function test_the_two_list_fields_take_one_name_a_line() {
-        const row = rowFor("creator")
+    function test_the_multiline_list_field_takes_one_name_a_line() {
+        const row = rowFor("persons")
         verify(row.multiLine.visible && !row.singleLine.visible, "a multi-line field")
         click(0)
         row.multiLine.forceActiveFocus()
         row.multiLine.text = "Marie Tremblay\nJean Roy"
         grid.forceActiveFocus()
         wait(60)
-        const meta = JSON.parse(app.photos.metadataOf("creator"))
+        const meta = JSON.parse(app.photos.metadataOf("persons"))
         compare(meta.value, "Marie Tremblay\nJean Roy")
+    }
+
+    function test_creator_is_a_single_line_field_though_it_is_a_list_underneath() {
+        // Patrick's own review, the morning after: almost every photo has exactly one creator.
+        const row = rowFor("creator")
+        verify(!row.multiLine.visible && row.singleLine.visible, "a single-line field")
+        click(0)
+        typeField("creator", "Marie Tremblay")
+        compare(JSON.parse(app.photos.metadataOf("creator")).value, "Marie Tremblay")
     }
 
     function test_an_empty_value_clears_the_field() {
