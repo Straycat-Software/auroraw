@@ -97,7 +97,7 @@ ApplicationWindow {
     // (`nativeDialogForced` stands for one in the tests: none can open off screen.)
     property bool nativeDialogForced: false
     readonly property bool nativeDialogOpen: nativeDialogForced || openDialog.visible || catalogueFlow.browsing || newDialog.browsing
-                                            || importDialog.browsing || libraryView.exportDialog.visible
+                                            || importDialog.browsing || libraryView.exportDialog.visible || duplicatesDialog.browsing
     readonly property bool dialogOpen: newDialog.visible || settingsDialog.visible || importDialog.visible || libraryView.dialogOpen
                                        || aboutDialog.visible || duplicatesDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
     readonly property bool inWorkspace: launcher.screen === "workspace"
@@ -355,7 +355,7 @@ ApplicationWindow {
         hostWindow: window
     }
     AboutDialog { id: aboutDialog; launcher: launcher }
-    DuplicatesDialog { id: duplicatesDialog; duplicates: duplicates }
+    DuplicatesDialog { id: duplicatesDialog; duplicates: duplicates; hostWindow: window }
     Duplicates { id: duplicates }
 
     Popup {

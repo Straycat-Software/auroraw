@@ -636,12 +636,12 @@
 <context>
     <name>DuplicatesDialog</name>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="16"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="23"/>
         <source>Duplicate photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/DuplicatesDialog.qml" line="30"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="47"/>
         <source>%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</source>
         <translation>
             <numerusform>%n photo found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.</numerusform>
@@ -649,17 +649,27 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="31"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="48"/>
         <source>No duplicate photo found.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="82"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="99"/>
         <source>Show in file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="96"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="158"/>
+        <source>Export the list…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="162"/>
+        <source>Writes the report to a text file, the same one the CLI&apos;s own duplicates command prints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/DuplicatesDialog.qml" line="166"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>

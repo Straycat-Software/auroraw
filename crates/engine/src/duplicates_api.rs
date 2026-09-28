@@ -28,3 +28,23 @@ impl Engine {
         Some(root.join(path.replace('/', std::path::MAIN_SEPARATOR_STR)))
     }
 }
+
+/// The duplicates report as plain text, one photo per block, its primary and every extra location named by
+/// source and path (issue #13): shared by the CLI's own `duplicates` command and the UI's "Export the list…", so
+/// the two never drift apart on what the report says.
+pub fn format_report(duplicates: &[DuplicatePhoto]) -> String {
+    let mut out = String::new();
+    for photo in duplicates {
+        out.push_str(&photo.filename);
+        out.push('\n');
+        out.push_str(&format!(
+            "  {} — {}\n",
+            photo.primary.source_name, photo.primary.path
+        ));
+        for extra in &photo.extra {
+            out.push_str(&format!("  {} — {}\n", extra.source_name, extra.path));
+        }
+    }
+    out.push_str(&format!("{} duplicate photo(s)\n", duplicates.len()));
+    out
+}

@@ -34,6 +34,12 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "revealLocation"]
         fn reveal_location(self: &Duplicates, source_id: &QString, path: &QString) -> bool;
+
+        /// Writes the report (the same text `duplicates` prints on the CLI, issue #13) to `path`; `false` on a
+        /// write error.
+        #[qinvokable]
+        #[cxx_name = "exportTo"]
+        fn export_to(self: &Duplicates, path: &QString) -> bool;
     }
 }
 
@@ -86,5 +92,19 @@ impl qobject::Duplicates {
         };
         reveal::reveal(&full);
         true
+    }
+
+    pub fn export_to(&self, path: &QString) -> bool {
+        let Some(session) = session::current() else {
+            return false;
+        };
+        let Ok(duplicates) = session.engine.duplicate_photos() else {
+            return false;
+        };
+        std::fs::write(
+            path.to_string(),
+            auroraw_engine::duplicates_report(&duplicates),
+        )
+        .is_ok()
     }
 }

@@ -43,7 +43,7 @@ pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
 pub use auroraw_types::KeywordId;
 pub use command::Command;
 pub use coordinator::Outcome;
-pub use duplicates_api::{DuplicatePhoto, LocationRef};
+pub use duplicates_api::{DuplicatePhoto, LocationRef, format_report as duplicates_report};
 pub use error::{EngineError, Result};
 pub use event::Event;
 pub use history::{

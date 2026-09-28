@@ -58,6 +58,41 @@ AppTestCase {
         return parts.slice(-n).join("/")
     }
 
+    function test_the_dialog_can_be_resized_by_dragging_its_corner() {
+        // Issue #12.
+        keyClick(Qt.Key_D, Qt.ControlModifier)
+        tryVerify(() => app.duplicatesDialog.visible)
+        const before = { width: app.duplicatesDialog.width, height: app.duplicatesDialog.height }
+        const corner = app.duplicatesDialog.resizeCorner
+        mousePress(corner, 9, 9)
+        mouseMove(corner, 109, 69)
+        mouseRelease(corner, 109, 69)
+        verify(app.duplicatesDialog.width >= before.width + 90, app.duplicatesDialog.width)
+        verify(app.duplicatesDialog.height >= before.height + 50, app.duplicatesDialog.height)
+
+        // Never smaller than the minimum, even dragged well past it.
+        mousePress(corner, 9, 9)
+        mouseMove(corner, -2000, -2000)
+        mouseRelease(corner, -2000, -2000)
+        compare(app.duplicatesDialog.width, app.duplicatesDialog.minWidth)
+        compare(app.duplicatesDialog.height, app.duplicatesDialog.minHeight)
+        keyClick(Qt.Key_Escape)
+    }
+
+    function test_export_writes_the_same_report_the_cli_prints() {
+        // Issue #13.
+        keyClick(Qt.Key_D, Qt.ControlModifier)
+        tryVerify(() => app.duplicatesDialog.visible)
+        verify(app.duplicatesDialog.exportButton.enabled)
+        const path = home + "/duplicates.txt"
+        verify(app.duplicatesDialog.duplicates.exportTo(path))
+        const out = files.read(path)
+        verify(out.indexOf("Card — IMG_0000.jpg") >= 0, out)
+        verify(out.indexOf("Backup — IMG_0000_copy.jpg") >= 0, out)
+        compare(out.trim().split("\n").pop(), "1 duplicate photo(s)")
+        keyClick(Qt.Key_Escape)
+    }
+
     function test_the_dialog_speaks_french() {
         app.launcher.chooseLanguage("fr")
         wait(250)

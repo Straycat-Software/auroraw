@@ -79,12 +79,13 @@ for the photo it shows.
 added twice, or a working folder and its backup, for instance. Auroraw notices this itself, while adding or
 rescanning a source, and only after checking the whole file, not just a quick fingerprint — so what is listed here
 is a real, confirmed duplicate, not a guess. Each one shows where it lives, with a **Show in file manager** button
-next to every location.
+next to every location. The dialog can be resized (drag its bottom-right corner) when the list is long.
 
 ![The duplicate photos dialog](images/duplicates.png)
 
 This is a **report, nothing more**: Auroraw never deletes, merges or picks a copy to keep for you (D-018). Use the
-list to go tidy things up yourself, in a file manager, outside Auroraw.
+list to go tidy things up yourself, in a file manager, outside Auroraw. **Export the list…** writes it to a text
+file, the same report the CLI's own `duplicates` command prints.
 
 ## Next
 

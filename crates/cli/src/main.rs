@@ -161,19 +161,13 @@ fn cmd_verify(args: &[String]) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Every photo with more than one confirmed location (D-036, D-108): read-only, like `list`.
+/// Every photo with more than one confirmed location (D-036, D-108): read-only, like `list`. The report itself
+/// (`Engine::duplicates_report`) is shared with the UI's "Export the list…" (issue #13), so the two never drift.
 fn cmd_duplicates(args: &[String]) -> Result<(), CliError> {
     let (workspace, catalogue) = paths2(args)?;
     let (engine, _events) = open(&workspace, &catalogue)?;
     let duplicates = engine.duplicate_photos()?;
-    for photo in &duplicates {
-        println!("{}", photo.filename);
-        println!("  {} — {}", photo.primary.source_name, photo.primary.path);
-        for extra in &photo.extra {
-            println!("  {} — {}", extra.source_name, extra.path);
-        }
-    }
-    println!("{} duplicate photo(s)", duplicates.len());
+    print!("{}", auroraw_engine::duplicates_report(&duplicates));
     Ok(())
 }
 
