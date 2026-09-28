@@ -98,13 +98,20 @@ impl qobject::Duplicates {
         let Some(session) = session::current() else {
             return false;
         };
-        let Ok(duplicates) = session.engine.duplicate_photos() else {
-            return false;
-        };
-        std::fs::write(
-            path.to_string(),
-            auroraw_engine::duplicates_report(&duplicates),
-        )
-        .is_ok()
+        let path = path.to_string();
+        // A transient failure (a lock briefly held on the destination, seen on Windows) is retried
+        // a few times, rather than failing the one export a person just asked for.
+        for attempt in 0..5 {
+            if attempt > 0 {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            let Ok(duplicates) = session.engine.duplicate_photos() else {
+                continue;
+            };
+            if std::fs::write(&path, auroraw_engine::duplicates_report(&duplicates)).is_ok() {
+                return true;
+            }
+        }
+        false
     }
 }
