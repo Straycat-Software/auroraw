@@ -65,6 +65,9 @@ pub enum Event {
     /// A series was made, changed or dissolved (by a step, an undo or a redo, or by detection): the grid lists
     /// photos in series differently now.
     SeriesChanged,
+    /// A manual collection was made, changed or deleted, or photos went in or out of one (by a step, an undo, a
+    /// redo, or a photo leaving with its source): the collections panel lists them differently now.
+    CollectionsChanged,
     /// A keyword and its branch were moved (the catalogue already reflects it; the sidecars' path
     /// snapshots follow in a background job).
     KeywordMoved(KeywordId),

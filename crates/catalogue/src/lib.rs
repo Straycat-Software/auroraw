@@ -18,6 +18,7 @@
 //! - [`dataset`] generates a synthetic but realistic catalogue for tests and benchmarks (moved
 //!   here from spike 3, M1 plan WP2).
 
+mod collections;
 mod effective;
 mod error;
 mod location;
@@ -33,6 +34,7 @@ mod write;
 
 pub mod dataset;
 
+pub use collections::CollectionRow;
 pub use effective::{effective_flag, effective_rating};
 pub use error::CatalogueError;
 pub use location::{DuplicatePhoto, LocationRef};

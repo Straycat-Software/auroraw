@@ -1054,6 +1054,7 @@ impl qobject::PhotoGrid {
                 .parse::<auroraw_engine::ColourLabel>()
                 .ok()
                 .map(|colour| colour.name().to_string()),
+            collection: None,
         }
     }
 

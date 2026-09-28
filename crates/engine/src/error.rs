@@ -35,6 +35,15 @@ pub enum EngineError {
     /// A keyword cannot be moved under itself or one of its own keywords.
     #[error("A keyword cannot be moved under itself or under one of its own keywords.")]
     KeywordCycle,
+    /// A collection needs a name.
+    #[error("A collection needs a name.")]
+    CollectionName,
+    /// A sibling has the name already (whatever the case).
+    #[error("There is already a collection named “{0}” there.")]
+    CollectionNameTaken(String),
+    /// A collection cannot be moved under itself or one of its own collections.
+    #[error("A collection cannot be moved under itself or under one of its own collections.")]
+    CollectionCycle,
     /// The coordinator thread has already stopped (a command was sent after `shutdown`, or it
     /// panicked: the latter is always a bug, since every command is caught, never propagated).
     #[error("the engine is no longer running")]

@@ -48,8 +48,8 @@ pub use duplicates_api::{DuplicatePhoto, LocationRef, format_report as duplicate
 pub use error::{EngineError, Result};
 pub use event::Event;
 pub use history::{
-    Change, HistoryState, KeywordDelta, KeywordSet, Label, LabelKind, SeriesAction,
-    VocabularyAction,
+    Change, CollectionAction, CollectionDelta, HistoryState, KeywordDelta, KeywordSet, Label,
+    LabelKind, SeriesAction, VocabularyAction,
 };
 pub use import_flow::{
     DestinationKind, ImportRequest, ImportSourceInfo, ImportStarted, VolumeInfo,

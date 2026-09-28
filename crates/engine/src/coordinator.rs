@@ -16,7 +16,7 @@ use auroraw_import::{DiscoveredFile, PairRule, Profile, pair_files};
 use auroraw_plugin_api::source::{Source, SourceState};
 use auroraw_sources::filesystem::FilesystemSource;
 use auroraw_sources::relink::{self, FoundFile, KnownFile, ScanOutcome};
-use auroraw_types::{ContentHash, KeywordId, PhotoId, SeriesId, SourceId, Timestamp};
+use auroraw_types::{CollectionId, ContentHash, KeywordId, PhotoId, SeriesId, SourceId, Timestamp};
 use auroraw_workspace::{FileStat, Workspace};
 
 use crate::command::Command;
@@ -38,6 +38,8 @@ pub enum Outcome {
     Applied,
     /// `CreateKeyword`'s new identifier.
     KeywordCreated(KeywordId),
+    /// `CreateCollection`'s new identifier.
+    CollectionCreated(CollectionId),
     /// `RenameKeyword`'s background refresh job and how many sidecars it will touch.
     RenameStarted {
         /// The job doing the refresh.
@@ -196,6 +198,8 @@ fn stat_from(size: u64, modified: Option<SystemTime>) -> SidecarStat {
     SidecarStat { size, modified }
 }
 
+#[path = "collection_ops.rs"]
+mod collection_ops;
 #[path = "series_ops.rs"]
 mod series_ops;
 
@@ -300,8 +304,10 @@ impl Coordinator {
                     let _ = self.apply_catalogue_action(action);
                 }
                 Inbound::Removed { photo_id } => {
-                    // A photo that leaves a series shrinks it.
+                    // A photo that leaves a series shrinks it, and it leaves its collections (both read the
+                    // catalogue's rows about the photo, so before they go).
                     self.leave_series_on_removal(photo_id);
+                    self.leave_collections_on_removal(photo_id);
                     let _ = self.catalogue.remove_photo(&photo_id);
                     // What was done to a photo that has left cannot be undone.
                     if self.history.forget_photo(photo_id) {
@@ -405,6 +411,29 @@ impl Coordinator {
                 synonyms,
                 export,
             } => self.set_keyword_properties(keyword_id, synonyms, export),
+            Command::CreateCollection {
+                name,
+                parent,
+                id,
+                photos,
+            } => self.create_collection(name, parent, id, photos),
+            Command::RenameCollection {
+                collection_id,
+                new_name,
+            } => self.rename_collection(collection_id, new_name),
+            Command::MoveCollection {
+                collection_id,
+                new_parent,
+            } => self.move_collection(collection_id, new_parent),
+            Command::DeleteCollection { collection_id } => self.delete_collection(collection_id),
+            Command::AddToCollection {
+                collection_id,
+                photos,
+            } => self.add_to_collection(collection_id, photos),
+            Command::RemoveFromCollection {
+                collection_id,
+                photos,
+            } => self.remove_from_collection(collection_id, photos),
             Command::GroupPhotos { photos } => self.group_photos(photos),
             Command::RemoveFromSeries { photos } => self.remove_from_series(photos),
             Command::DissolveSeries { series } => self.dissolve_series(series),
@@ -699,6 +728,9 @@ impl Coordinator {
         if let Change::Vocabulary { keywords, .. } = change {
             self.apply_vocabulary(keywords, direction, false)?;
             return Ok(());
+        }
+        if let Change::Collections { deltas, .. } = change {
+            return self.write_collections(deltas, direction);
         }
         if let Change::Series {
             id, before, after, ..

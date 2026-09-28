@@ -5,7 +5,9 @@
 
 use std::collections::HashMap;
 
-use auroraw_types::{ContentHash, Fingerprint, KeywordId, PhotoId, SeriesId, SourceId};
+use auroraw_types::{
+    CollectionId, ContentHash, Fingerprint, KeywordId, PhotoId, SeriesId, SourceId,
+};
 use rusqlite::{OptionalExtension, Row, params};
 
 use crate::error::Result;
@@ -149,6 +151,8 @@ pub struct Filter {
     pub label: Option<String>,
     /// Photos by series membership.
     pub series: SeriesFilter,
+    /// Photos in this collection or in any collection under it (WP10, slice 3).
+    pub collection: Option<CollectionId>,
 }
 
 /// Which photos a listing keeps by series (WP9).
@@ -259,6 +263,17 @@ impl Catalogue {
             );
             values.push(Value::Text(keyword.to_string()));
             values.push(Value::Text(keyword.to_string()));
+        }
+        if let Some(collection) = &filter.collection {
+            conditions.push(
+                "p.id IN (WITH RECURSIVE branch(id) AS (
+                              SELECT ? UNION ALL
+                              SELECT c.id FROM collection c JOIN branch b ON c.parent_id = b.id)
+                          SELECT photo_id FROM collection_member
+                          WHERE collection_id IN (SELECT id FROM branch))"
+                    .into(),
+            );
+            values.push(Value::Text(collection.to_string()));
         }
         if let Some(c) = after {
             conditions.push("(p.capture_time, p.id) < (?, ?)".into());

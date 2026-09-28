@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use auroraw_format::sidecar::{ColourLabel, CustomField, Flag, Metadata};
 use auroraw_import::Profile;
-use auroraw_types::{KeywordId, PhotoId, SeriesId, SourceId};
+use auroraw_types::{CollectionId, KeywordId, PhotoId, SeriesId, SourceId};
 
 /// One of the plain-text metadata fields the metadata panel edits (spec §5.7; WP10, slice 1): not
 /// rating, flag, label or keywords, which have their own commands, and not GPS, which is its own
@@ -302,6 +302,55 @@ pub enum Command {
         synonyms: Vec<String>,
         /// Whether it is included when photos are exported. Nothing reads this yet (WP5.8).
         export: bool,
+    },
+    /// Makes a **manual** collection (a step of the history, WP10 slice 3), with these photos as its first
+    /// members: making it and filling it is one step. Refused when a sibling already has the name (whatever the
+    /// case). Reports [`crate::Outcome::CollectionCreated`].
+    CreateCollection {
+        /// Its name.
+        name: String,
+        /// The collection it goes inside, or `None` for the top level.
+        parent: Option<CollectionId>,
+        /// Its identifier, or `None` to draw one.
+        id: Option<CollectionId>,
+        /// Its first members, in this order.
+        photos: Vec<PhotoId>,
+    },
+    /// Renames a collection (a step of the history).
+    RenameCollection {
+        /// The collection.
+        collection_id: CollectionId,
+        /// Its new name.
+        new_name: String,
+    },
+    /// Moves a collection, with what is inside it, under another collection or to the top level (a step of the
+    /// history). Refused under itself or one of its own, and when a sibling has its name there.
+    MoveCollection {
+        /// The collection.
+        collection_id: CollectionId,
+        /// Its new parent, or `None` for the top level.
+        new_parent: Option<CollectionId>,
+    },
+    /// Deletes a collection and the collections inside it (a step of the history; an undo brings all of them
+    /// back). The photos are not touched: only their membership goes.
+    DeleteCollection {
+        /// The collection at the top of the branch.
+        collection_id: CollectionId,
+    },
+    /// Adds photos to a collection (a step of the history), after the members it has; the ones it holds already
+    /// are left where they are.
+    AddToCollection {
+        /// The collection.
+        collection_id: CollectionId,
+        /// The photos.
+        photos: Vec<PhotoId>,
+    },
+    /// Takes photos out of a collection (a step of the history); the ones it does not hold are ignored.
+    RemoveFromCollection {
+        /// The collection.
+        collection_id: CollectionId,
+        /// The photos.
+        photos: Vec<PhotoId>,
     },
     /// Groups these photos into a new **manual** series (a step of the history, D-101): they leave the series they
     /// were in (one left with fewer than two photos is dissolved). Merging two series is grouping all their photos;

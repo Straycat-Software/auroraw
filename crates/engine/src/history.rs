@@ -14,8 +14,8 @@
 use std::collections::VecDeque;
 
 use auroraw_format::sidecar::{Flag, Metadata};
-use auroraw_format::state::{KeywordEntry, Series};
-use auroraw_types::{KeywordId, PhotoId, SeriesId};
+use auroraw_format::state::{Collection, KeywordEntry, Series};
+use auroraw_types::{CollectionId, KeywordId, PhotoId, SeriesId};
 
 use crate::command::MetadataField;
 
@@ -67,6 +67,34 @@ pub enum SeriesAction {
     Resolve,
     /// A resolved series was reopened.
     Reopen,
+}
+
+/// What was done to collections (it names the step).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectionAction {
+    /// A collection was made (with its first photos).
+    Create,
+    /// A collection was renamed.
+    Rename,
+    /// A collection was moved under another (or to the top level).
+    Move,
+    /// A collection and the ones inside it were deleted.
+    Delete,
+    /// Photos were added to a collection.
+    Add,
+    /// Photos were taken out of a collection.
+    Remove,
+}
+
+/// One collection, as its state file was and as it became (`None`: there was none).
+#[derive(Debug, Clone, PartialEq)]
+pub struct CollectionDelta {
+    /// Which collection.
+    pub id: CollectionId,
+    /// Its state before.
+    pub before: Option<Collection>,
+    /// Its state after.
+    pub after: Option<Collection>,
 }
 
 /// One keyword of the vocabulary, as it was and as it became (`None`: it did not exist).
@@ -151,10 +179,18 @@ pub enum Change {
         /// The keywords it touched.
         keywords: Vec<KeywordDelta>,
     },
+    /// Manual collections: the state files that changed, as they were and as they became. Applied by the
+    /// coordinator (the files and the catalogue's rows), not by [`Change::apply`] (WP10, slice 3).
+    Collections {
+        /// What was done.
+        action: CollectionAction,
+        /// The collections it touched.
+        deltas: Vec<CollectionDelta>,
+    },
 }
 
 impl Change {
-    /// The photo the change is about (none for a change of the vocabulary).
+    /// The photo the change is about (none for a change of the vocabulary, a series or a collection).
     pub fn photo(&self) -> Option<PhotoId> {
         match self {
             Change::Rating { photo, .. }
@@ -162,7 +198,7 @@ impl Change {
             | Change::Label { photo, .. }
             | Change::Keywords { photo, .. }
             | Change::Metadata { photo, .. } => Some(*photo),
-            Change::Vocabulary { .. } | Change::Series { .. } => None,
+            Change::Vocabulary { .. } | Change::Series { .. } | Change::Collections { .. } => None,
         }
     }
 
@@ -185,6 +221,14 @@ impl Change {
                 VocabularyAction::Move => LabelKind::KeywordMove,
                 VocabularyAction::Delete => LabelKind::KeywordDelete,
                 VocabularyAction::SetProperties => LabelKind::KeywordProperties,
+            },
+            Change::Collections { action, .. } => match action {
+                CollectionAction::Create => LabelKind::CollectionCreate,
+                CollectionAction::Rename => LabelKind::CollectionRename,
+                CollectionAction::Move => LabelKind::CollectionMove,
+                CollectionAction::Delete => LabelKind::CollectionDelete,
+                CollectionAction::Add => LabelKind::CollectionAdd,
+                CollectionAction::Remove => LabelKind::CollectionRemove,
             },
         }
     }
@@ -211,7 +255,7 @@ impl Change {
                 after,
                 ..
             } => field.set(meta, if undo { before.clone() } else { after.clone() }),
-            Change::Vocabulary { .. } | Change::Series { .. } => {}
+            Change::Vocabulary { .. } | Change::Series { .. } | Change::Collections { .. } => {}
         }
     }
 }
@@ -277,6 +321,18 @@ pub enum LabelKind {
     KeywordDelete,
     /// A keyword's synonyms and export flag were set (WP10 slice 2).
     KeywordProperties,
+    /// A collection was made (with or without photos put in it).
+    CollectionCreate,
+    /// A collection was renamed.
+    CollectionRename,
+    /// A collection was moved.
+    CollectionMove,
+    /// A collection and the ones inside it were deleted.
+    CollectionDelete,
+    /// Photos were added to a collection.
+    CollectionAdd,
+    /// Photos were taken out of a collection.
+    CollectionRemove,
     /// Photos were grouped into a series.
     SeriesGroup,
     /// Photos left their series, or a series was dissolved.
@@ -319,6 +375,12 @@ impl LabelKind {
             LabelKind::KeywordMove => "keyword-move",
             LabelKind::KeywordDelete => "keyword-delete",
             LabelKind::KeywordProperties => "keyword-properties",
+            LabelKind::CollectionCreate => "collection-create",
+            LabelKind::CollectionRename => "collection-rename",
+            LabelKind::CollectionMove => "collection-move",
+            LabelKind::CollectionDelete => "collection-delete",
+            LabelKind::CollectionAdd => "collection-add",
+            LabelKind::CollectionRemove => "collection-remove",
             LabelKind::SeriesGroup => "series-group",
             LabelKind::SeriesUngroup => "series-ungroup",
             LabelKind::SeriesResolve => "series-resolve",
@@ -369,6 +431,24 @@ pub struct Entry {
     pub changes: Vec<Change>,
 }
 
+/// What a collection step says it counted: the photos it put in or took out (a creation: the ones it was made
+/// with), the collections a deletion took, else 1.
+fn collection_count(action: CollectionAction, deltas: &[CollectionDelta]) -> usize {
+    let members = |state: &Option<Collection>| state.as_ref().map_or(0, |c| c.members.len());
+    let first = deltas.first();
+    match action {
+        CollectionAction::Create => first.map_or(0, |d| members(&d.after)),
+        CollectionAction::Add => {
+            first.map_or(0, |d| members(&d.after).saturating_sub(members(&d.before)))
+        }
+        CollectionAction::Remove => {
+            first.map_or(0, |d| members(&d.before).saturating_sub(members(&d.after)))
+        }
+        CollectionAction::Delete => deltas.len(),
+        CollectionAction::Rename | CollectionAction::Move => 1,
+    }
+}
+
 impl Entry {
     /// An entry for `changes` (not empty), labelled by what they have in common. An action that changed the
     /// vocabulary is named by that change, whatever photos it also touched (making a keyword and giving it to
@@ -382,6 +462,13 @@ impl Entry {
         // A series step is named by its series change and counts the photos the series involves.
         let series = changes.iter().find_map(|c| match c {
             Change::Series { .. } => Some(c.kind()),
+            _ => None,
+        });
+        // A collection step is named by its collection change and counts what it did.
+        let collections = changes.iter().find_map(|c| match c {
+            Change::Collections { action, deltas } => {
+                Some((c.kind(), collection_count(*action, deltas)))
+            }
             _ => None,
         });
         let label = match vocabulary {
@@ -407,6 +494,10 @@ impl Entry {
                     kind: series.expect("checked"),
                     count,
                 }
+            }
+            None if collections.is_some() => {
+                let (kind, count) = collections.expect("checked");
+                Label { kind, count }
             }
             None => {
                 let kind = match changes.first().map(Change::kind) {
@@ -439,10 +530,17 @@ impl Entry {
             .any(|c| matches!(c, Change::Series { .. }))
     }
 
-    /// Whether the entry changed a state that is not a photo's (the vocabulary, a series): undoing it does what it
-    /// can for the photos that are still there rather than failing when one has gone.
+    /// Whether the entry changed a collection.
+    pub fn has_collections(&self) -> bool {
+        self.changes
+            .iter()
+            .any(|c| matches!(c, Change::Collections { .. }))
+    }
+
+    /// Whether the entry changed a state that is not a photo's (the vocabulary, a series, a collection): undoing
+    /// it does what it can for the photos that are still there rather than failing when one has gone.
     pub fn has_state_change(&self) -> bool {
-        self.has_vocabulary() || self.has_series()
+        self.has_vocabulary() || self.has_series() || self.has_collections()
     }
 
     /// The photos the entry touches, each once, in the order of the changes.
@@ -541,6 +639,17 @@ impl History {
                             state.members.retain(|m| *m != photo);
                             state.kept.retain(|m| *m != photo);
                             forgot |= state.members.len() + state.kept.len() != members;
+                        }
+                    }
+                    // So do a collection's, for the same reason.
+                    if let Change::Collections { deltas, .. } = change {
+                        for delta in deltas {
+                            for state in [&mut delta.before, &mut delta.after].into_iter().flatten()
+                            {
+                                let members = state.members.len();
+                                state.members.retain(|m| m.photo() != photo);
+                                forgot |= state.members.len() != members;
+                            }
                         }
                     }
                 }

@@ -347,6 +347,7 @@ fn list_filtered_agrees_with_a_plain_filter_for_every_combination() {
                     keyword,
                     label: None,
                     series: Default::default(),
+                    collection: None,
                 };
                 let got: Vec<_> = every_row(&cat, &filter, 97)
                     .into_iter()

@@ -382,6 +382,16 @@ impl Workspace {
         self.read_state_at(self.collection_path(id))
     }
 
+    /// Takes a collection's file out of the workspace, recoverably (it goes to `removed/`, as a series' does).
+    /// Nothing to do when there is no such file.
+    pub fn remove_collection(&self, id: &CollectionId) -> Result<(), WorkspaceError> {
+        let path = self.collection_path(id);
+        if path.exists() {
+            self.remove_recoverably(&path)?;
+        }
+        Ok(())
+    }
+
     /// Takes a series' file out of the workspace, recoverably (it goes to `removed/`, like a photo's sidecar does
     /// when its source is removed). Nothing to do when there is no such file.
     pub fn remove_series(&self, id: &SeriesId) -> Result<(), WorkspaceError> {

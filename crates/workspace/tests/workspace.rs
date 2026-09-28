@@ -351,6 +351,37 @@ fn removal_moves_to_removed_and_never_collides() {
 }
 
 #[test]
+fn a_removed_collection_is_recoverable_and_removing_none_is_fine() {
+    let (_dir, ws) = new_workspace();
+    let collection = Collection {
+        id: CollectionId::random(),
+        updated: now(),
+        name: "Picks".into(),
+        kind: "manual".into(),
+        parent: None,
+        members: Vec::new(),
+        query: None,
+        query_schema: None,
+        extra: Default::default(),
+    };
+    ws.write_collection(&collection).unwrap();
+    assert_eq!(ws.scan().unwrap().collections.len(), 1);
+    ws.remove_collection(&collection.id).unwrap();
+    assert!(ws.read_collection(&collection.id).unwrap().is_none());
+    assert!(ws.scan().unwrap().collections.is_empty());
+    assert!(
+        ws.root()
+            .join("removed")
+            .join("state")
+            .join("collections")
+            .is_dir(),
+        "the file is kept under removed/"
+    );
+    // Nothing there any more: not an error.
+    ws.remove_collection(&collection.id).unwrap();
+}
+
+#[test]
 fn removal_refuses_paths_outside_the_workspace() {
     let (dir, ws) = new_workspace();
     let outside = dir.path().join("elsewhere.txt");
