@@ -153,7 +153,12 @@ impl Catalogue {
     }
 
     /// Takes a photo out of the catalogue (its sidecar is dealt with by the caller, recoverably):
-    /// the row, its keywords and versions, its place in collections and its search entry.
+    /// the row, its keywords and versions, its place in collections and its search entry, and any
+    /// confirmed secondary location it has (D-108). Without that last one, a photo that had a second
+    /// location (a duplicate, in the same source or another) failed this silently: `location.photo_id`
+    /// references `photo(id)` and foreign keys are on, so deleting the row while its own `location`
+    /// row still pointed at it broke the whole statement, an error `remove_source`'s caller never saw
+    /// because a lone photo removal is never expected to fail (issue #17).
     pub fn remove_photo(&mut self, photo_id: &PhotoId) -> Result<()> {
         let id = photo_id.to_string();
         let tx = self.conn.transaction()?;
@@ -172,6 +177,7 @@ impl Catalogue {
         tx.execute("DELETE FROM version WHERE photo_id = ?1", [&id])?;
         tx.execute("DELETE FROM photo_keyword WHERE photo_id = ?1", [&id])?;
         tx.execute("DELETE FROM collection_member WHERE photo_id = ?1", [&id])?;
+        tx.execute("DELETE FROM location WHERE photo_id = ?1", [&id])?;
         tx.execute("DELETE FROM photo WHERE id = ?1", [&id])?;
         tx.commit()?;
         Ok(())

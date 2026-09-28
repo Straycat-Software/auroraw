@@ -283,3 +283,109 @@ fn a_fingerprint_collision_that_does_not_confirm_by_hash_is_not_joined() {
         "never joined on a fingerprint match alone"
     );
 }
+
+/// Removes `source_id` and waits for it to finish: how many of its photos left, and how many stayed
+/// (kept alive by a location elsewhere).
+fn remove(engine: &Engine, events: &EventReceiver, source_id: SourceId) -> (usize, usize) {
+    let Outcome::RemoveStarted { job } = engine
+        .submit_and_wait(Command::RemoveSource { source_id })
+        .unwrap()
+    else {
+        panic!("expected RemoveStarted");
+    };
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        match events.recv_timeout(Duration::from_millis(200)) {
+            Some(Event::SourceRemoved {
+                job: j,
+                removed,
+                kept,
+                ..
+            }) if j == job => return (removed, kept),
+            Some(_) => {}
+            None => assert!(Instant::now() < deadline, "the removal never finished"),
+        }
+    }
+}
+
+#[test]
+fn removing_a_source_with_an_intra_source_duplicate_removes_it_entirely() {
+    // Issue #17: a photo joined from two locations *within the source being removed* used to survive
+    // in the catalogue, an orphaned row still naming the source that is gone (`location.photo_id`
+    // references `photo(id)`, and with foreign keys on, `remove_photo` failed silently as long as this
+    // photo's own confirmed second location was left behind in the `location` table).
+    let (engine, events, dir) = new_engine();
+    let root = dir.path().join("Card");
+    write_jpeg(&root.join("a.jpg"), 3);
+    let (source_id, _original) = add_one(&engine, &root, "Card");
+    std::fs::create_dir_all(root.join("backup")).unwrap();
+    std::fs::copy(root.join("a.jpg"), root.join("backup/a.jpg")).unwrap();
+    let Outcome::Scanned {
+        second_locations, ..
+    } = engine
+        .submit_and_wait(Command::ScanSource { source_id })
+        .unwrap()
+    else {
+        panic!("expected Scanned");
+    };
+    assert_eq!(second_locations, 1);
+
+    let (removed, kept) = remove(&engine, &events, source_id);
+    assert_eq!((removed, kept), (1, 0));
+    let catalogue = engine.read_catalogue().unwrap();
+    assert!(catalogue.photos_in_source(&source_id).unwrap().is_empty());
+    assert!(
+        catalogue
+            .list_filtered(&Default::default(), None, 100)
+            .unwrap()
+            .is_empty(),
+        "nothing of it is left to show in the grid"
+    );
+}
+
+#[test]
+fn removing_a_source_keeps_a_photo_that_also_has_a_confirmed_location_elsewhere() {
+    // The other half of the same area: a photo joined from a *different* source survives removing
+    // either one, since the other still holds it (`remove_job`'s own doc comment).
+    let (engine, events, dir) = new_engine();
+    let card = dir.path().join("Card");
+    write_jpeg(&card.join("a.jpg"), 7);
+    let (card_id, original) = add_one(&engine, &card, "Card");
+
+    let backup = dir.path().join("Backup");
+    write_jpeg(&backup.join("a_copy.jpg"), 7);
+    let added = engine
+        .add_source(AddSourceRequest {
+            root: backup,
+            name: Some("Backup".into()),
+            merge: false,
+        })
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        match events.recv_timeout(Duration::from_millis(200)) {
+            Some(Event::IndexFinished { job, .. }) if job == added.job => break,
+            _ => assert!(Instant::now() < deadline, "the index job never finished"),
+        }
+    }
+    assert_eq!(
+        engine.duplicate_photos().unwrap().len(),
+        1,
+        "joined, not added again"
+    );
+
+    let (removed, kept) = remove(&engine, &events, card_id);
+    assert_eq!((removed, kept), (0, 1));
+    let catalogue = engine.read_catalogue().unwrap();
+    let rows = catalogue
+        .list_filtered(&Default::default(), None, 100)
+        .unwrap();
+    assert_eq!(rows.len(), 1, "the photo is still there, through Backup");
+    assert_eq!(rows[0].id, original);
+    assert_eq!(
+        rows[0].source_id,
+        Some(added.source_id),
+        "now primary through Backup"
+    );
+    assert_eq!(rows[0].path.as_deref(), Some("a_copy.jpg"));
+}
