@@ -318,7 +318,7 @@ impl qobject::Launcher {
     pub fn default_parent(&self) -> QString {
         // The parent folder chosen last time (issue #9), else `~/Pictures/Auroraw`.
         let remembered = match &self.dirs {
-            Some(_) => AppSettings::load(&self.settings_path()).last_workspace_folder,
+            Some(_) => AppSettings::last_folder(&self.settings_path(), "workspace"),
             None => String::new(),
         };
         if remembered.is_empty() {
@@ -360,12 +360,11 @@ impl qobject::Launcher {
         match Engine::create_workspace(&root, name, &self.dirs()) {
             Ok(opened) => {
                 // Remembered for next time (issue #9), best effort.
-                let path = self.settings_path();
-                let settings = AppSettings {
-                    last_workspace_folder: parent.to_string_lossy().into_owned(),
-                    ..AppSettings::load(&path)
-                };
-                settings.save(&path);
+                AppSettings::remember_folder(
+                    &self.settings_path(),
+                    "workspace",
+                    &parent.to_string_lossy(),
+                );
                 self.as_mut().show(opened);
                 QString::default()
             }

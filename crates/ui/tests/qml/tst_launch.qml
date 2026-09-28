@@ -54,6 +54,21 @@ AppTestCase {
         compare(files.canonical(app.newDialog.folderField.text), files.canonical(custom))
     }
 
+    function test_opening_a_workspace_remembers_the_last_folder_browsed() {
+        // Issue #18: generalizes #9's own remembering to the Open workspace picker, which has no
+        // field of its own to remember a folder through.
+        const machine = freshMachine()
+        launch(machine)
+        compare(app.openDialog.startPath(), "", "nothing remembered yet")
+        const folder = machinePath(machine) + "/Elsewhere"
+        app.openDialog.choose(folder)
+        compare(app.openDialog.startPath(), folder)
+        // What just happened is exactly what the dialog's own answer always does (a plain folder is
+        // refused, harmlessly): remembering it is not conditional on it being a real workspace.
+        verify(app.notice.indexOf("Cannot open the workspace:") === 0, app.notice)
+        click(app.noticeBar.dismissButton)
+    }
+
     function test_the_startup_behavior_setting_controls_whether_the_last_workspace_reopens() {
         // Issue #11: asking for the list instead is honoured on the next launch.
         const machine = freshMachine()

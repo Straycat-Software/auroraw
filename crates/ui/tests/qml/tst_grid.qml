@@ -404,4 +404,13 @@ AppTestCase {
         app.library.filterBy(0)
         tryCompare(app.photos, "count", 80)
     }
+
+    function test_exporting_the_list_remembers_the_last_folder_chosen() {
+        // Issue #18.
+        compare(Folders.last("export-photos"), "", "nothing remembered yet")
+        const folder = home + "/Reports"
+        files.mkdir(folder)
+        app.library.exportDialog.choose(folder + "/list.txt")
+        compare(Folders.last("export-photos"), folder)
+    }
 }

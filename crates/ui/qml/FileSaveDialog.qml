@@ -10,6 +10,9 @@ FileDialog {
     id: picker
     fileMode: FileDialog.SaveFile
     property string defaultFileName: ""
+    // A key naming this picker for Folders.last/remember (issue #18): every FileSaveDialog in the
+    // app has no field of its own to remember a folder through, unlike some FolderPicker's.
+    property string rememberAs: ""
     signal chosen(string path)
     property var hostWindow: null
     parentWindow: hostWindow
@@ -29,7 +32,18 @@ FileDialog {
         return path
     }
 
+    // The folder part of `path` (the last segment, slashes or backslashes), empty if there is none.
+    function parentOf(path) {
+        const at = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"))
+        return at > 0 ? path.substring(0, at) : ""
+    }
+
     function pick() {
+        if (rememberAs !== "") {
+            const folder = Folders.last(rememberAs)
+            if (folder !== "")
+                currentFolder = urlFor(folder)
+        }
         if (defaultFileName !== "")
             currentFile = urlFor(defaultFileName)
         open()
@@ -37,6 +51,11 @@ FileDialog {
 
     // The answer, as the dialog gives it (tests give it directly: no native dialog opens off screen).
     function choose(path) {
+        if (rememberAs !== "") {
+            const folder = parentOf(path)
+            if (folder !== "")
+                Folders.remember(rememberAs, folder)
+        }
         chosen(path)
     }
 

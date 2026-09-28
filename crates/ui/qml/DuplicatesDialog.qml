@@ -118,6 +118,7 @@ AppWindow {
         id: exportDialog
         hostWindow: dialog
         defaultFileName: "duplicates.txt"
+        rememberAs: "export-duplicates"
         onChosen: path => dialog.duplicates.exportTo(path)
     }
 }

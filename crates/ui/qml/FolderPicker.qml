@@ -10,6 +10,11 @@ FolderDialog {
     id: picker
     // The text field the dialog is for, if any (its text says where to open, the answer fills it).
     property var field: null
+    // A key naming this picker for Folders.last/remember (issue #18), for one with no field to
+    // remember its own choice through: NewWorkspaceDialog's, AddSourceDialog's and ImportDialog's own
+    // pickers already remember by pre-filling their field before Browse is even clicked, a stronger
+    // behaviour than this, so they leave this unset.
+    property string rememberAs: ""
     signal chosen(string path)
     property var hostWindow: null
     parentWindow: hostWindow
@@ -28,8 +33,13 @@ FolderDialog {
         return path
     }
 
-    // Where the dialog opens for what the field says: a path, empty for the system's own default.
-    function startPath() { return field ? Folders.closest(field.text) : "" }
+    // Where the dialog opens: what the field says, else the remembered folder, else the system's own
+    // default (an empty path).
+    function startPath() {
+        if (field && field.text !== "")
+            return Folders.closest(field.text)
+        return rememberAs !== "" ? Folders.last(rememberAs) : ""
+    }
 
     function pick() {
         const start = startPath()
@@ -42,6 +52,8 @@ FolderDialog {
     function choose(path) {
         if (field)
             field.text = path
+        if (rememberAs !== "")
+            Folders.remember(rememberAs, path)
         chosen(path)
     }
 

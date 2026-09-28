@@ -3,6 +3,7 @@
 //! the interface and the width of the keyword panel. A plain JSON file in the machine's data folder; a missing or unreadable file is a
 //! first run, never an error.
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -41,10 +42,12 @@ pub struct AppSettings {
     pub similar_distance: u32,
     /// ...and were taken at most this many minutes apart.
     pub similar_minutes: u32,
-    /// The parent folder the New workspace dialog last created one in, empty for none yet (issue #9).
-    pub last_workspace_folder: String,
-    /// The folder the Add Source dialog last added, empty for none yet (issue #10).
-    pub last_source_folder: String,
+    /// Where a folder or file picker last went, keyed by a short name of its own (issues #9, #10,
+    /// #18): `"workspace"` (the New workspace dialog's parent folder), `"source"` (the Add Source
+    /// dialog), and one per picker with no field of its own to remember its choice through instead
+    /// (`"open-workspace"`, `"export-photos"`, `"export-duplicates"`). One map rather than a field
+    /// per picker, so a new one needs only a new key, not a new field here and at every call site.
+    pub last_folders: HashMap<String, String>,
     /// What to do at launch, when none was named on the command line (issue #11): `"reopen"` (the
     /// last workspace) or `"list"` (the Welcome screen's known workspaces).
     pub startup_behavior: String,
@@ -71,8 +74,7 @@ impl Default for AppSettings {
             compare_panes: 2,
             similar_distance: 10,
             similar_minutes: 30,
-            last_workspace_folder: String::new(),
-            last_source_folder: String::new(),
+            last_folders: HashMap::new(),
             startup_behavior: "reopen".into(),
         }
     }
@@ -114,6 +116,24 @@ impl AppSettings {
         }
         let bytes = serde_json::to_vec_pretty(self).expect("settings always serialise");
         let _ = std::fs::write(path, bytes);
+    }
+
+    /// Where the picker named `key` last went, empty for none yet (issue #18).
+    pub fn last_folder(path: &Path, key: &str) -> String {
+        Self::load(path)
+            .last_folders
+            .get(key)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Remembers `folder` as where the picker named `key` last went, best effort (issue #18).
+    pub fn remember_folder(path: &Path, key: &str, folder: &str) {
+        let mut settings = Self::load(path);
+        settings
+            .last_folders
+            .insert(key.to_string(), folder.to_string());
+        settings.save(path);
     }
 }
 
@@ -164,12 +184,38 @@ mod tests {
             compare_panes: 3,
             similar_distance: 12,
             similar_minutes: 45,
-            last_workspace_folder: "/home/patrick/Pictures".into(),
-            last_source_folder: "/mnt/backup".into(),
+            last_folders: HashMap::from([
+                (
+                    "workspace".to_string(),
+                    "/home/patrick/Pictures".to_string(),
+                ),
+                ("source".to_string(), "/mnt/backup".to_string()),
+            ]),
             startup_behavior: "list".into(),
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);
+    }
+
+    #[test]
+    fn a_pickers_last_folder_is_remembered_by_its_own_key_and_does_not_touch_another() {
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("app-settings.json");
+        assert_eq!(AppSettings::last_folder(&path, "export-photos"), "");
+
+        AppSettings::remember_folder(&path, "export-photos", "/home/patrick/Pictures");
+        assert_eq!(
+            AppSettings::last_folder(&path, "export-photos"),
+            "/home/patrick/Pictures"
+        );
+        assert_eq!(AppSettings::last_folder(&path, "export-duplicates"), "");
+
+        AppSettings::remember_folder(&path, "export-duplicates", "/home/patrick/Reports");
+        assert_eq!(
+            AppSettings::last_folder(&path, "export-photos"),
+            "/home/patrick/Pictures",
+            "remembering a second key does not disturb the first"
+        );
     }
 
     #[test]

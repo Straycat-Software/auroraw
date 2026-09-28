@@ -1214,6 +1214,7 @@ FocusScope {
         id: exportDialog
         hostWindow: root.hostWindow
         defaultFileName: "photos.txt"
+        rememberAs: "export-photos"
         onChosen: path => root.photoGrid.exportListedTo(path)
     }
 

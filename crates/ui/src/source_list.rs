@@ -101,12 +101,11 @@ impl SourceList {
         }) {
             Ok(added) => {
                 // Remembered for next time (issue #10), best effort.
-                let path = app_settings::settings_path();
-                let settings = AppSettings {
-                    last_source_folder: root.to_string_lossy().into_owned(),
-                    ..AppSettings::load(&path)
-                };
-                settings.save(&path);
+                AppSettings::remember_folder(
+                    &app_settings::settings_path(),
+                    "source",
+                    &root.to_string_lossy(),
+                );
                 self.as_mut().start(added.job);
                 self.refresh();
                 QString::default()
@@ -117,7 +116,10 @@ impl SourceList {
 
     /// The folder last added (issue #10), for the Add Source dialog to start from.
     pub fn last_folder(&self) -> QString {
-        text(&AppSettings::load(&app_settings::settings_path()).last_source_folder)
+        text(&AppSettings::last_folder(
+            &app_settings::settings_path(),
+            "source",
+        ))
     }
 
     fn counts(&self, row: i32) -> Option<auroraw_engine::SourceCounts> {

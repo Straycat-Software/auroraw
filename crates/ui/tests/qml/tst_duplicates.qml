@@ -91,6 +91,18 @@ AppTestCase {
         keyClick(Qt.Key_Escape)
     }
 
+    function test_exporting_the_list_remembers_the_last_folder_chosen() {
+        // Issue #18.
+        keyClick(Qt.Key_D, Qt.ControlModifier)
+        tryVerify(() => app.duplicatesDialog.visible)
+        compare(Folders.last("export-duplicates"), "", "nothing remembered yet")
+        const folder = home + "/Reports"
+        files.mkdir(folder)
+        app.duplicatesDialog.exportDialog.choose(folder + "/exported-duplicates.txt")
+        compare(Folders.last("export-duplicates"), folder)
+        keyClick(Qt.Key_Escape)
+    }
+
     function test_the_dialog_speaks_french() {
         app.launcher.chooseLanguage("fr")
         wait(250)

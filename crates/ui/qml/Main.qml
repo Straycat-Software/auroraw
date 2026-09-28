@@ -384,6 +384,7 @@ ApplicationWindow {
         id: openDialog
         hostWindow: window
         title: qsTr("Open a workspace")
+        rememberAs: "open-workspace"
         onChosen: path => window.openFolder(path)
     }
 }

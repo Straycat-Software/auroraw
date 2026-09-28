@@ -19,10 +19,22 @@ pub mod qobject {
         /// default place).
         #[qinvokable]
         fn closest(self: &Folders, typed: &QString) -> QString;
+
+        /// Where the picker named `key` last went, empty for none yet (issue #18): for a picker with
+        /// no field of its own to remember its choice through (`FolderPicker`'s and
+        /// `FileSaveDialog`'s own `rememberAs`).
+        #[qinvokable]
+        fn last(self: &Folders, key: &QString) -> QString;
+
+        /// Remembers `folder` as where the picker named `key` last went (issue #18).
+        #[qinvokable]
+        fn remember(self: &Folders, key: &QString, folder: &QString);
     }
 }
 
 use cxx_qt_lib::QString;
+
+use crate::app_settings::{self, AppSettings};
 
 /// Holds nothing.
 #[derive(Default)]
@@ -45,6 +57,20 @@ impl qobject::Folders {
         closest_folder(&typed.to_string())
             .map(|folder| QString::from(folder.to_string_lossy().as_ref()))
             .unwrap_or_default()
+    }
+
+    pub fn last(&self, key: &QString) -> QString {
+        QString::from(
+            AppSettings::last_folder(&app_settings::settings_path(), &key.to_string()).as_str(),
+        )
+    }
+
+    pub fn remember(&self, key: &QString, folder: &QString) {
+        AppSettings::remember_folder(
+            &app_settings::settings_path(),
+            &key.to_string(),
+            &folder.to_string(),
+        );
     }
 }
 
