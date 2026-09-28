@@ -53,12 +53,25 @@ pub struct PhotoRow {
     pub original_changed: bool,
     /// Whether the last reconcile found no file at all matching this photo in its source.
     pub original_missing: bool,
+    /// The ISO speed, if known.
+    pub iso: Option<i64>,
+    /// The f-number, if known.
+    pub aperture: Option<f64>,
+    /// The exposure time in seconds, if known.
+    pub shutter: Option<f64>,
+    /// The focal length in millimetres, if known.
+    pub focal_length: Option<f64>,
+    /// The original's width in pixels, if known.
+    pub width: Option<u32>,
+    /// The original's height in pixels, if known.
+    pub height: Option<u32>,
 }
 
 const COLUMNS: &str = "
     p.id, p.capture_time, p.rating, p.effective_rating, p.rating_overridden, p.flag,
     p.effective_flag, p.label, p.title, p.caption, p.filename, c.name, l.name, p.series_id,
-    p.version_count, p.source_id, p.path, p.original_changed, p.original_missing
+    p.version_count, p.source_id, p.path, p.original_changed, p.original_missing,
+    p.iso, p.aperture, p.shutter, p.focal_length, p.width, p.height
 ";
 const FROM: &str =
     "FROM photo p LEFT JOIN camera c ON c.id = p.camera_id LEFT JOIN lens l ON l.id = p.lens_id";
@@ -89,6 +102,12 @@ fn photo_row(row: &Row) -> rusqlite::Result<PhotoRow> {
         path: row.get(16)?,
         original_changed: row.get::<_, i64>(17)? != 0,
         original_missing: row.get::<_, i64>(18)? != 0,
+        iso: row.get(19)?,
+        aperture: row.get(20)?,
+        shutter: row.get(21)?,
+        focal_length: row.get(22)?,
+        width: row.get::<_, Option<i64>>(23)?.map(|w| w as u32),
+        height: row.get::<_, Option<i64>>(24)?.map(|h| h as u32),
     })
 }
 

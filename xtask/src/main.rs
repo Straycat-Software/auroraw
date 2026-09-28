@@ -127,6 +127,7 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("keywords-drag-en", "keywords-drag"),
     ("duplicates-en", "duplicates"),
     ("metadata-en", "metadata"),
+    ("info-en", "info"),
 ];
 
 /// Runs the interface's QML suites with `AUR_SNAPSHOT_DIR` set (they draw every view to a PNG) and copies the

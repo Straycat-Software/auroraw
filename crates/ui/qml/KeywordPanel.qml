@@ -4,18 +4,19 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.auroraw.ui
 
-// The inspector, on the right of the grid, two tabs (WP10, slice 1 added Metadata; before that this was
-// only the Keywords panel of spec §5.7, D-098, and the file kept that name): the vocabulary as a tree,
-// each keyword with a check that says whether the selected photos carry it none, some or all, and the
-// number of photos that have it. A click on the check gives it to the whole selection, or takes it off;
-// the field above types ahead (it filters the tree), Enter assigns the best match, and creates the
-// keyword when nothing matches (Shift+Enter creates even when something does). Every assignment is one
-// action, one step of the history, and so is making a keyword (with the photos that first get it),
-// renaming, moving, deleting one and setting its synonyms and export flag (WP10 slice 2, Properties…
-// in its menu). A keyword is moved by dragging it onto another (or onto any place of the panel that
-// has no keyword, for the top level), or from its menu. Metadata is `MetadataPanel.qml`,
-// the tab's own content; this file keeps the shared chrome (the resizable, collapsible shell) both tabs
-// show through.
+// The inspector, on the right of the grid, three tabs (WP10, slice 1 added Metadata, a later change
+// added Info; before that this was only the Keywords panel of spec §5.7, D-098, and the file kept that
+// name): the vocabulary as a tree, each keyword with a check that says whether the selected photos
+// carry it none, some or all, and the number of photos that have it. A click on the check gives it to
+// the whole selection, or takes it off; the field above types ahead (it filters the tree), Enter assigns
+// the best match, and creates the keyword when nothing matches (Shift+Enter creates even when something
+// does). Every assignment is one action, one step of the history, and so is making a keyword (with the
+// photos that first get it), renaming, moving, deleting one and setting its synonyms and export flag
+// (WP10 slice 2, Properties… in its menu). A keyword is moved by dragging it onto another (or onto any
+// place of the panel that has no keyword, for the top level), or from its menu. Metadata is
+// `MetadataPanel.qml`; Info, the grid's active photo's own technical metadata, read-only, is
+// `InfoPanel.qml`. This file keeps the shared chrome (the resizable, collapsible shell) every tab shows
+// through.
 Rectangle {
     id: panel
     required property var keywords
@@ -40,6 +41,7 @@ Rectangle {
     property alias ghost: ghost
     property alias tabs: tabs
     property alias metadataPanel: metadataPanel
+    property alias infoPanel: infoPanel
     // A keyword is being dragged (the top-level strip shows).
     property bool dragging: false
 
@@ -221,6 +223,7 @@ Rectangle {
                 background: null
                 TabButton { text: qsTr("Keywords"); width: implicitWidth }
                 TabButton { text: qsTr("Metadata"); width: implicitWidth }
+                TabButton { text: qsTr("Info"); width: implicitWidth }
             }
             ToolButton {
                 id: collapseButton
@@ -418,6 +421,15 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             photoGrid: panel.photoGrid
+        }
+
+        InfoPanel {
+            id: infoPanel
+            visible: tabs.currentIndex === 2
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            photoGrid: panel.photoGrid
+            library: panel.library
         }
     }
 

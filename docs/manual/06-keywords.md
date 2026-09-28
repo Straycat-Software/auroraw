@@ -2,10 +2,10 @@
 
 Keywords describe what is in a photo (*Animals*, *Peru*, *Cusco*). Auroraw keeps one **vocabulary** of keywords,
 arranged as a tree (*Places ▸ Peru ▸ Cusco*), and you give photos the keywords they deserve. The panel on the
-right of the grid has two tabs, **Keywords** and **Metadata**; `Ctrl+K` (**Tools ▸ Keywords**) switches to the
-first and puts the keyboard in its field, `Escape` gives it back to the grid, and the `«` and `»` buttons fold
-the panel away or bring it back. Drag its left edge to make it wider or narrower (a double click gives back the
-default width); it remembers its width, whichever tab is showing.
+right of the grid has three tabs, **Keywords**, **Metadata** and **Info**; `Ctrl+K` (**Tools ▸ Keywords**)
+switches to the first and puts the keyboard in its field, `Escape` gives it back to the grid, and the `«` and `»`
+buttons fold the panel away or bring it back. Drag its left edge to make it wider or narrower (a double click
+gives back the default width); it remembers its width, whichever tab is showing.
 
 ## Giving keywords to photos
 
@@ -63,6 +63,15 @@ field (`Tab`, a click elsewhere, or `Enter`) sets it on **all** the selected pho
 `Ctrl+Z`. Leaving a field empty clears it.
 
 ![The metadata panel](images/metadata.png)
+
+## Info
+
+The **Info** tab shows the active photo's own technical metadata — camera, lens, exposure (shutter speed,
+aperture, ISO, focal length), dimensions, orientation, GPS position and serial number, when the file carries
+them — read-only, and always for the one photo the grid's cursor is on, not a selection. A field the photo
+does not carry (most photos have no GPS position, for instance) is left off the list rather than shown empty.
+
+![The Info panel](images/info.png)
 
 ## Next
 

@@ -391,6 +391,11 @@ pub mod qobject {
         #[cxx_name = "summaryAt"]
         fn summary_at(self: &PhotoGrid, row: i32) -> QString;
 
+        /// The photo in `row`'s own technical metadata, for the Info panel (JSON).
+        #[qinvokable]
+        #[cxx_name = "technicalInfoAt"]
+        fn technical_info_at(self: &PhotoGrid, row: i32) -> QString;
+
         /// Where a step of `(dx, dy)` cells from `current` lands, in rows of `columns`.
         #[qinvokable]
         fn step(self: &PhotoGrid, current: i32, dx: i32, dy: i32, columns: i32) -> i32;
@@ -2147,6 +2152,48 @@ impl qobject::PhotoGrid {
             .filter(|part| !part.is_empty())
             .collect();
         QString::from(parts.join(" \u{2014} ").as_str())
+    }
+
+    /// The photo's technical metadata (the Info panel): JSON, values `null` when unknown. Numbers,
+    /// not formatted text -- the panel composes what is shown, in its own language (`describe`'s
+    /// own comment on why applies here too).
+    pub fn technical_info_at(&self, row: i32) -> QString {
+        let Some(item) = usize::try_from(row)
+            .ok()
+            .and_then(|row| self.items.get(row))
+        else {
+            return QString::default();
+        };
+        let Some(session) = session::current() else {
+            return QString::default();
+        };
+        let photo = session
+            .engine
+            .read_catalogue()
+            .ok()
+            .and_then(|catalogue| catalogue.photo(&item.id).ok().flatten());
+        let Some(photo) = photo else {
+            return QString::default();
+        };
+        let extra = session.engine.technical_details_of(&item.id);
+        let json = serde_json::json!({
+            "capture_time": (photo.capture_time > 0).then_some(photo.capture_time),
+            "camera": photo.camera,
+            "lens": photo.lens,
+            "shutter": photo.shutter,
+            "aperture": photo.aperture,
+            "iso": photo.iso,
+            "focal_length": photo.focal_length,
+            "width": photo.width,
+            "height": photo.height,
+            "focal_length_35mm": extra.as_ref().and_then(|e| e.focal_length_35mm),
+            "orientation": extra.as_ref().and_then(|e| e.orientation),
+            "gps_latitude": extra.as_ref().and_then(|e| e.gps_latitude.clone()),
+            "gps_longitude": extra.as_ref().and_then(|e| e.gps_longitude.clone()),
+            "gps_altitude": extra.as_ref().and_then(|e| e.gps_altitude.clone()),
+            "serial": extra.as_ref().and_then(|e| e.serial.clone()),
+        });
+        QString::from(json.to_string().as_str())
     }
 
     pub fn step(&self, current: i32, dx: i32, dy: i32, columns: i32) -> i32 {

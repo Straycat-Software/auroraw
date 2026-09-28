@@ -197,6 +197,15 @@ fn the_metadata_panel_edits_a_photos_or_a_selections_fields() {
     run_suite("metadata", home.path(), None);
 }
 
+/// The Info panel: the active photo's own technical metadata, read-only, a field left out when the
+/// photo does not carry it, following the grid's cursor, French.
+#[test]
+fn the_info_panel_shows_a_photos_technical_metadata() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 40);
+    run_suite("info", home.path(), None);
+}
+
 /// Reorganising the vocabulary: drag and drop, the Move dialog, deleting a branch, undo.
 #[test]
 fn reorganising_the_keyword_tree() {
