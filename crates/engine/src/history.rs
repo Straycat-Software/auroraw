@@ -52,6 +52,8 @@ pub enum VocabularyAction {
     Move,
     /// A keyword and its branch were deleted.
     Delete,
+    /// A keyword's synonyms and export flag were set (WP10 slice 2).
+    SetProperties,
 }
 
 /// What was done to a series (it names the step).
@@ -182,6 +184,7 @@ impl Change {
                 VocabularyAction::Rename => LabelKind::KeywordRename,
                 VocabularyAction::Move => LabelKind::KeywordMove,
                 VocabularyAction::Delete => LabelKind::KeywordDelete,
+                VocabularyAction::SetProperties => LabelKind::KeywordProperties,
             },
         }
     }
@@ -272,6 +275,8 @@ pub enum LabelKind {
     KeywordMove,
     /// A keyword and its branch were deleted.
     KeywordDelete,
+    /// A keyword's synonyms and export flag were set (WP10 slice 2).
+    KeywordProperties,
     /// Photos were grouped into a series.
     SeriesGroup,
     /// Photos left their series, or a series was dissolved.
@@ -313,6 +318,7 @@ impl LabelKind {
             LabelKind::KeywordRename => "keyword-rename",
             LabelKind::KeywordMove => "keyword-move",
             LabelKind::KeywordDelete => "keyword-delete",
+            LabelKind::KeywordProperties => "keyword-properties",
             LabelKind::SeriesGroup => "series-group",
             LabelKind::SeriesUngroup => "series-ungroup",
             LabelKind::SeriesResolve => "series-resolve",

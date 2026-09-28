@@ -8,6 +8,8 @@ use auroraw_types::{PhotoId, SeriesId};
 use rusqlite::{OptionalExtension, params};
 
 use crate::error::{CatalogueError, Result};
+#[cfg(test)]
+use crate::open::CURRENT_SCHEMA;
 use crate::open::Catalogue;
 
 /// A photo near another in time, with its hash.
@@ -253,8 +255,12 @@ mod tests {
         let path = dir.path().join("old.db");
         {
             let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
+            // Made as schema 1 would have it: none of phash, location or synonyms exist yet.
             cat.conn
-                .execute_batch("ALTER TABLE photo DROP COLUMN phash; DROP TABLE location;")
+                .execute_batch(
+                    "ALTER TABLE photo DROP COLUMN phash; DROP TABLE location;
+                     ALTER TABLE keyword DROP COLUMN synonyms;",
+                )
                 .unwrap();
             cat.conn.pragma_update(None, "user_version", 1).unwrap();
             insert(&cat, PhotoId::random(), 5, None);
@@ -264,7 +270,7 @@ mod tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(version, 3);
+        assert_eq!(version, CURRENT_SCHEMA);
         assert_eq!(
             cat.unhashed_count().unwrap(),
             1,

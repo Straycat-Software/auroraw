@@ -292,6 +292,17 @@ pub enum Command {
         /// The keyword at the top of the branch.
         keyword_id: KeywordId,
     },
+    /// Sets a keyword's synonyms and export flag (a step of the history, spec §5.7, D-045, WP10 slice 2):
+    /// both fields together, as one edit. No uniqueness check (a synonym is not a name anything else keys
+    /// off of, and two keywords sharing one is not an error).
+    SetKeywordProperties {
+        /// The keyword.
+        keyword_id: KeywordId,
+        /// Its alternative names, replacing whatever it had.
+        synonyms: Vec<String>,
+        /// Whether it is included when photos are exported. Nothing reads this yet (WP5.8).
+        export: bool,
+    },
     /// Groups these photos into a new **manual** series (a step of the history, D-101): they leave the series they
     /// were in (one left with fewer than two photos is dissolved). Merging two series is grouping all their photos;
     /// splitting one is grouping some of its members. Reports [`crate::Outcome::SeriesGrouped`].

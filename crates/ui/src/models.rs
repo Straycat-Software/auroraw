@@ -543,6 +543,24 @@ pub mod qobject {
         #[qinvokable]
         fn rename(self: Pin<&mut KeywordList>, row: i32, name: &QString) -> QString;
 
+        /// The keyword in `row`'s own synonyms and export flag (JSON `{"synonyms", "export"}`), for the
+        /// Properties dialog.
+        #[qinvokable]
+        fn properties(self: &KeywordList, row: i32) -> QString;
+
+        /// Sets the synonyms (one a line) and export flag of the keyword in `row`, as one step; empty, or
+        /// why not.
+        #[qinvokable]
+        #[cxx_name = "setProperties"]
+        fn set_properties(
+            self: Pin<&mut KeywordList>,
+            row: i32,
+            synonyms: &QString,
+            // `export` is a C++ keyword; the Rust implementation names this parameter `export`
+            // itself (matching the model's own field), only the generated C++ side differs.
+            exported: bool,
+        ) -> QString;
+
         /// The identifier of the keyword named `name` (any case) under `parent` (empty for the top level),
         /// or empty when there is none.
         #[qinvokable]

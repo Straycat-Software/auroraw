@@ -5,7 +5,8 @@ import org.auroraw.ui
 
 // Reorganising the vocabulary (D-099): a keyword dragged onto another, or onto the strip for the top level,
 // the Move dialog, a drop that cannot be done, deleting a branch with the numbers said and taking it back
-// with Ctrl+Z, renaming undone, the keyword filter that goes when its keyword does, and French.
+// with Ctrl+Z, renaming undone, its synonyms and export flag set as one step (WP10 slice 2), the keyword
+// filter that goes when its keyword does, and French.
 // The 40-photo machine; each test uses names of its own.
 AppTestCase {
     name: "KeywordTree"
@@ -275,6 +276,47 @@ AppTestCase {
         compare(item("Before").photos, 2)
     }
 
+    function test_the_properties_dialog_opens_with_the_current_values_and_saves_as_one_step() {
+        make("Redwood")
+        const dialog = app.keywordPanel.propertiesDialog
+        dialog.openFor(rowOf("Redwood"), "Redwood")
+        tryVerify(() => dialog.visible)
+        compare(dialog.synonymsField.text, "", "no synonym yet")
+        compare(dialog.doNotExportField.checked, false, "exported by default")
+
+        dialog.synonymsField.text = "Sequoia\nCoast redwood"
+        dialog.doNotExportField.checked = true
+        dialog.trySave()
+        tryVerify(() => !dialog.visible)
+        tryVerify(() => app.actions.undo.text === "Undo keyword properties", 5000, app.actions.undo.text)
+
+        dialog.openFor(rowOf("Redwood"), "Redwood")
+        tryVerify(() => dialog.visible)
+        compare(dialog.synonymsField.text, "Sequoia\nCoast redwood", "reopening shows what was saved")
+        compare(dialog.doNotExportField.checked, true)
+        dialog.close()
+
+        undoNow()
+        // The model refreshes on the history event asynchronously; wait for it before reading it back,
+        // the same way tryItem does for any other property read right after an undo.
+        tryVerify(() => JSON.parse(app.library.keywords.properties(rowOf("Redwood"))).synonyms === "", 5000)
+        dialog.openFor(rowOf("Redwood"), "Redwood")
+        tryVerify(() => dialog.visible)
+        compare(dialog.synonymsField.text, "", "undo brings back the old ones")
+        compare(dialog.doNotExportField.checked, false)
+        dialog.close()
+    }
+
+    function test_a_synonym_containing_a_bar_is_refused() {
+        make("Sea")
+        const dialog = app.keywordPanel.propertiesDialog
+        dialog.openFor(rowOf("Sea"), "Sea")
+        dialog.synonymsField.text = "Ocean|Deep"
+        dialog.trySave()
+        compare(dialog.error, "A synonym cannot contain |.")
+        verify(dialog.visible, "the dialog stays open")
+    }
+
     function test_the_filter_label_follows_a_rename() {
         selectFirst(2)
         make("Old name")
@@ -327,8 +369,19 @@ AppTestCase {
         selectFirst(2)
         const a = make("Faune")
         make("Oiseaux", a)
+        make("Séquoia")
         app.launcher.chooseLanguage("fr")
         wait(250)
+
+        const properties = app.keywordPanel.propertiesDialog
+        properties.openFor(rowOf("Séquoia"), "Séquoia")
+        tryVerify(() => properties.visible)
+        compare(properties.title, "Propriétés du mot-clé")
+        properties.synonymsField.text = "Coast redwood|x"
+        properties.trySave()
+        compare(properties.error, "Un synonyme ne peut pas contenir de |.")
+        properties.close()
+
         const dialog = app.keywordPanel.deleteDialog
         dialog.openFor(a)
         tryVerify(() => dialog.visible)

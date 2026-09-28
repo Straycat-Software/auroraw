@@ -67,13 +67,14 @@ pub(crate) fn insert_source(tx: &Transaction, entry: &SourceEntry) -> Result<()>
 /// once to resolve every keyword's path before calling this.
 pub(crate) fn insert_keyword(tx: &Transaction, entry: &KeywordEntry, path: &str) -> Result<()> {
     tx.execute(
-        "INSERT INTO keyword(id, parent_id, name, path, export) VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO keyword(id, parent_id, name, path, export, synonyms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
         params![
             entry.id.to_string(),
             entry.parent.map(|p| p.to_string()),
             entry.name,
             path,
-            entry.export as i64
+            entry.export as i64,
+            entry.synonyms.join("|"),
         ],
     )?;
     Ok(())

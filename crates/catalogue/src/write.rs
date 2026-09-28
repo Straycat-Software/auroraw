@@ -104,10 +104,18 @@ impl Catalogue {
     /// the keyword has descendants, and the caller updates each affected row the same way.
     pub fn apply_keyword(&mut self, entry: &KeywordEntry, path: &str) -> Result<()> {
         self.conn.execute(
-            "INSERT INTO keyword(id, parent_id, name, path, export) VALUES (?1, ?2, ?3, ?4, ?5)
+            "INSERT INTO keyword(id, parent_id, name, path, export, synonyms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
              ON CONFLICT(id) DO UPDATE SET
-                parent_id = excluded.parent_id, name = excluded.name, path = excluded.path, export = excluded.export",
-            params![entry.id.to_string(), entry.parent.map(|p| p.to_string()), entry.name, path, entry.export as i64],
+                parent_id = excluded.parent_id, name = excluded.name, path = excluded.path,
+                export = excluded.export, synonyms = excluded.synonyms",
+            params![
+                entry.id.to_string(),
+                entry.parent.map(|p| p.to_string()),
+                entry.name,
+                path,
+                entry.export as i64,
+                entry.synonyms.join("|"),
+            ],
         )?;
         Ok(())
     }

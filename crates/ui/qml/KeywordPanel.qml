@@ -11,8 +11,9 @@ import org.auroraw.ui
 // the field above types ahead (it filters the tree), Enter assigns the best match, and creates the
 // keyword when nothing matches (Shift+Enter creates even when something does). Every assignment is one
 // action, one step of the history, and so is making a keyword (with the photos that first get it),
-// renaming, moving and deleting one. A keyword is moved by dragging it onto another (or onto any place
-// of the panel that has no keyword, for the top level), or from its menu. Metadata is `MetadataPanel.qml`,
+// renaming, moving, deleting one and setting its synonyms and export flag (WP10 slice 2, Properties…
+// in its menu). A keyword is moved by dragging it onto another (or onto any place of the panel that
+// has no keyword, for the top level), or from its menu. Metadata is `MetadataPanel.qml`,
 // the tab's own content; this file keeps the shared chrome (the resizable, collapsible shell) both tabs
 // show through.
 Rectangle {
@@ -32,6 +33,7 @@ Rectangle {
     property alias collapseButton: collapseButton
     property alias moveDialog: moveDialog
     property alias deleteDialog: deleteDialog
+    property alias propertiesDialog: propertiesDialog
     property alias topLevelDrop: topLevelDrop
     property alias contextMenu: menu
     property alias addButton: addButton
@@ -170,6 +172,8 @@ Rectangle {
             return ""
         if (code === "name")
             return qsTr("A keyword needs a name, without |.")
+        if (code === "synonym")
+            return qsTr("A synonym cannot contain |.")
         if (code === "cycle")
             return qsTr("A keyword cannot be moved under itself or under one of its own keywords.")
         if (code.indexOf("taken:") === 0)
@@ -488,6 +492,10 @@ Rectangle {
             text: qsTr("Rename…")
             onTriggered: renameDialog.openFor(menu.row, menu.keywordName)
         }
+        AppMenuItem {
+            text: qsTr("Properties…")
+            onTriggered: propertiesDialog.openFor(menu.row, menu.keywordName)
+        }
         MenuSeparator {}
         AppMenuItem {
             text: qsTr("Move to…")
@@ -674,6 +682,90 @@ Rectangle {
                 text: qsTr("Cancel")
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 onClicked: deleteDialog.close()
+            }
+        }
+    }
+
+    // Synonyms and the export flag (spec §5.7, D-045, WP10 slice 2): neither has a UI of its own
+    // yet, both are set here, together, as one step. Nothing reads the export flag yet (WP5.8).
+    AppDialog {
+        id: propertiesDialog
+        property int row: -1
+        property string keywordName: ""
+        property string error: ""
+        property alias synonymsField: synonymsField
+        property alias doNotExportField: doNotExportField
+        preferredWidth: 420
+        title: qsTr("Keyword properties")
+
+        function openFor(keywordRow, name) {
+            row = keywordRow
+            keywordName = name
+            const info = JSON.parse(panel.keywords.properties(row))
+            synonymsField.text = info.synonyms
+            doNotExportField.checked = !info.export
+            error = ""
+            open()
+            synonymsField.forceActiveFocus()
+        }
+
+        function trySave() {
+            const reason = panel.keywords.setProperties(row, synonymsField.text, !doNotExportField.checked)
+            if (reason === "")
+                close()
+            else
+                error = panel.explain(reason)
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 8
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTr("“%1”").arg(propertiesDialog.keywordName)
+                color: Theme.quiet
+            }
+            Label {
+                text: qsTr("Synonyms, one a line:")
+            }
+            TextArea {
+                id: synonymsField
+                Layout.fillWidth: true
+                Layout.preferredHeight: 84
+                wrapMode: TextArea.Wrap
+                Accessible.name: qsTr("Synonyms")
+                // Unlike TextField, Fusion gives TextArea no background of its own (D-122).
+                background: Rectangle {
+                    color: palette.base
+                    radius: 3
+                    border.width: 1
+                    border.color: synonymsField.activeFocus ? palette.highlight : palette.mid
+                }
+            }
+            CheckBox {
+                id: doNotExportField
+                text: qsTr("Do not export")
+            }
+            Label {
+                Layout.fillWidth: true
+                visible: propertiesDialog.error !== ""
+                text: propertiesDialog.error
+                color: Theme.danger
+                wrapMode: Text.Wrap
+            }
+        }
+
+        footer: DialogButtonBox {
+            AppButton {
+                text: qsTr("Save")
+                highlighted: true
+                DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
+                onClicked: propertiesDialog.trySave()
+            }
+            AppButton {
+                text: qsTr("Cancel")
+                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+                onClicked: propertiesDialog.close()
             }
         }
     }

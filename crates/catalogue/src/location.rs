@@ -10,6 +10,8 @@ use auroraw_types::{ContentHash, Fingerprint, PhotoId, SourceId};
 use rusqlite::{OptionalExtension, params};
 
 use crate::error::Result;
+#[cfg(test)]
+use crate::open::CURRENT_SCHEMA;
 use crate::open::Catalogue;
 
 /// One place a photo's file is: a source, by name, and a path inside it.
@@ -387,7 +389,10 @@ mod migration_tests {
         let path = dir.path().join("old.db");
         {
             let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
-            cat.conn.execute_batch("DROP TABLE location").unwrap();
+            // Made as schema 2 would have it: no location table, no synonyms column yet either.
+            cat.conn
+                .execute_batch("DROP TABLE location; ALTER TABLE keyword DROP COLUMN synonyms;")
+                .unwrap();
             cat.conn.pragma_update(None, "user_version", 2).unwrap();
         }
         let mut cat = Catalogue::open(&path).unwrap();
@@ -395,7 +400,7 @@ mod migration_tests {
             .conn
             .query_row("PRAGMA user_version", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(version, 3);
+        assert_eq!(version, CURRENT_SCHEMA);
         let id = PhotoId::random();
         cat.conn
             .execute(

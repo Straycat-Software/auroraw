@@ -40,11 +40,14 @@ Right-click a keyword (or use its menu) for:
   moved under itself.
 - **Delete…**: deletes the keyword **and the keywords under it**; the confirmation says how many keywords and photos
   are affected. The photos lose those keywords.
+- **Properties…**: sets **synonyms** (one a line — typing a synonym in the field above finds the keyword it belongs
+  to, the same as its own name) and **Do not export**, which will keep the keyword out of exported photos once
+  exporting itself exists.
 
 ![Dragging a keyword](images/keywords-drag.png)
 
-Creating, renaming, moving and deleting keywords can all be undone with `Ctrl+Z`, and deleting brings back the
-same keywords on the same photos.
+Creating, renaming, moving, deleting keywords and setting their properties can all be undone with `Ctrl+Z`, and
+deleting brings back the same keywords on the same photos.
 
 ## Where keywords are kept
 
@@ -54,7 +57,7 @@ the catalogue and can be backed up with the workspace (see [Your files and their
 ## Metadata
 
 The **Metadata** tab edits a photo's title, caption, creator, copyright and the rest of its plain-text IPTC and
-XMP fields — one field a line, except **Creator** and **Persons shown**, which take one name a line. With
+XMP fields — one field a line, except **Persons shown**, which takes one name a line. With
 several photos selected, a field where they disagree shows *Multiple values*; typing in it and leaving the
 field (`Tab`, a click elsewhere, or `Enter`) sets it on **all** the selected photos, one step, undone with
 `Ctrl+Z`. Leaving a field empty clears it.

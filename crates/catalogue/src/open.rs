@@ -10,7 +10,7 @@ const SCHEMA: &str = include_str!("schema.sql");
 const INDEXES: &str = include_str!("indexes.sql");
 
 /// The schema version this crate reads and writes, written to `PRAGMA user_version`.
-pub const CURRENT_SCHEMA: u32 = 3;
+pub const CURRENT_SCHEMA: u32 = 4;
 
 /// An open catalogue.
 pub struct Catalogue {
@@ -85,6 +85,9 @@ impl Catalogue {
         if found < 3 {
             cat.migrate_to_3()?;
         }
+        if found < 4 {
+            cat.migrate_to_4()?;
+        }
         Ok(cat)
     }
 
@@ -149,6 +152,32 @@ impl Catalogue {
                      CREATE INDEX location_source ON location(source_id);",
                 )?;
                 self.conn.pragma_update(None, "user_version", 3)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(self.conn.execute_batch("COMMIT")?),
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
+
+    /// Schema 4 (D-045, WP10 slice 2): a keyword's synonyms, `|`-joined. Made under an immediate
+    /// transaction that looks again at the version, so that two connections opening an older file
+    /// at once do not both add the column.
+    fn migrate_to_4(&self) -> Result<()> {
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        let result = (|| -> Result<()> {
+            let found: u32 = self
+                .conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            if found < 4 {
+                self.conn.execute_batch(
+                    "ALTER TABLE keyword ADD COLUMN synonyms TEXT NOT NULL DEFAULT ''",
+                )?;
+                self.conn.pragma_update(None, "user_version", 4)?;
             }
             Ok(())
         })();
@@ -233,5 +262,39 @@ mod tests {
         let path = dir.path().join("c.db");
         Catalogue::create(&path, WorkspaceId::random()).unwrap();
         assert!(Catalogue::create(&path, WorkspaceId::random()).is_err());
+    }
+
+    #[test]
+    fn a_schema_3_file_gains_the_synonyms_column_on_open() {
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("c.db");
+        {
+            let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
+            // Made as schema 3 would have it: no synonyms column, an older version stamped.
+            cat.conn
+                .execute_batch("ALTER TABLE keyword DROP COLUMN synonyms")
+                .unwrap();
+            cat.conn.pragma_update(None, "user_version", 3).unwrap();
+        }
+        let cat = Catalogue::open(&path).unwrap();
+        let version: u32 = cat
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(version, CURRENT_SCHEMA);
+        // The column exists and behaves: usable in a statement, defaults to empty.
+        cat.conn
+            .execute(
+                "INSERT INTO keyword(id, name, path) VALUES ('a', 'A', 'A')",
+                [],
+            )
+            .unwrap();
+        let synonyms: String = cat
+            .conn
+            .query_row("SELECT synonyms FROM keyword WHERE id = 'a'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(synonyms, "");
     }
 }

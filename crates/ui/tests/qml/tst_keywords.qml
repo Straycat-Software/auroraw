@@ -253,6 +253,28 @@ AppTestCase {
         tryItem("Se", "photos", 1)
     }
 
+    function test_a_synonym_typed_exactly_assigns_the_keyword_it_belongs_to() {
+        selectFirst(2)
+        typeKeyword("Redwood")
+        const before = app.library.keywords.count
+        app.library.keywords.setProperties(rowOf("Redwood"), "Sequoia\nCoast redwood", false)
+        click(5)
+        typeKeyword("Sequoia")
+        compare(app.library.keywords.count, before, "no new keyword made")
+        tryItem("Redwood", "photos", 3)
+    }
+
+    function test_a_synonym_prefix_also_assigns_the_keyword() {
+        selectFirst(2)
+        typeKeyword("Automobile")
+        const before = app.library.keywords.count
+        app.library.keywords.setProperties(rowOf("Automobile"), "Car", false)
+        click(5)
+        typeKeyword("Ca")
+        compare(app.library.keywords.count, before, "the prefix of the synonym found it, nothing new")
+        tryItem("Automobile", "photos", 3)
+    }
+
     function test_the_list_can_be_filtered_by_a_keyword() {
         selectFirst(4)
         typeKeyword("Filtered")

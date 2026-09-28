@@ -159,6 +159,8 @@ pub struct KeywordRow {
     pub path: String,
     /// Whether it is written at export (the "do not export" flag is the opposite).
     pub export: bool,
+    /// Alternative names (D-045), for the panel's own type-ahead as well as its own display.
+    pub synonyms: Vec<String>,
     /// How many photos carry it directly.
     pub photos: u64,
 }
@@ -262,13 +264,14 @@ impl Catalogue {
     /// each keyword directly.
     pub fn keywords_with_counts(&self) -> Result<Vec<KeywordRow>> {
         let mut stmt = self.conn.prepare(
-            "SELECT k.id, k.parent_id, k.name, k.path, k.export,
+            "SELECT k.id, k.parent_id, k.name, k.path, k.export, k.synonyms,
                     (SELECT COUNT(*) FROM photo_keyword pk WHERE pk.keyword_id = k.id)
              FROM keyword k ORDER BY k.path",
         )?;
         let rows = stmt.query_map([], |r| {
             let id: String = r.get(0)?;
             let parent: Option<String> = r.get(1)?;
+            let synonyms: String = r.get(5)?;
             let bad = |column: usize| {
                 rusqlite::Error::InvalidColumnType(
                     column,
@@ -282,7 +285,12 @@ impl Catalogue {
                 name: r.get(2)?,
                 path: r.get(3)?,
                 export: r.get::<_, i64>(4)? != 0,
-                photos: r.get::<_, i64>(5)? as u64,
+                synonyms: synonyms
+                    .split('|')
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_string)
+                    .collect(),
+                photos: r.get::<_, i64>(6)? as u64,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)

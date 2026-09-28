@@ -39,7 +39,10 @@ CREATE TABLE keyword(
   parent_id TEXT REFERENCES keyword(id),
   name TEXT NOT NULL,
   path TEXT NOT NULL,
-  export INTEGER NOT NULL DEFAULT 1
+  export INTEGER NOT NULL DEFAULT 1,
+  -- Alternative names, `|`-joined (never available inside one: `checked_name` already refuses it),
+  -- empty for none. Added by schema 4 (D-045's own synonyms, WP10 slice 2).
+  synonyms TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE series(

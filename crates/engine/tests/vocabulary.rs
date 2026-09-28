@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Changes to the vocabulary are actions of the person's and are undone like any other (D-099): making a
-//! keyword (alone, or with the photos that first get it, as one step), renaming, moving and deleting a
-//! branch. Each ends in the same place in the vocabulary file, the catalogue and the sidecars, whether it is
-//! done, undone or redone; a move that would make a cycle or a name clash is refused; two path refreshes never
-//! finish in the wrong order; and a refresh never writes back a sidecar that a source removal moved away.
+//! keyword (alone, or with the photos that first get it, as one step), renaming, moving, deleting a branch
+//! and setting its synonyms and export flag (WP10 slice 2). Each ends in the same place in the vocabulary
+//! file, the catalogue and the sidecars, whether it is done, undone or redone; a move that would make a
+//! cycle or a name clash is refused; two path refreshes never finish in the wrong order; and a refresh
+//! never writes back a sidecar that a source removal moved away.
 
 use std::time::{Duration, Instant};
 
@@ -109,6 +110,20 @@ impl Fixture {
             .into_iter()
             .map(|k| (k.path, k.photos))
             .collect()
+    }
+
+    /// The catalogue's own synonyms and export flag for one keyword (by path).
+    fn properties(&self, path: &str) -> (Vec<String>, bool) {
+        let row = self
+            .engine
+            .read_catalogue()
+            .unwrap()
+            .keywords_with_counts()
+            .unwrap()
+            .into_iter()
+            .find(|k| k.path == path)
+            .unwrap();
+        (row.synonyms, row.export)
     }
 
     /// What Undo would undo now, from the last `HistoryChanged` since the events were last drained.
@@ -223,6 +238,74 @@ fn a_keyword_made_alone_can_be_undone_and_a_name_that_is_taken_is_refused() {
     f.engine.undo().unwrap(); // the child
     f.engine.undo().unwrap(); // Birds
     assert!(f.vocabulary().is_empty() && f.rows().is_empty());
+}
+
+#[test]
+fn setting_a_keywords_synonyms_and_export_flag_is_one_step_and_undo_brings_back_the_old_ones() {
+    let f = fixture(1);
+    let redwood = f.create("Redwood", None);
+    f.events.drain();
+    assert_eq!(f.properties("Redwood"), (vec![], true), "the defaults");
+
+    f.engine
+        .submit_and_wait(Command::SetKeywordProperties {
+            keyword_id: redwood,
+            synonyms: vec!["Sequoia".to_string(), "Coast redwood".to_string()],
+            export: false,
+        })
+        .unwrap();
+    assert_eq!(
+        f.properties("Redwood"),
+        (
+            vec!["Sequoia".to_string(), "Coast redwood".to_string()],
+            false
+        )
+    );
+    assert_eq!(f.vocabulary()[0].synonyms, vec!["Sequoia", "Coast redwood"]);
+    assert!(!f.vocabulary()[0].export);
+    let label = f.undo_label().unwrap();
+    assert_eq!(label.kind, LabelKind::KeywordProperties);
+
+    f.engine.undo().unwrap();
+    assert_eq!(
+        f.properties("Redwood"),
+        (vec![], true),
+        "back to the defaults"
+    );
+
+    f.engine.redo().unwrap();
+    assert_eq!(
+        f.properties("Redwood"),
+        (
+            vec!["Sequoia".to_string(), "Coast redwood".to_string()],
+            false
+        )
+    );
+}
+
+#[test]
+fn setting_the_same_properties_again_changes_nothing_and_is_not_a_step() {
+    let f = fixture(1);
+    let redwood = f.create("Redwood", None);
+    f.engine
+        .submit_and_wait(Command::SetKeywordProperties {
+            keyword_id: redwood,
+            synonyms: vec!["Sequoia".to_string()],
+            export: false,
+        })
+        .unwrap();
+    f.events.drain();
+
+    let outcome = f
+        .engine
+        .submit_and_wait(Command::SetKeywordProperties {
+            keyword_id: redwood,
+            synonyms: vec!["Sequoia".to_string()],
+            export: false,
+        })
+        .unwrap();
+    assert_eq!(outcome, Outcome::Applied);
+    assert!(f.undo_label().is_none(), "no new step to undo");
 }
 
 #[test]

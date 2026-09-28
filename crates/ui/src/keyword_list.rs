@@ -84,7 +84,12 @@ impl KeywordListRust {
         }
         let mut shown: HashSet<KeywordId> = HashSet::new();
         for row in &self.all {
-            if row.name.to_lowercase().contains(&needle) {
+            let matches = row.name.to_lowercase().contains(&needle)
+                || row
+                    .synonyms
+                    .iter()
+                    .any(|s| s.to_lowercase().contains(&needle));
+            if matches {
                 shown.insert(row.id);
                 let mut parent = row.parent;
                 while let Some(p) = parent {
@@ -202,16 +207,32 @@ impl KeywordList {
         if needle.is_empty() {
             return -1;
         }
-        let names: Vec<String> = self
+        // Each row's name plus its synonyms, lowercased once: a synonym matches at the same tier
+        // as a name (spec §5.7) -- an exact synonym wins over another keyword's name that merely
+        // starts with what was typed.
+        let names: Vec<Vec<String>> = self
             .visible
             .iter()
-            .map(|i| self.all[*i].name.to_lowercase())
+            .map(|i| {
+                let row = &self.all[*i];
+                std::iter::once(row.name.to_lowercase())
+                    .chain(row.synonyms.iter().map(|s| s.to_lowercase()))
+                    .collect()
+            })
             .collect();
         names
             .iter()
-            .position(|n| *n == needle)
-            .or_else(|| names.iter().position(|n| n.starts_with(&needle)))
-            .or_else(|| names.iter().position(|n| n.contains(&needle)))
+            .position(|ns| ns.contains(&needle))
+            .or_else(|| {
+                names
+                    .iter()
+                    .position(|ns| ns.iter().any(|n| n.starts_with(&needle)))
+            })
+            .or_else(|| {
+                names
+                    .iter()
+                    .position(|ns| ns.iter().any(|n| n.contains(&needle)))
+            })
             .map_or(-1, |row| row as i32)
     }
 
@@ -258,6 +279,56 @@ impl KeywordList {
             keyword_id: id,
             new_name,
         }) {
+            Ok(_) => {
+                self.as_mut().refresh();
+                QString::default()
+            }
+            Err(e) => text(&reason(&e)),
+        }
+    }
+
+    /// The keyword's own synonyms and export flag, for the Properties dialog: JSON `{"synonyms":
+    /// "one\na line", "export": true}`.
+    pub fn properties(&self, row: i32) -> QString {
+        let Some(keyword) = self.row(row) else {
+            return text("{}");
+        };
+        text(
+            &serde_json::json!({
+                "synonyms": keyword.synonyms.join("\n"),
+                "export": keyword.export,
+            })
+            .to_string(),
+        )
+    }
+
+    /// Sets the keyword's synonyms (one a line, blank lines dropped) and export flag as one step;
+    /// empty, or why not.
+    pub fn set_properties(
+        mut self: Pin<&mut Self>,
+        row: i32,
+        synonyms: &QString,
+        export: bool,
+    ) -> QString {
+        let (Some(session), Some(id)) = (session::current(), self.row(row).map(|k| k.id)) else {
+            return text("other:No such keyword.");
+        };
+        let synonyms: Vec<String> = synonyms
+            .to_string()
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty())
+            .collect();
+        if synonyms.iter().any(|s| s.contains('|')) {
+            return text("synonym");
+        }
+        match session
+            .engine
+            .submit_and_wait(Command::SetKeywordProperties {
+                keyword_id: id,
+                synonyms,
+                export,
+            }) {
             Ok(_) => {
                 self.as_mut().refresh();
                 QString::default()

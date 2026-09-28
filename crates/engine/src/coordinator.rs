@@ -400,6 +400,11 @@ impl Coordinator {
                 new_parent,
             } => self.move_keyword(keyword_id, new_parent),
             Command::DeleteKeyword { keyword_id } => self.delete_keyword(keyword_id),
+            Command::SetKeywordProperties {
+                keyword_id,
+                synonyms,
+                export,
+            } => self.set_keyword_properties(keyword_id, synonyms, export),
             Command::GroupPhotos { photos } => self.group_photos(photos),
             Command::RemoveFromSeries { photos } => self.remove_from_series(photos),
             Command::DissolveSeries { series } => self.dissolve_series(series),
@@ -895,6 +900,41 @@ impl Coordinator {
         Ok(Outcome::RenameStarted {
             job,
             affected: refresh.affected,
+        })
+    }
+
+    /// Sets a keyword's synonyms and export flag together, as one step (spec §5.7, D-045, WP10
+    /// slice 2). No sidecar snapshot depends on either field, so unlike a rename this does not
+    /// force a background job when the keyword carries no photos.
+    fn set_keyword_properties(
+        &mut self,
+        keyword_id: KeywordId,
+        synonyms: Vec<String>,
+        export: bool,
+    ) -> Result<Outcome> {
+        let vocabulary = self.read_vocabulary()?;
+        let entry = find_keyword(&vocabulary.keywords, keyword_id)?.clone();
+        if entry.synonyms == synonyms && entry.export == export {
+            return Ok(Outcome::Applied);
+        }
+        let delta = KeywordDelta {
+            id: keyword_id,
+            after: Some(KeywordEntry {
+                synonyms,
+                export,
+                ..entry.clone()
+            }),
+            before: Some(entry),
+        };
+        let refresh =
+            self.apply_vocabulary(std::slice::from_ref(&delta), Direction::Redo, false)?;
+        self.record(vec![Change::Vocabulary {
+            action: VocabularyAction::SetProperties,
+            keywords: vec![delta],
+        }]);
+        Ok(Outcome::KeywordsChanged {
+            keywords: 1,
+            photos: refresh.affected,
         })
     }
 
