@@ -96,20 +96,34 @@ impl qobject::Duplicates {
 
     pub fn export_to(&self, path: &QString) -> bool {
         let Some(session) = session::current() else {
+            eprintln!("Duplicates::exportTo: no session");
             return false;
         };
         let path = path.to_string();
-        // A transient failure (a lock briefly held on the destination, seen on Windows) is retried
-        // a few times, rather than failing the one export a person just asked for.
-        for attempt in 0..5 {
+        // A transient failure (a lock briefly held on the catalogue file or the destination, seen on
+        // Windows CI, which is generally slower to let go of a connection than Linux or macOS: see the
+        // QML suites' own generous `tryCompare` timeouts) is retried for a couple of seconds, rather
+        // than failing the one export a person just asked for.
+        for attempt in 0..40 {
             if attempt > 0 {
                 std::thread::sleep(std::time::Duration::from_millis(50));
             }
-            let Ok(duplicates) = session.engine.duplicate_photos() else {
-                continue;
+            let duplicates = match session.engine.duplicate_photos() {
+                Ok(duplicates) => duplicates,
+                Err(e) => {
+                    eprintln!(
+                        "Duplicates::exportTo: duplicate_photos failed (attempt {attempt}): {e}"
+                    );
+                    continue;
+                }
             };
-            if std::fs::write(&path, auroraw_engine::duplicates_report(&duplicates)).is_ok() {
-                return true;
+            match std::fs::write(&path, auroraw_engine::duplicates_report(&duplicates)) {
+                Ok(()) => return true,
+                Err(e) => {
+                    eprintln!(
+                        "Duplicates::exportTo: write to {path:?} failed (attempt {attempt}): {e}"
+                    );
+                }
             }
         }
         false
