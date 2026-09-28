@@ -78,7 +78,11 @@ AppTestCase {
         keyClick(Qt.Key_D, Qt.ControlModifier)
         tryVerify(() => app.duplicatesDialog.visible)
         verify(app.duplicatesDialog.exportButton.enabled)
-        const path = home + "/duplicates.txt"
+        // Not "duplicates.txt": `run_suite` (qml.rs) already writes this suite's own QtTest report to
+        // `home/duplicates.txt` (its report file is named after the suite), so that exact name would
+        // collide with a file the harness itself keeps open for the whole run — the true cause of a
+        // Windows-only "os error 32" (ERROR_SHARING_VIOLATION) chased at length before this was found.
+        const path = home + "/exported-duplicates.txt"
         verify(app.duplicatesDialog.duplicates.exportTo(path))
         const out = files.read(path)
         verify(out.indexOf("Card — IMG_0000.jpg") >= 0, out)
