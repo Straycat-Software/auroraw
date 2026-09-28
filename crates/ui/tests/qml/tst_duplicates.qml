@@ -58,24 +58,18 @@ AppTestCase {
         return parts.slice(-n).join("/")
     }
 
-    function test_the_dialog_can_be_resized_by_dragging_its_corner() {
-        // Issue #12.
+    function test_the_dialog_is_a_resizable_window() {
+        // Issue #12: a real secondary window (D-113) instead of a hand-rolled drag handle on a Popup — its own
+        // native border does the resizing; what is ours to check is that it is allowed to, down to a sane floor.
         keyClick(Qt.Key_D, Qt.ControlModifier)
         tryVerify(() => app.duplicatesDialog.visible)
-        const before = { width: app.duplicatesDialog.width, height: app.duplicatesDialog.height }
-        const corner = app.duplicatesDialog.resizeCorner
-        mousePress(corner, 9, 9)
-        mouseMove(corner, 109, 69)
-        mouseRelease(corner, 109, 69)
-        verify(app.duplicatesDialog.width >= before.width + 90, app.duplicatesDialog.width)
-        verify(app.duplicatesDialog.height >= before.height + 50, app.duplicatesDialog.height)
-
-        // Never smaller than the minimum, even dragged well past it.
-        mousePress(corner, 9, 9)
-        mouseMove(corner, -2000, -2000)
-        mouseRelease(corner, -2000, -2000)
-        compare(app.duplicatesDialog.width, app.duplicatesDialog.minWidth)
-        compare(app.duplicatesDialog.height, app.duplicatesDialog.minHeight)
+        verify(app.duplicatesDialog.minimumWidth > 0)
+        verify(app.duplicatesDialog.minimumHeight > 0)
+        // What dragging the real border does: `width`/`height` simply follow.
+        app.duplicatesDialog.width = 900
+        app.duplicatesDialog.height = 700
+        compare(app.duplicatesDialog.width, 900)
+        compare(app.duplicatesDialog.height, 700)
         keyClick(Qt.Key_Escape)
     }
 
