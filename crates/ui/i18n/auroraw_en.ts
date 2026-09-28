@@ -1229,7 +1229,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Library.qml" line="918"/>
+        <location filename="../qml/Library.qml" line="919"/>
         <source>Photo, %n star(s)</source>
         <translation>
             <numerusform>Photo, %n star</numerusform>
@@ -1237,76 +1237,81 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="918"/>
+        <location filename="../qml/Library.qml" line="919"/>
         <source>Photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="965"/>
+        <location filename="../qml/Library.qml" line="966"/>
         <source>No preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1035"/>
+        <location filename="../qml/Library.qml" line="1036"/>
         <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1139"/>
+        <location filename="../qml/Library.qml" line="1055"/>
+        <source>No RAW</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1159"/>
         <source>Open in the image view</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1140"/>
-        <location filename="../qml/Library.qml" line="1165"/>
+        <location filename="../qml/Library.qml" line="1160"/>
+        <location filename="../qml/Library.qml" line="1185"/>
         <source>Show in file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1142"/>
+        <location filename="../qml/Library.qml" line="1162"/>
         <source>Similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1143"/>
+        <location filename="../qml/Library.qml" line="1163"/>
         <source>Open or close the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1144"/>
+        <location filename="../qml/Library.qml" line="1164"/>
         <source>Group as a series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1145"/>
+        <location filename="../qml/Library.qml" line="1165"/>
         <source>Take out of the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1146"/>
+        <location filename="../qml/Library.qml" line="1166"/>
         <source>Resolve the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1147"/>
+        <location filename="../qml/Library.qml" line="1167"/>
         <source>Reopen the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1156"/>
-        <location filename="../qml/Library.qml" line="1174"/>
+        <location filename="../qml/Library.qml" line="1176"/>
+        <location filename="../qml/Library.qml" line="1194"/>
         <source>Pick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1157"/>
-        <location filename="../qml/Library.qml" line="1175"/>
+        <location filename="../qml/Library.qml" line="1177"/>
+        <location filename="../qml/Library.qml" line="1195"/>
         <source>Reject</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1158"/>
-        <location filename="../qml/Library.qml" line="1176"/>
+        <location filename="../qml/Library.qml" line="1178"/>
+        <location filename="../qml/Library.qml" line="1196"/>
         <source>Clear the flag</source>
         <translation type="unfinished"></translation>
     </message>

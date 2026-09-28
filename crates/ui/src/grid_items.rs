@@ -32,10 +32,20 @@ pub struct Item {
     pub series_open: bool,
     /// Where a member of an expanded series lies in its run: 0 none, 1 first, 2 middle, 3 last.
     pub series_edge: u8,
+    /// Whether the photo's original file is a camera RAW (issue #5): a collapsed series' row shows
+    /// its cover's own, the same way its rating, flag and label are the cover's own.
+    pub is_raw_original: bool,
 }
 
 impl Item {
-    pub fn photo(id: PhotoId, rating: u8, flag: u8, label: u8, series: Option<SeriesId>) -> Self {
+    pub fn photo(
+        id: PhotoId,
+        rating: u8,
+        flag: u8,
+        label: u8,
+        series: Option<SeriesId>,
+        is_raw_original: bool,
+    ) -> Self {
         Self {
             id,
             rating,
@@ -48,6 +58,7 @@ impl Item {
             series_resolved: false,
             series_open: false,
             series_edge: 0,
+            is_raw_original,
         }
     }
 
@@ -156,7 +167,7 @@ mod tests {
     use super::*;
 
     fn photo(n: u8, series: Option<SeriesId>) -> Item {
-        Item::photo(PhotoId::from_bytes([n; 16]), 0, 0, 0, series)
+        Item::photo(PhotoId::from_bytes([n; 16]), 0, 0, 0, series, false)
     }
 
     fn info(id: SeriesId, cover: u8, members: usize, resolved: bool) -> (SeriesId, SeriesInfo) {

@@ -23,6 +23,9 @@ session, used when you resolve a series.
 
 **Original.** The photo file as it came from the camera. Auroraw never changes it.
 
+**RAW.** A camera's own, undeveloped file format (as opposed to a JPEG, already developed by the camera). A photo
+with no RAW file, only a JPEG, is marked **No RAW** in the grid.
+
 **Peaking** and **clipping.** Aids that overlay the picture: peaking in red on the edges in focus, clipping in
 red on burnt highlights and in blue on blocked shadows. Computed on the preview, not on the RAW data.
 

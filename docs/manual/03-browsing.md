@@ -11,6 +11,8 @@ it, a strip below it that describes what is selected, and the [keyword panel](06
   dimmed), a coloured bar along the bottom for its **colour label**.
 - For photos that belong to a [series](05-series.md), a badge with the number of photos.
 - A **green ring** when you have marked the photo to keep (see [Series](05-series.md)).
+- **No RAW**, at the bottom left, for a photo whose only file is a JPEG (or another standard format): there is no
+  RAW left to develop for it.
 
 The **slider** in the filter bar sets the **size of the thumbnails**, from small (many photos on screen) to large
 (256 pixels on the long side, the size of the stored thumbnail); the grid keeps the size you chose. Resizing the thumbnails after scrolling keeps

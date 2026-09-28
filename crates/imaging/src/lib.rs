@@ -36,7 +36,7 @@ pub use aids::{
     ANALYSIS_EDGE, Aids, MaskKind, analyse, clipping_mask, encode_mask, mask_png, peaking_mask,
 };
 pub use error::{ImagingError, Result};
-pub use format::is_photo_file;
+pub use format::{is_photo_file, is_raw};
 pub use metadata::{Metadata, read_metadata};
 pub use phash::{perceptual_hash, thumbnail_hash};
 pub use preview::{

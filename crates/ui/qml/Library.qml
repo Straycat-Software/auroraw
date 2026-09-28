@@ -901,6 +901,7 @@ FocusScope {
                     required property bool seriesOpen
                     required property int seriesEdge
                     required property bool marked
+                    required property bool isRawOriginal
                     // A series is one thumbnail with a count, that opens in place.
                     readonly property bool inSeries: cell.seriesId !== "" && cell.seriesTotal > 1
                     // What the series' badge says: a tick once resolved, the arrow, the photos listed, and of how many when the
@@ -1034,6 +1035,25 @@ FocusScope {
                                 ToolTip.visible: containsMouse && cell.seriesSize < cell.seriesTotal
                                 ToolTip.text: qsTr("%1 of the series' %2 photos are listed (the filters hide the others)")
                                               .arg(cell.seriesSize).arg(cell.seriesTotal)
+                            }
+                        }
+                        // No RAW file for this photo (issue #5): only the JPEG (or other standard format) it was
+                        // imported with, so there is nothing left to develop.
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.bottom: parent.bottom
+                            anchors.margins: 4
+                            anchors.bottomMargin: 9
+                            visible: !cell.isRawOriginal
+                            width: noRawText.implicitWidth + 8
+                            height: noRawText.implicitHeight + 2
+                            radius: 3
+                            color: "#a0000000"
+                            Text {
+                                id: noRawText
+                                anchors.centerIn: parent
+                                text: qsTr("No RAW")
+                                color: Theme.grey.placeholder
                             }
                         }
                         // The colour label, a bar along the bottom of the picture.

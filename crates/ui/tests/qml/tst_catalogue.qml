@@ -220,4 +220,20 @@ AppTestCase {
         waitForTheScan()
         snapshot("catalogue-with-a-source")
     }
+
+    function test_a_photo_with_no_raw_file_is_marked_in_the_grid() {
+        // Issue #5: only the extension decides this, so a plain RAW file (its bytes are never read for it)
+        // paired with a JPEG shows no badge, and a JPEG on its own does.
+        const card = begin("One")
+        files.write(card + "/IMG_pair.CR2", "raw bytes")
+        files.copyFile(home + "/One/NEW_0000.jpg", card + "/IMG_pair.JPG")
+        addSource(card)
+        waitForTheScan()
+        app.currentTask = "cull"
+        tryCompare(app.photos, "count", 2)
+        const flags = [app.library.grid.itemAtIndex(0), app.library.grid.itemAtIndex(1)]
+            .map(item => item.isRawOriginal)
+        verify(flags.includes(true), "the RAW+JPEG pair has no badge")
+        verify(flags.includes(false), "the JPEG-only photo is marked")
+    }
 }

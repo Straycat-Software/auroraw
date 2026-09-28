@@ -32,6 +32,14 @@ pub fn is_photo_file(path: &Path) -> bool {
     if is_standard(path) {
         return true;
     }
+    is_raw(path)
+}
+
+/// Whether `path`'s extension names a camera RAW format (case does not matter), issue #5: a
+/// photo's own original file is a RAW file when this is true of it (D-032's own original/companion
+/// pairing already prefers the RAW as `original` whenever a pair exists, so this alone tells a
+/// photo apart from one that was only ever a JPEG, ignoring what the rule dropped).
+pub fn is_raw(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .map(str::to_ascii_lowercase)
@@ -66,6 +74,16 @@ mod tests {
             "a.cr2.bak",
         ] {
             assert!(!is_photo_file(Path::new(name)), "{name}");
+        }
+    }
+
+    #[test]
+    fn only_camera_raw_extensions_are_raw() {
+        for name in ["IMG_1.CR2", "a.cr3", "b.NEF", "c.RW2", "d.dng"] {
+            assert!(is_raw(Path::new(name)), "{name}");
+        }
+        for name in ["e.jpg", "f.JPEG", "g.png", "h.tiff", "noext"] {
+            assert!(!is_raw(Path::new(name)), "{name}");
         }
     }
 }
