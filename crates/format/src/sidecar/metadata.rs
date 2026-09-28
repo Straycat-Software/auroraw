@@ -5,7 +5,7 @@
 use auroraw_types::{ContentHash, KeywordId};
 
 use super::extract as x;
-use crate::xmp::{ArrayKind, Property, Xmp, ns};
+use crate::xmp::{ArrayKind, Item, Property, Value, Xmp, ns};
 
 /// The flag of a photo (D-063, spec §5.3). Stars and flag are kept apart (note 003 §4.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,6 +162,18 @@ pub struct Overlay {
     pub extra: Vec<Property>,
 }
 
+/// One metadata field beyond the fixed IPTC/XMP set `Metadata` below already has (WP10's own
+/// custom-field support): a name and a value, chosen by whoever set it. No UI creates or shows one
+/// yet — the engine command and this round-trip exist so a later slice, or a plugin (spec §5.7),
+/// can add that without touching the format again.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CustomField {
+    /// Its name.
+    pub name: String,
+    /// Its value.
+    pub value: String,
+}
+
 /// The metadata of a photo, or the effective metadata copied into a version (note 003 §4.3, §7).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Metadata {
@@ -213,6 +225,8 @@ pub struct Metadata {
     pub original: Original,
     /// The EXIF overlay.
     pub overlay: Option<Overlay>,
+    /// Fields beyond the fixed set above (WP10's own custom-field support; no UI creates one yet).
+    pub custom: Vec<CustomField>,
 }
 
 fn leaf(path: &str) -> &str {
@@ -317,6 +331,7 @@ impl Metadata {
             x::opt_text(ns::EXIF, "GPSLongitude", &o.gps_longitude),
             x::opt_text(ns::EXIF, "GPSAltitude", &o.gps_altitude),
         ];
+        props.push(custom_property(&self.custom));
         props.push(self.overlay.as_ref().map(overlay_property));
         props.into_iter().flatten().collect()
     }
@@ -368,6 +383,9 @@ impl Metadata {
         o.gps_longitude = x::text(props, ns::EXIF, "GPSLongitude");
         o.gps_altitude = x::text(props, ns::EXIF, "GPSAltitude");
         m.overlay = x::structure(props, ns::AUR, "Overlay").map(overlay_from_fields);
+        m.custom = x::struct_items(props, ns::AUR, "Custom")
+            .map(|items| items.into_iter().filter_map(custom_from_fields).collect())
+            .unwrap_or_default();
         m
     }
 
@@ -385,6 +403,36 @@ impl Metadata {
         .to_bytes();
         ContentHash::from_bytes(*blake3::hash(&bytes).as_bytes())
     }
+}
+
+/// The custom fields, as an array of structures (`x::struct_items`'s own counterpart on the write
+/// side; nothing in `extract.rs` builds one yet, only `Files` in `photo.rs` needed the shape
+/// before this).
+fn custom_property(custom: &[CustomField]) -> Option<Property> {
+    (!custom.is_empty()).then(|| {
+        let items = custom
+            .iter()
+            .map(|c| Item {
+                lang: None,
+                value: Value::Struct(vec![
+                    Property::text(ns::AUR, "Name", c.name.clone()),
+                    Property::text(ns::AUR, "Value", c.value.clone()),
+                ]),
+            })
+            .collect();
+        Property {
+            ns: ns::AUR.into(),
+            name: "Custom".into(),
+            lang: None,
+            value: Value::Array(ArrayKind::Seq, items),
+        }
+    })
+}
+
+fn custom_from_fields(mut fields: Vec<Property>) -> Option<CustomField> {
+    let name = x::text(&mut fields, ns::AUR, "Name")?;
+    let value = x::text(&mut fields, ns::AUR, "Value")?;
+    Some(CustomField { name, value })
 }
 
 fn overlay_property(o: &Overlay) -> Property {

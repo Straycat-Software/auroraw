@@ -4,15 +4,17 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.auroraw.ui
 
-// The keyword panel (spec §5.7, D-098), on the right of the grid: the vocabulary as a tree, each keyword
-// with a check that says whether the selected photos carry it none, some or all, and the number of photos
-// that have it. A click on the check gives it to the whole selection, or takes it off; the field above types
-// ahead (it filters the tree), Enter assigns the best match, and creates the keyword when nothing matches
-// (Shift+Enter creates even when something does). Every assignment is one action, one step of the history,
-// and so is making a keyword (with the photos that first get it), renaming, moving and deleting one. A keyword is
-// moved by dragging it onto another (or onto any place of the panel that has no keyword, for the top level), or
-// from its menu.
-// It is the first of the panels the inspector will hold (metadata comes with WP10).
+// The inspector, on the right of the grid, two tabs (WP10, slice 1 added Metadata; before that this was
+// only the Keywords panel of spec §5.7, D-098, and the file kept that name): the vocabulary as a tree,
+// each keyword with a check that says whether the selected photos carry it none, some or all, and the
+// number of photos that have it. A click on the check gives it to the whole selection, or takes it off;
+// the field above types ahead (it filters the tree), Enter assigns the best match, and creates the
+// keyword when nothing matches (Shift+Enter creates even when something does). Every assignment is one
+// action, one step of the history, and so is making a keyword (with the photos that first get it),
+// renaming, moving and deleting one. A keyword is moved by dragging it onto another (or onto any place
+// of the panel that has no keyword, for the top level), or from its menu. Metadata is `MetadataPanel.qml`,
+// the tab's own content; this file keeps the shared chrome (the resizable, collapsible shell) both tabs
+// show through.
 Rectangle {
     id: panel
     required property var keywords
@@ -34,6 +36,8 @@ Rectangle {
     property alias contextMenu: menu
     property alias addButton: addButton
     property alias ghost: ghost
+    property alias tabs: tabs
+    property alias metadataPanel: metadataPanel
     // A keyword is being dragged (the top-level strip shows).
     property bool dragging: false
 
@@ -112,9 +116,10 @@ Rectangle {
         }
     }
 
-    // Shows the panel and puts the keyboard in its field.
+    // Shows the panel on its Keywords tab and puts the keyboard in its field.
     function open() {
         expanded = true
+        tabs.currentIndex = 0
         field.forceActiveFocus()
         field.selectAll()
     }
@@ -206,22 +211,25 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            Label {
-                text: qsTr("Keywords")
-                font.bold: true
+            TabBar {
+                id: tabs
                 Layout.fillWidth: true
+                background: null
+                TabButton { text: qsTr("Keywords"); width: implicitWidth }
+                TabButton { text: qsTr("Metadata"); width: implicitWidth }
             }
             ToolButton {
                 id: collapseButton
                 text: "»"
                 focusPolicy: Qt.NoFocus
-                Accessible.name: qsTr("Hide the keyword panel")
+                Accessible.name: qsTr("Hide the panel")
                 onClicked: panel.expanded = false
             }
         }
 
         TextField {
             id: field
+            visible: tabs.currentIndex === 0
             Layout.fillWidth: true
             placeholderText: qsTr("Find or add a keyword…")
             Accessible.name: qsTr("Find or add a keyword")
@@ -241,6 +249,7 @@ Rectangle {
         // One line that always has its place, so that the list below does not move: the button that adds what was
         // typed, else where new keywords go (once a keyword was clicked).
         RowLayout {
+            visible: tabs.currentIndex === 0
             Layout.fillWidth: true
             Layout.preferredHeight: 30
             Layout.maximumHeight: 30
@@ -283,6 +292,7 @@ Rectangle {
 
         ListView {
             id: tree
+            visible: tabs.currentIndex === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
@@ -396,6 +406,14 @@ Rectangle {
                     }
                 }
             }
+        }
+
+        MetadataPanel {
+            id: metadataPanel
+            visible: tabs.currentIndex === 1
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            photoGrid: panel.photoGrid
         }
     }
 

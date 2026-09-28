@@ -24,7 +24,7 @@
           <rdf:li>title</rdf:li>
         </rdf:Bag>
       </aur:Overrides>
-      <aur:CopiedFrom>blake3:9af0962aa2fdea98663e9cbda95b1e94e7e155079885de28a5c62991bc2faaa4</aur:CopiedFrom>
+      <aur:CopiedFrom>blake3:607922d63704b59ebcc35ac642f20baf951852fa866cfed5848dd739c9a57afb</aur:CopiedFrom>
       <xmp:Rating>1</xmp:Rating>
       <aur:Flag>picked</aur:Flag>
       <xmp:Label>Green</xmp:Label>
@@ -111,6 +111,14 @@
       <exif:GPSLatitude>48,31.5000N</exif:GPSLatitude>
       <exif:GPSLongitude>72,13.2000W</exif:GPSLongitude>
       <exif:GPSAltitude>1800/10</exif:GPSAltitude>
+      <aur:Custom>
+        <rdf:Seq>
+          <rdf:li rdf:parseType="Resource">
+            <aur:Name>Model release</aur:Name>
+            <aur:Value>on file</aur:Value>
+          </rdf:li>
+        </rdf:Seq>
+      </aur:Custom>
       <aur:Overlay rdf:parseType="Resource">
         <aur:CaptureTime>2026-05-14T07:41:09.250-04:00</aur:CaptureTime>
         <aur:Gps rdf:parseType="Resource">

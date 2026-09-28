@@ -70,11 +70,15 @@ FocusScope {
 
     KeywordList { id: keywordList }
 
-    // The keyword panel shows which keywords the selection carries: asked once a selection has settled.
+    // The keyword panel shows which keywords the selection carries, and the metadata panel its fields'
+    // current values: both asked once a selection has settled.
     Timer {
         id: usageTimer
         interval: 60
-        onTriggered: keywordList.applyUsage(photoGrid.keywordUsage(), photoGrid.selectedCount)
+        onTriggered: {
+            keywordList.applyUsage(photoGrid.keywordUsage(), photoGrid.selectedCount)
+            keywordPanel.metadataPanel.refresh()
+        }
     }
     Connections {
         target: Bus

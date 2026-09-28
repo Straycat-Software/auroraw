@@ -376,6 +376,7 @@ impl Coordinator {
             Command::SetRating { .. }
             | Command::SetFlag { .. }
             | Command::SetLabel { .. }
+            | Command::SetMetadataField { .. }
             | Command::AddKeyword { .. }
             | Command::RemoveKeyword { .. } => {
                 let change = self.apply_edit(&command)?;
@@ -497,6 +498,22 @@ impl Coordinator {
                     })
                 })
             }
+            Command::SetMetadataField {
+                photo_id,
+                field,
+                value,
+            } => self.edit_photo(*photo_id, |m| {
+                let before = field.get(m);
+                (before != *value).then(|| {
+                    field.set(m, value.clone());
+                    Change::Metadata {
+                        photo: *photo_id,
+                        field: field.clone(),
+                        before,
+                        after: value.clone(),
+                    }
+                })
+            }),
             Command::AddKeyword {
                 photo_id,
                 keyword_id,

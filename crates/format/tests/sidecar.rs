@@ -42,6 +42,10 @@ fn full_photo() -> PhotoSidecar {
     m.country_code = Some("CA".into());
     m.persons = vec!["Marie".into()];
     m.event = Some("Wedding".into());
+    m.custom = vec![CustomField {
+        name: "Model release".into(),
+        value: "on file".into(),
+    }];
     m.original.capture_time = Some("2026-05-14T06:41:09.250-04:00".into());
     m.original.make = Some("SONY".into());
     m.original.model = Some("ILCE-7RM4".into());
@@ -224,6 +228,34 @@ fn unknown_properties_survive_at_every_level() {
 }
 
 #[test]
+fn custom_fields_round_trip_several_and_write_nothing_when_there_are_none() {
+    // WP10's own custom-field support: no UI creates one yet, but the format and the round trip
+    // already work for any name, not just the fixed IPTC/XMP set above.
+    let mut p = PhotoSidecar::new(photo_id());
+    p.meta.custom = vec![
+        CustomField {
+            name: "Model release".into(),
+            value: "on file".into(),
+        },
+        CustomField {
+            name: "Internal ID".into(),
+            value: "PR-2026-0417".into(),
+        },
+    ];
+    let text = String::from_utf8(p.to_bytes()).unwrap();
+    assert!(text.contains("<aur:Custom>"), "{text}");
+    let back = current(PhotoSidecar::from_bytes(text.as_bytes()).unwrap());
+    assert_eq!(back.meta.custom, p.meta.custom);
+
+    let none = PhotoSidecar::new(photo_id());
+    let text = String::from_utf8(none.to_bytes()).unwrap();
+    assert!(
+        !text.contains("aur:Custom"),
+        "nothing to say, nothing written: {text}"
+    );
+}
+
+#[test]
 fn a_property_of_the_wrong_shape_is_kept_not_dropped() {
     let mut xmp = full_photo().to_xmp();
     xmp.take(ns::XMP, "Rating");
@@ -362,7 +394,7 @@ fn the_digest_is_stable_and_known() {
 }
 
 const KNOWN_DIGEST: &str =
-    "blake3:9af0962aa2fdea98663e9cbda95b1e94e7e155079885de28a5c62991bc2faaa4";
+    "blake3:607922d63704b59ebcc35ac642f20baf951852fa866cfed5848dd739c9a57afb";
 
 #[test]
 fn the_development_of_a_later_version_is_kept() {

@@ -1,9 +1,185 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use std::path::PathBuf;
 
-use auroraw_format::sidecar::{ColourLabel, Flag};
+use auroraw_format::sidecar::{ColourLabel, CustomField, Flag, Metadata};
 use auroraw_import::Profile;
 use auroraw_types::{KeywordId, PhotoId, SeriesId, SourceId};
+
+/// One of the plain-text metadata fields the metadata panel edits (spec §5.7; WP10, slice 1): not
+/// rating, flag, label or keywords, which have their own commands, and not GPS, which is its own
+/// overlay mechanism (not this slice's). `Creator` and `Persons` are the two list fields; every
+/// other one is a single line.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MetadataField {
+    /// The title.
+    Title,
+    /// The caption.
+    Caption,
+    /// The creators, one a line.
+    Creator,
+    /// The copyright notice.
+    Rights,
+    /// The usage terms.
+    UsageTerms,
+    /// The web statement of rights.
+    WebStatement,
+    /// The credit line.
+    Credit,
+    /// The source.
+    Source,
+    /// The headline.
+    Headline,
+    /// The instructions.
+    Instructions,
+    /// The sublocation.
+    Sublocation,
+    /// The city.
+    City,
+    /// The region or state.
+    Region,
+    /// The country.
+    Country,
+    /// The ISO country code.
+    CountryCode,
+    /// The persons shown, one a line.
+    Persons,
+    /// The event.
+    Event,
+    /// A field outside the fixed set above, by name (WP10's own custom-field support): no UI
+    /// creates one yet, but the engine and the format already carry it end to end.
+    Custom(String),
+}
+
+impl MetadataField {
+    /// The field's current text, as the panel shows it: a single line for most fields, one name a
+    /// line for `Creator` and `Persons`. Empty when the field is not set (or, for `Custom`, not
+    /// present).
+    pub fn get(&self, meta: &Metadata) -> String {
+        match self {
+            Self::Title => meta.title.clone().unwrap_or_default(),
+            Self::Caption => meta.caption.clone().unwrap_or_default(),
+            Self::Creator => meta.creator.join("\n"),
+            Self::Rights => meta.rights.clone().unwrap_or_default(),
+            Self::UsageTerms => meta.usage_terms.clone().unwrap_or_default(),
+            Self::WebStatement => meta.web_statement.clone().unwrap_or_default(),
+            Self::Credit => meta.credit.clone().unwrap_or_default(),
+            Self::Source => meta.source.clone().unwrap_or_default(),
+            Self::Headline => meta.headline.clone().unwrap_or_default(),
+            Self::Instructions => meta.instructions.clone().unwrap_or_default(),
+            Self::Sublocation => meta.sublocation.clone().unwrap_or_default(),
+            Self::City => meta.city.clone().unwrap_or_default(),
+            Self::Region => meta.region.clone().unwrap_or_default(),
+            Self::Country => meta.country.clone().unwrap_or_default(),
+            Self::CountryCode => meta.country_code.clone().unwrap_or_default(),
+            Self::Persons => meta.persons.join("\n"),
+            Self::Event => meta.event.clone().unwrap_or_default(),
+            Self::Custom(name) => meta
+                .custom
+                .iter()
+                .find(|c| &c.name == name)
+                .map(|c| c.value.clone())
+                .unwrap_or_default(),
+        }
+    }
+
+    /// Sets the field from `value`: empty clears it (for `Custom`, removes it rather than leaving
+    /// an empty one behind).
+    pub fn set(&self, meta: &mut Metadata, value: String) {
+        fn one(value: String) -> Option<String> {
+            (!value.is_empty()).then_some(value)
+        }
+        fn many(value: &str) -> Vec<String> {
+            value
+                .lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(str::to_string)
+                .collect()
+        }
+        match self {
+            Self::Title => meta.title = one(value),
+            Self::Caption => meta.caption = one(value),
+            Self::Creator => meta.creator = many(&value),
+            Self::Rights => meta.rights = one(value),
+            Self::UsageTerms => meta.usage_terms = one(value),
+            Self::WebStatement => meta.web_statement = one(value),
+            Self::Credit => meta.credit = one(value),
+            Self::Source => meta.source = one(value),
+            Self::Headline => meta.headline = one(value),
+            Self::Instructions => meta.instructions = one(value),
+            Self::Sublocation => meta.sublocation = one(value),
+            Self::City => meta.city = one(value),
+            Self::Region => meta.region = one(value),
+            Self::Country => meta.country = one(value),
+            Self::CountryCode => meta.country_code = one(value),
+            Self::Persons => meta.persons = many(&value),
+            Self::Event => meta.event = one(value),
+            Self::Custom(name) => {
+                meta.custom.retain(|c| &c.name != name);
+                if !value.is_empty() {
+                    meta.custom.push(CustomField {
+                        name: name.clone(),
+                        value,
+                    });
+                }
+            }
+        }
+    }
+
+    /// A stable, ASCII key for the field, the way the interface names it (a QML string, JSON):
+    /// kebab-case for the 17 known fields, `custom:<name>` for a custom one (no UI sends this yet,
+    /// but the key round-trips it all the same).
+    pub fn key(&self) -> String {
+        match self {
+            Self::Title => "title".into(),
+            Self::Caption => "caption".into(),
+            Self::Creator => "creator".into(),
+            Self::Rights => "rights".into(),
+            Self::UsageTerms => "usage-terms".into(),
+            Self::WebStatement => "web-statement".into(),
+            Self::Credit => "credit".into(),
+            Self::Source => "source".into(),
+            Self::Headline => "headline".into(),
+            Self::Instructions => "instructions".into(),
+            Self::Sublocation => "sublocation".into(),
+            Self::City => "city".into(),
+            Self::Region => "region".into(),
+            Self::Country => "country".into(),
+            Self::CountryCode => "country-code".into(),
+            Self::Persons => "persons".into(),
+            Self::Event => "event".into(),
+            Self::Custom(name) => format!("custom:{name}"),
+        }
+    }
+
+    /// The field a key names, the reverse of [`Self::key`]; `None` for anything else (an unknown
+    /// key is refused, not guessed at).
+    pub fn parse(key: &str) -> Option<Self> {
+        Some(match key {
+            "title" => Self::Title,
+            "caption" => Self::Caption,
+            "creator" => Self::Creator,
+            "rights" => Self::Rights,
+            "usage-terms" => Self::UsageTerms,
+            "web-statement" => Self::WebStatement,
+            "credit" => Self::Credit,
+            "source" => Self::Source,
+            "headline" => Self::Headline,
+            "instructions" => Self::Instructions,
+            "sublocation" => Self::Sublocation,
+            "city" => Self::City,
+            "region" => Self::Region,
+            "country" => Self::Country,
+            "country-code" => Self::CountryCode,
+            "persons" => Self::Persons,
+            "event" => Self::Event,
+            _ => {
+                let name = key.strip_prefix("custom:")?;
+                Self::Custom(name.to_string())
+            }
+        })
+    }
+}
 
 /// A change the engine's single writer applies, in the order it receives them (architecture
 /// §4.3). Sent with [`crate::Engine::submit`] (fire and forget) or
@@ -40,6 +216,17 @@ pub enum Command {
         photo_id: PhotoId,
         /// The colour, or `None` for no label.
         label: Option<ColourLabel>,
+    },
+    /// Sets one metadata field of a photo (spec §5.7; WP10, slice 1). A step of the history, and
+    /// usable in a batch, the same way `SetRating` is: "multiple values" over a selection, applied
+    /// to all of it as one undoable action.
+    SetMetadataField {
+        /// The photo.
+        photo_id: PhotoId,
+        /// Which field.
+        field: MetadataField,
+        /// The field's new text (empty clears it).
+        value: String,
     },
     /// Applies several edits (`SetRating`, `SetFlag`, `SetLabel`, `AddKeyword`, `RemoveKeyword`, `CreateKeyword`) as **one action**:
     /// one step of the history, and all or nothing (a failing edit takes back the ones before it). How a
@@ -244,4 +431,67 @@ pub enum Command {
         /// The source to remove.
         source_id: SourceId,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn every_known_field() -> Vec<MetadataField> {
+        vec![
+            MetadataField::Title,
+            MetadataField::Caption,
+            MetadataField::Creator,
+            MetadataField::Rights,
+            MetadataField::UsageTerms,
+            MetadataField::WebStatement,
+            MetadataField::Credit,
+            MetadataField::Source,
+            MetadataField::Headline,
+            MetadataField::Instructions,
+            MetadataField::Sublocation,
+            MetadataField::City,
+            MetadataField::Region,
+            MetadataField::Country,
+            MetadataField::CountryCode,
+            MetadataField::Persons,
+            MetadataField::Event,
+        ]
+    }
+
+    #[test]
+    fn every_known_fields_key_parses_back_to_itself_and_a_custom_ones_name_round_trips() {
+        for field in every_known_field() {
+            assert_eq!(MetadataField::parse(&field.key()), Some(field));
+        }
+        let custom = MetadataField::Custom("Model release".into());
+        assert_eq!(custom.key(), "custom:Model release");
+        assert_eq!(MetadataField::parse(&custom.key()), Some(custom));
+        assert_eq!(MetadataField::parse("not-a-field"), None);
+    }
+
+    #[test]
+    fn getting_and_setting_a_field_agree_with_each_other_for_every_known_field() {
+        for field in every_known_field() {
+            let mut meta = Metadata::default();
+            assert_eq!(field.get(&meta), "", "{field:?} starts empty");
+            field.set(&mut meta, "a value".into());
+            assert_eq!(field.get(&meta), "a value");
+            field.set(&mut meta, "".into());
+            assert_eq!(field.get(&meta), "", "{field:?} clears back to empty");
+        }
+    }
+
+    #[test]
+    fn a_custom_field_is_found_by_name_among_several() {
+        let mut meta = Metadata::default();
+        MetadataField::Custom("A".into()).set(&mut meta, "1".into());
+        MetadataField::Custom("B".into()).set(&mut meta, "2".into());
+        assert_eq!(MetadataField::Custom("A".into()).get(&meta), "1");
+        assert_eq!(MetadataField::Custom("B".into()).get(&meta), "2");
+        assert_eq!(MetadataField::Custom("C".into()).get(&meta), "");
+        MetadataField::Custom("A".into()).set(&mut meta, "".into());
+        assert_eq!(meta.custom.len(), 1, "cleared, not left empty");
+        assert_eq!(meta.custom[0].name, "B");
+    }
 }

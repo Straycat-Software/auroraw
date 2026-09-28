@@ -10,7 +10,9 @@ mod metadata;
 mod photo;
 mod version;
 
-pub use metadata::{ColourLabel, Flag, Keyword, Metadata, Original, Overlay, OverlayGps};
+pub use metadata::{
+    ColourLabel, CustomField, Flag, Keyword, Metadata, Original, Overlay, OverlayGps,
+};
 pub use photo::{FileEntry, FileRole, Location, PHOTO_SCHEMA, PhotoSidecar};
 pub use version::{OverrideField, VERSION_SCHEMA, VersionSidecar};
 

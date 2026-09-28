@@ -614,3 +614,168 @@ fn a_label_another_program_wrote_goes_back_exactly() {
     f.engine.undo().unwrap();
     assert_eq!(f.meta(f.photos[0]).label.as_deref(), Some("Approved"));
 }
+
+// WP10, slice 1: the metadata panel (spec §5.7). `MetadataField` covers plain fields (a title,
+// a copyright notice, ...), the two list fields (creator, persons, one name a line), and a
+// custom field (no UI makes one yet, but the command and its undo already work for any name).
+
+#[test]
+fn a_metadata_field_is_undone_and_redone_with_its_own_label_and_a_same_value_edit_is_not_a_step() {
+    use auroraw_engine::MetadataField;
+    let f = fixture(1, 0);
+    let photo = f.photos[0];
+    let set = |value: &str| {
+        f.engine
+            .submit_and_wait(Command::SetMetadataField {
+                photo_id: photo,
+                field: MetadataField::Title,
+                value: value.to_string(),
+            })
+            .unwrap();
+    };
+    assert_eq!(f.meta(photo).title, None);
+    f.events.drain();
+    set("Heron at dawn");
+    assert_eq!(f.meta(photo).title.as_deref(), Some("Heron at dawn"));
+    let changed = f
+        .events
+        .drain()
+        .into_iter()
+        .find_map(|e| match e {
+            Event::HistoryChanged(s) => Some(s),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(changed.undo.unwrap().kind, LabelKind::MetaTitle);
+    f.engine.undo().unwrap();
+    assert_eq!(f.meta(photo).title, None, "unset, not an empty string");
+    f.engine.redo().unwrap();
+    assert_eq!(f.meta(photo).title.as_deref(), Some("Heron at dawn"));
+
+    f.events.drain();
+    set("Heron at dawn");
+    assert!(
+        f.events
+            .drain()
+            .into_iter()
+            .all(|e| !matches!(e, Event::HistoryChanged(_))),
+        "a same-value edit is not a step"
+    );
+    set("");
+    assert_eq!(f.meta(photo).title, None, "an empty value clears it");
+}
+
+#[test]
+fn the_two_list_fields_take_one_name_a_line() {
+    use auroraw_engine::MetadataField;
+    let f = fixture(1, 0);
+    let photo = f.photos[0];
+    f.engine
+        .submit_and_wait(Command::SetMetadataField {
+            photo_id: photo,
+            field: MetadataField::Creator,
+            value: "Marie Tremblay\nJean Roy\n".into(),
+        })
+        .unwrap();
+    assert_eq!(
+        f.meta(photo).creator,
+        vec!["Marie Tremblay".to_string(), "Jean Roy".to_string()]
+    );
+    f.engine.undo().unwrap();
+    assert!(f.meta(photo).creator.is_empty());
+}
+
+#[test]
+fn a_custom_field_is_set_cleared_and_undone_under_one_shared_label() {
+    use auroraw_engine::MetadataField;
+    let f = fixture(1, 0);
+    let photo = f.photos[0];
+    let field = MetadataField::Custom("Model release".into());
+    let set = |value: &str| {
+        f.engine
+            .submit_and_wait(Command::SetMetadataField {
+                photo_id: photo,
+                field: field.clone(),
+                value: value.to_string(),
+            })
+            .unwrap();
+    };
+    assert!(f.meta(photo).custom.is_empty());
+    f.events.drain();
+    set("on file");
+    assert_eq!(f.meta(photo).custom[0].name, "Model release");
+    assert_eq!(f.meta(photo).custom[0].value, "on file");
+    let changed = f
+        .events
+        .drain()
+        .into_iter()
+        .find_map(|e| match e {
+            Event::HistoryChanged(s) => Some(s),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(changed.undo.unwrap().kind, LabelKind::MetaCustom);
+    f.engine.undo().unwrap();
+    assert!(f.meta(photo).custom.is_empty());
+    f.engine.redo().unwrap();
+    set("");
+    assert!(
+        f.meta(photo).custom.is_empty(),
+        "an empty value removes it, not an empty entry"
+    );
+}
+
+#[test]
+fn a_batch_of_metadata_edits_across_a_selection_with_mixed_values_is_one_step() {
+    use auroraw_engine::MetadataField;
+    let f = fixture(3, 0);
+    f.engine
+        .submit_and_wait(Command::SetMetadataField {
+            photo_id: f.photos[1],
+            field: MetadataField::Caption,
+            value: "An old caption".into(),
+        })
+        .unwrap();
+    f.events.drain();
+
+    f.engine
+        .submit_and_wait(Command::Batch {
+            commands: f
+                .photos
+                .iter()
+                .map(|p| Command::SetMetadataField {
+                    photo_id: *p,
+                    field: MetadataField::Caption,
+                    value: "A grey heron & its reflection".into(),
+                })
+                .collect(),
+        })
+        .unwrap();
+    let steps: Vec<_> = f
+        .events
+        .drain()
+        .into_iter()
+        .filter_map(|e| match e {
+            Event::HistoryChanged(s) => Some(s),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(steps.len(), 1, "one step, whatever each photo started from");
+    let label = steps[0].undo.unwrap();
+    assert_eq!((label.kind, label.count), (LabelKind::MetaCaption, 3));
+    for photo in &f.photos {
+        assert_eq!(
+            f.meta(*photo).caption.as_deref(),
+            Some("A grey heron & its reflection")
+        );
+    }
+
+    f.engine.undo().unwrap();
+    assert_eq!(f.meta(f.photos[0]).caption, None, "back to unset");
+    assert_eq!(
+        f.meta(f.photos[1]).caption.as_deref(),
+        Some("An old caption"),
+        "back to what it was, not to unset"
+    );
+    assert_eq!(f.meta(f.photos[2]).caption, None);
+}

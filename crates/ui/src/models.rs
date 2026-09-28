@@ -250,6 +250,24 @@ pub mod qobject {
             parent: &QString,
         ) -> QString;
 
+        /// One metadata field (`MetadataField::key`, spec §5.7; WP10, slice 1) across the selection,
+        /// as JSON `{"value": "...", "mixed": true|false}`: `mixed` when selected photos disagree
+        /// (the panel then shows "Multiple values" instead of `value`, which is the first selected
+        /// photo's own). Empty selection: `{"value": "", "mixed": false}`.
+        #[qinvokable]
+        #[cxx_name = "metadataOf"]
+        fn metadata_of(self: &PhotoGrid, field: &QString) -> QString;
+
+        /// Sets a metadata field on every selected photo, as one action (one step of the history,
+        /// the same shape `labelSelection` already has). How many photos.
+        #[qinvokable]
+        #[cxx_name = "setMetadataSelection"]
+        fn set_metadata_selection(
+            self: Pin<&mut PhotoGrid>,
+            field: &QString,
+            value: &QString,
+        ) -> i32;
+
         /// The photo in `row` (its identifier, empty when there is none).
         #[qinvokable]
         #[cxx_name = "idAt"]
@@ -1806,6 +1824,59 @@ impl qobject::PhotoGrid {
             Ok(_) => QString::from(keyword_id.to_string().as_str()),
             Err(e) => QString::from(format!("error:{}", crate::keyword_list::reason(&e)).as_str()),
         }
+    }
+
+    pub fn metadata_of(&self, field: &QString) -> QString {
+        let empty = || QString::from(r#"{"value":"","mixed":false}"#);
+        let Some(session) = session::current() else {
+            return empty();
+        };
+        let Some(field) = auroraw_engine::MetadataField::parse(&field.to_string()) else {
+            return empty();
+        };
+        let selected = self.photos_of(&self.selected_rows());
+        let values = session.engine.metadata_field_of(&selected, &field);
+        let mixed = values.windows(2).any(|w| w[0] != w[1]);
+        let value = values.first().cloned().unwrap_or_default();
+        QString::from(
+            serde_json::json!({ "value": value, "mixed": mixed })
+                .to_string()
+                .as_str(),
+        )
+    }
+
+    pub fn set_metadata_selection(self: Pin<&mut Self>, field: &QString, value: &QString) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let Some(field) = auroraw_engine::MetadataField::parse(&field.to_string()) else {
+            return 0;
+        };
+        let rows = self.selected_rows();
+        if rows.is_empty() {
+            return 0;
+        }
+        let value = value.to_string();
+        let mut commands: Vec<Command> = self
+            .photos_of(&rows)
+            .into_iter()
+            .map(|photo_id| Command::SetMetadataField {
+                photo_id,
+                field: field.clone(),
+                value: value.clone(),
+            })
+            .collect();
+        let command = if commands.len() == 1 {
+            commands.remove(0)
+        } else {
+            Command::Batch { commands }
+        };
+        // Waited for, unlike a rating or a label: the grid mirrors those locally at once (its cells show
+        // them), so a fire-and-forget submit is enough; the metadata panel has no cell of its own to
+        // mirror into and reads the field straight back afterwards (`metadataOf`) to show exactly what
+        // was kept - a list field's blank lines dropped, say - which needs the write to have landed.
+        let _ = session.engine.submit_and_wait(command);
+        rows.len() as i32
     }
 
     /// Redraws every cell's rating and flag.

@@ -101,6 +101,14 @@
       <exif:GPSLatitude>48,31.5000N</exif:GPSLatitude>
       <exif:GPSLongitude>72,13.2000W</exif:GPSLongitude>
       <exif:GPSAltitude>1800/10</exif:GPSAltitude>
+      <aur:Custom>
+        <rdf:Seq>
+          <rdf:li rdf:parseType="Resource">
+            <aur:Name>Model release</aur:Name>
+            <aur:Value>on file</aur:Value>
+          </rdf:li>
+        </rdf:Seq>
+      </aur:Custom>
       <aur:Overlay rdf:parseType="Resource">
         <aur:CaptureTime>2026-05-14T07:41:09.250-04:00</aur:CaptureTime>
         <aur:Gps rdf:parseType="Resource">

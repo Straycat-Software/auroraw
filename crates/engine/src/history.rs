@@ -17,6 +17,8 @@ use auroraw_format::sidecar::{Flag, Metadata};
 use auroraw_format::state::{KeywordEntry, Series};
 use auroraw_types::{KeywordId, PhotoId, SeriesId};
 
+use crate::command::MetadataField;
+
 /// How many steps the history keeps before it forgets the oldest.
 pub const DEFAULT_LIMIT: usize = 500;
 
@@ -116,6 +118,17 @@ pub enum Change {
         /// The keywords after.
         after: KeywordSet,
     },
+    /// One of the photo's metadata fields (spec §5.7; WP10, slice 1).
+    Metadata {
+        /// The photo.
+        photo: PhotoId,
+        /// Which field.
+        field: MetadataField,
+        /// Its text before.
+        before: String,
+        /// Its text after.
+        after: String,
+    },
     /// A series, as its state file was and as it became (`None`: there was none). Applied by the coordinator
     /// (the file and the catalogue's rows), not by [`Change::apply`].
     Series {
@@ -145,7 +158,8 @@ impl Change {
             Change::Rating { photo, .. }
             | Change::Flag { photo, .. }
             | Change::Label { photo, .. }
-            | Change::Keywords { photo, .. } => Some(*photo),
+            | Change::Keywords { photo, .. }
+            | Change::Metadata { photo, .. } => Some(*photo),
             Change::Vocabulary { .. } | Change::Series { .. } => None,
         }
     }
@@ -156,6 +170,7 @@ impl Change {
             Change::Flag { .. } => LabelKind::Flag,
             Change::Label { .. } => LabelKind::ColourLabel,
             Change::Keywords { .. } => LabelKind::Keywords,
+            Change::Metadata { field, .. } => LabelKind::of_metadata_field(field),
             Change::Series { action, .. } => match action {
                 SeriesAction::Group => LabelKind::SeriesGroup,
                 SeriesAction::Ungroup => LabelKind::SeriesUngroup,
@@ -187,6 +202,12 @@ impl Change {
                 meta.keyword_ids = set.ids.clone();
                 meta.keyword_paths = set.paths.clone();
             }
+            Change::Metadata {
+                field,
+                before,
+                after,
+                ..
+            } => field.set(meta, if undo { before.clone() } else { after.clone() }),
             Change::Vocabulary { .. } | Change::Series { .. } => {}
         }
     }
@@ -203,6 +224,44 @@ pub enum LabelKind {
     ColourLabel,
     /// Keywords.
     Keywords,
+    /// The title (spec §5.7; WP10, slice 1).
+    MetaTitle,
+    /// The caption.
+    MetaCaption,
+    /// The creators.
+    MetaCreator,
+    /// The copyright notice.
+    MetaRights,
+    /// The usage terms.
+    MetaUsageTerms,
+    /// The web statement of rights.
+    MetaWebStatement,
+    /// The credit line.
+    MetaCredit,
+    /// The source.
+    MetaSource,
+    /// The headline.
+    MetaHeadline,
+    /// The instructions.
+    MetaInstructions,
+    /// The sublocation.
+    MetaSublocation,
+    /// The city.
+    MetaCity,
+    /// The region or state.
+    MetaRegion,
+    /// The country.
+    MetaCountry,
+    /// The ISO country code.
+    MetaCountryCode,
+    /// The persons shown.
+    MetaPersons,
+    /// The event.
+    MetaEvent,
+    /// A custom metadata field (no UI makes one yet, but the engine already names this step
+    /// distinctly from the seventeen known fields above, by a single shared label: a bounded set
+    /// of menu strings cannot name an unbounded set of field names).
+    MetaCustom,
     /// Several kinds of change at once.
     Batch,
     /// A keyword was made (with or without photos given it).
@@ -231,6 +290,24 @@ impl LabelKind {
             LabelKind::Flag => "flag",
             LabelKind::ColourLabel => "label",
             LabelKind::Keywords => "keywords",
+            LabelKind::MetaTitle => "meta-title",
+            LabelKind::MetaCaption => "meta-caption",
+            LabelKind::MetaCreator => "meta-creator",
+            LabelKind::MetaRights => "meta-rights",
+            LabelKind::MetaUsageTerms => "meta-usage-terms",
+            LabelKind::MetaWebStatement => "meta-web-statement",
+            LabelKind::MetaCredit => "meta-credit",
+            LabelKind::MetaSource => "meta-source",
+            LabelKind::MetaHeadline => "meta-headline",
+            LabelKind::MetaInstructions => "meta-instructions",
+            LabelKind::MetaSublocation => "meta-sublocation",
+            LabelKind::MetaCity => "meta-city",
+            LabelKind::MetaRegion => "meta-region",
+            LabelKind::MetaCountry => "meta-country",
+            LabelKind::MetaCountryCode => "meta-country-code",
+            LabelKind::MetaPersons => "meta-persons",
+            LabelKind::MetaEvent => "meta-event",
+            LabelKind::MetaCustom => "meta-custom",
             LabelKind::Batch => "batch",
             LabelKind::KeywordCreate => "keyword-create",
             LabelKind::KeywordRename => "keyword-rename",
@@ -240,6 +317,30 @@ impl LabelKind {
             LabelKind::SeriesUngroup => "series-ungroup",
             LabelKind::SeriesResolve => "series-resolve",
             LabelKind::SeriesReopen => "series-reopen",
+        }
+    }
+
+    /// Which label a metadata field's own change is named by.
+    fn of_metadata_field(field: &MetadataField) -> Self {
+        match field {
+            MetadataField::Title => LabelKind::MetaTitle,
+            MetadataField::Caption => LabelKind::MetaCaption,
+            MetadataField::Creator => LabelKind::MetaCreator,
+            MetadataField::Rights => LabelKind::MetaRights,
+            MetadataField::UsageTerms => LabelKind::MetaUsageTerms,
+            MetadataField::WebStatement => LabelKind::MetaWebStatement,
+            MetadataField::Credit => LabelKind::MetaCredit,
+            MetadataField::Source => LabelKind::MetaSource,
+            MetadataField::Headline => LabelKind::MetaHeadline,
+            MetadataField::Instructions => LabelKind::MetaInstructions,
+            MetadataField::Sublocation => LabelKind::MetaSublocation,
+            MetadataField::City => LabelKind::MetaCity,
+            MetadataField::Region => LabelKind::MetaRegion,
+            MetadataField::Country => LabelKind::MetaCountry,
+            MetadataField::CountryCode => LabelKind::MetaCountryCode,
+            MetadataField::Persons => LabelKind::MetaPersons,
+            MetadataField::Event => LabelKind::MetaEvent,
+            MetadataField::Custom(_) => LabelKind::MetaCustom,
         }
     }
 }

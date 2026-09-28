@@ -41,7 +41,7 @@ pub use auroraw_format::sidecar::{ColourLabel, Flag};
 pub use auroraw_imaging::{Aids, MaskKind};
 pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
 pub use auroraw_types::KeywordId;
-pub use command::Command;
+pub use command::{Command, MetadataField};
 pub use coordinator::Outcome;
 pub use duplicates_api::{DuplicatePhoto, LocationRef, format_report as duplicates_report};
 pub use error::{EngineError, Result};
@@ -231,6 +231,24 @@ impl Engine {
     /// catalogue's only writer, by convention this crate does not enforce at the type level.
     pub fn read_catalogue(&self) -> Result<Catalogue> {
         Ok(Catalogue::open(&self.catalogue_path)?)
+    }
+
+    /// `field` of each of `photos`' own sidecars, in the same order; a photo whose sidecar cannot
+    /// be read (or is of a newer schema) is left out. What the metadata panel reads to show the
+    /// selection's current value and whether it is "Multiple values" (spec §5.7; WP10, slice 1) —
+    /// most fields are not catalogue columns (nothing queries by them yet), so this goes straight
+    /// to the sidecars, the same read `Workspace::read_photo`'s own doc comment already says needs
+    /// no coordination.
+    pub fn metadata_field_of(
+        &self,
+        photos: &[auroraw_types::PhotoId],
+        field: &MetadataField,
+    ) -> Vec<String> {
+        photos
+            .iter()
+            .filter_map(|id| self.workspace.read_photo(id).ok().flatten()?.current())
+            .map(|photo| field.get(&photo.meta))
+            .collect()
     }
 
     /// Starts a [`ThumbnailService`] for this engine's workspace and catalogue, generating and

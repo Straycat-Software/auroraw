@@ -188,6 +188,15 @@ fn keywords_in_the_panel() {
     run_suite("keywords", home.path(), None);
 }
 
+/// The metadata panel (WP10, slice 1): a field applied to one photo or a selection, "Multiple
+/// values", undo and redo, the two list fields, a custom field through the engine directly.
+#[test]
+fn the_metadata_panel_edits_a_photos_or_a_selections_fields() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 40);
+    run_suite("metadata", home.path(), None);
+}
+
 /// Reorganising the vocabulary: drag and drop, the Move dialog, deleting a branch, undo.
 #[test]
 fn reorganising_the_keyword_tree() {
