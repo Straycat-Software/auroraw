@@ -30,7 +30,9 @@ ScrollBar {
         implicitHeight: control.thumbWidth
         radius: width / 2
         color: control.pressed ? Theme.accent : (control.hovered ? Theme.quiet : Theme.surface.border)
-        opacity: control.policy === ScrollBar.AlwaysOn || control.size < 1.0 ? 1 : 0
+        // `size` is 0 until the Flickable has measured its content: not yet known, so hidden, or the thumb
+        // would show for a moment on every list that opens and fade out when the size turns out to be 1.
+        opacity: control.policy === ScrollBar.AlwaysOn || (control.size > 0 && control.size < 1.0) ? 1 : 0
         Behavior on color { ColorAnimation { duration: Theme.motion } }
         Behavior on opacity { OpacityAnimator { duration: Theme.motion } }
     }
