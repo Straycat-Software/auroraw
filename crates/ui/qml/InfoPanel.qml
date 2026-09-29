@@ -121,7 +121,6 @@ Item {
         ListView {
             id: list
             anchors.fill: parent
-            anchors.rightMargin: vbar.width
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             spacing: 6
@@ -134,7 +133,7 @@ Item {
                 readonly property string key: modelData.key
                 readonly property string label: modelData.label
                 readonly property string value: modelData.value
-                width: ListView.view.width
+                width: ListView.view.width - vbar.width
                 spacing: 2
 
                 Label {

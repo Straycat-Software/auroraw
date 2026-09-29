@@ -203,7 +203,6 @@ Item {
             ListView {
                 id: tree
                 anchors.fill: parent
-                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: panel.collections
@@ -219,7 +218,7 @@ Item {
                     required property int held
                     required property bool hasChildren
                     required property bool expanded
-                    width: ListView.view.width
+                    width: ListView.view.width - vbar.width
                     height: 28
 
                     // Dropping a collection here puts it inside this one (when that is possible).

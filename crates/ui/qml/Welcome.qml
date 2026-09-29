@@ -74,7 +74,6 @@ Item {
             ListView {
                 id: list
                 anchors.fill: parent
-                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.known
@@ -86,7 +85,7 @@ Item {
                     required property string path
                     required property string opened
                     required property bool found
-                    width: ListView.view.width
+                    width: ListView.view.width - vbar.width
                     height: 56
                     Accessible.name: name + ", " + path
                     onClicked: root.knownRequested(index)

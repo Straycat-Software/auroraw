@@ -69,7 +69,6 @@ Item {
             ListView {
                 id: list
                 anchors.fill: parent
-                anchors.rightMargin: vbar.width
                 clip: true
                 spacing: 4
                 boundsBehavior: Flickable.StopAtBounds
@@ -84,7 +83,7 @@ Item {
                     required property int photos
                     property alias rescanButton: rescanButton
                     property alias removeButton: removeButton
-                    width: ListView.view.width
+                    width: ListView.view.width - vbar.width
                     height: 64
                     color: root.palette.dark
 

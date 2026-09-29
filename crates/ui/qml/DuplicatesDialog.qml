@@ -44,7 +44,6 @@ AppWindow {
             ListView {
                 id: list
                 anchors.fill: parent
-                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: dialog.entries
@@ -54,7 +53,7 @@ AppWindow {
                     id: entry
                     required property var modelData
                     required property int index
-                    width: list.width
+                    width: list.width - vbar.width
                     height: content.implicitHeight + 16
                     color: index % 2 === 0 ? "#00000000" : "#12ffffff"
                     RowLayout {

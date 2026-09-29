@@ -381,7 +381,6 @@ Rectangle {
             ListView {
                 id: tree
                 anchors.fill: parent
-                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: panel.keywords
@@ -397,7 +396,7 @@ Rectangle {
                     required property int carried
                     required property bool hasChildren
                     required property bool expanded
-                    width: ListView.view.width
+                    width: ListView.view.width - vbar.width
                     height: 28
 
                     // Dropping a keyword here makes it a child of this one (when that is possible).

@@ -57,7 +57,6 @@ Item {
         ListView {
             id: list
             anchors.fill: parent
-            anchors.rightMargin: vbar.width
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             spacing: 6
@@ -68,7 +67,7 @@ Item {
                 id: row
                 required property var modelData
                 required property int index
-                width: ListView.view.width
+                width: ListView.view.width - vbar.width
                 spacing: 2
 
                 property bool mixed: false
