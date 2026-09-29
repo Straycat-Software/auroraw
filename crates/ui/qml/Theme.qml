@@ -47,6 +47,9 @@ QtObject {
     // surface ladder — a neutral surround for judging a photograph, independent of the chrome
     // around it.
     readonly property color viewerGround: "#777777"
+    // The bar above the comparison, darker than that ground so it reads as chrome, and not part of
+    // the surface ladder for the same reason the ground is not.
+    readonly property color viewerToolbar: "#17181c"
 
     // Two radius tiers (D-129): controls (buttons, fields, chips) are the smaller one; dialogs,
     // popups and floating chrome are the larger one, so a container reads as distinct from the

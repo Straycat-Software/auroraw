@@ -64,16 +64,14 @@ Item {
         }
         AppListFrame {
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(root.sources.count * 68, 560)
+            visible: root.sources.count > 0
+            Layout.preferredHeight: Math.min(root.sources.count * 68 - list.spacing, 560) + chrome
 
-            ListView {
+            AppListView {
                 id: list
                 anchors.fill: parent
-                clip: true
                 spacing: 4
-                boundsBehavior: Flickable.StopAtBounds
                 model: root.sources
-                ScrollBar.vertical: AppScrollBar { id: vbar }
                 delegate: Rectangle {
                     id: row
                     required property int index
@@ -83,7 +81,7 @@ Item {
                     required property int photos
                     property alias rescanButton: rescanButton
                     property alias removeButton: removeButton
-                    width: ListView.view.width - vbar.width
+                    width: list.rowWidth
                     height: 64
                     color: root.palette.dark
 

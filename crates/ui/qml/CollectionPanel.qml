@@ -200,13 +200,10 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            ListView {
+            AppListView {
                 id: tree
                 anchors.fill: parent
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
                 model: panel.collections
-                ScrollBar.vertical: AppScrollBar { id: vbar }
 
                 delegate: Item {
                     id: row
@@ -218,7 +215,7 @@ Item {
                     required property int held
                     required property bool hasChildren
                     required property bool expanded
-                    width: ListView.view.width - vbar.width
+                    width: tree.rowWidth
                     height: 28
 
                     // Dropping a collection here puts it inside this one (when that is possible).

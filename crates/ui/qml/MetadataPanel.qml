@@ -236,20 +236,17 @@ Item {
         anchors.bottom: parent.bottom
         anchors.topMargin: 6
 
-        ListView {
+        AppListView {
             id: list
             anchors.fill: parent
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
             spacing: 6
             model: panel.fields
-            ScrollBar.vertical: AppScrollBar { id: vbar }
 
             delegate: ColumnLayout {
                 id: row
                 required property var modelData
                 required property int index
-                width: ListView.view.width - vbar.width
+                width: list.rowWidth
                 spacing: 2
 
                 property bool mixed: false

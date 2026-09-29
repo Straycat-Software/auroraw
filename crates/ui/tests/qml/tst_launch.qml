@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import org.auroraw.ui
 
@@ -86,6 +87,29 @@ AppTestCase {
         compare(app.launcher.screen, "welcome", "asked to see the list instead of reopening")
         app.known.refresh()
         compare(app.known.count, 1, "the workspace is still known")
+    }
+
+    // D-132 (Patrick's own review, "the list items are covered by the scrollbar"): an overlay
+    // scrollbar paints over the last pixels of its view, so rows are narrower than the list by the
+    // scrollbar's own width (`AppListView.rowWidth`), and no frame is drawn round a list with no rows.
+    function test_the_welcome_list_stops_its_rows_short_of_the_scrollbar_and_hides_when_empty() {
+        const machine = freshMachine()
+        launch(machine)
+        verify(!app.welcome.list.visible, "no workspace known, so no empty frame either")
+        createWorkspace("Main")
+        app.launcher.setStartupBehavior("list")
+        launch(machine)
+        wait(200)
+        app.known.refresh()
+        wait(150)
+        const list = app.welcome.list
+        verify(list.visible)
+        const row = list.itemAtIndex(0)
+        verify(row !== null, "the known workspace is a row")
+        compare(list.rowWidth, list.width - list.ScrollBar.vertical.width)
+        compare(row.width, list.rowWidth)
+        verify(row.width < list.width, "so the last pixels are the scrollbar's own")
+        compare(list.boundsBehavior, Flickable.StopAtBounds)
     }
 
     function test_the_preview_follows_the_name_and_the_folder_and_the_folder_is_left_alone() {

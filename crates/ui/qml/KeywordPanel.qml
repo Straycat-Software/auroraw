@@ -81,6 +81,17 @@ Rectangle {
                 color: tab.checked ? Theme.accent : "transparent"
                 Behavior on color { ColorAnimation { duration: Theme.motion } }
             }
+            // Keyboard focus only (`visualFocus`): an outline round the tab, since the underline alone
+            // says which tab is current, not which one has the focus.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Theme.radiusControl
+                color: "transparent"
+                border.width: 2
+                border.color: Theme.accent
+                visible: tab.visualFocus
+            }
         }
         contentItem: Label {
             text: tab.text
@@ -378,13 +389,10 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            ListView {
+            AppListView {
                 id: tree
                 anchors.fill: parent
-                clip: true
-                boundsBehavior: Flickable.StopAtBounds
                 model: panel.keywords
-                ScrollBar.vertical: AppScrollBar { id: vbar }
 
                 delegate: Item {
                     id: row
@@ -396,7 +404,7 @@ Rectangle {
                     required property int carried
                     required property bool hasChildren
                     required property bool expanded
-                    width: ListView.view.width - vbar.width
+                    width: tree.rowWidth
                     height: 28
 
                     // Dropping a keyword here makes it a child of this one (when that is possible).

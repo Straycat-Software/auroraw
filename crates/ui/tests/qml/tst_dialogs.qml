@@ -115,6 +115,33 @@ AppTestCase {
         click(buttons.itemAt(1))
     }
 
+    // D-130/D-131 (Patrick's own review): French is the longest of the languages, and a dialog that
+    // holds in it holds in every one. Every row must stay inside the dialog, and the footer's one
+    // button sits on the right, where a dialog's answer always is.
+    function test_settings_in_french_keeps_every_row_inside_the_dialog_and_its_button_on_the_right() {
+        launch(freshMachine())
+        app.launcher.chooseLanguage("fr")
+        app.showSettings()
+        wait(300)
+        const dialog = app.settingsDialog
+        const right = item => item.mapToItem(dialog.contentItem, item.width, 0).x
+        const inside = dialog.contentItem.width
+        for (let i = 0; i < dialog.startupButtons.count; i++)
+            verify(right(dialog.startupButtons.itemAt(i)) <= inside, "startup button " + i + " fits")
+        for (let i = 0; i < dialog.languageButtons.count; i++)
+            verify(right(dialog.languageButtons.itemAt(i)) <= inside, "language button " + i + " fits")
+        for (const box of [dialog.gapBox, dialog.similarDistanceBox, dialog.similarMinutesBox])
+            verify(right(box) <= inside, "a spin box fits")
+        const close = dialog.footer.itemAt(0)
+        compare(close.text, "Fermer")
+        const edge = close.mapToItem(dialog.contentItem, close.width, 0).x
+        verify(edge <= inside + dialog.rightPadding, "the button is inside the dialog")
+        verify(edge > inside / 2, "and on its right half, not centred or left")
+        snapshot("settings-fr")
+        pressEscape()
+        app.launcher.chooseLanguage("en")
+    }
+
     function test_the_about_dialog_says_what_the_application_is() {
         launch(freshMachine())
         app.showAbout()

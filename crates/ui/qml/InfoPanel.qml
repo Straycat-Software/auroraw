@@ -118,14 +118,11 @@ Item {
         anchors.fill: parent
         visible: panel.rows.length > 0
 
-        ListView {
+        AppListView {
             id: list
             anchors.fill: parent
-            clip: true
-            boundsBehavior: Flickable.StopAtBounds
             spacing: 6
             model: panel.rows
-            ScrollBar.vertical: AppScrollBar { id: vbar }
 
             delegate: ColumnLayout {
                 id: delegateRoot
@@ -133,7 +130,7 @@ Item {
                 readonly property string key: modelData.key
                 readonly property string label: modelData.label
                 readonly property string value: modelData.value
-                width: ListView.view.width - vbar.width
+                width: list.rowWidth
                 spacing: 2
 
                 Label {

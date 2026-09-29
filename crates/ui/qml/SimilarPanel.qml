@@ -148,7 +148,6 @@ Rectangle {
         GridView {
             id: thumbList
             Layout.fillWidth: true
-            Layout.rightMargin: vbar.width
             // Only as tall as its own rows need, so the buttons sit right under the thumbnails instead of at the
             // bottom of the panel (a handful of suggestions rarely fill it).
             Layout.preferredHeight: Math.max(1, Math.ceil(panel.count / 2)) * cellHeight
@@ -156,7 +155,9 @@ Rectangle {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             model: panel.similar
-            cellWidth: Math.floor(width / 2)
+            // Two columns that leave the scrollbar its own strip on the right, which the thumb then sits in
+            // without covering a thumbnail (a margin on the view itself would only shrink the thumb's own room).
+            cellWidth: Math.floor((width - vbar.width) / 2)
             cellHeight: cellWidth * 3 / 4 + 4
             ScrollBar.vertical: AppScrollBar { id: vbar }
             delegate: Item {
@@ -168,7 +169,7 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 2
-                    color: "#1c1d21"
+                    color: Theme.surface.sunken
                     border.width: hover.containsMouse ? 2 : 0
                     border.color: Theme.accent
                     Image {

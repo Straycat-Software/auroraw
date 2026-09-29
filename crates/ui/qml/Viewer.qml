@@ -555,7 +555,7 @@ FocusScope {
             Label {
                 Layout.fillWidth: true
                 text: view.summary
-                color: "#eaeaeb"
+                color: Theme.surface.text
                 elide: Text.ElideRight
             }
             Label {
@@ -609,7 +609,7 @@ FocusScope {
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: 4
-                color: "#1c1d21"
+                color: Theme.surface.sunken
                 border.width: frame.index === view.row ? 2 : 0
                 border.color: Theme.accent
                 Image {

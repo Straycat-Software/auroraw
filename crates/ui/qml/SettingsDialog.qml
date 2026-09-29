@@ -68,6 +68,9 @@ AppDialog {
                     onClicked: dialog.launcher.chooseLanguage(modelData)
                 }
             }
+            // A row that fills its column and holds no filling item spreads its buttons out by the
+            // spare room; this one takes it instead, so they stay together on the left.
+            Item { Layout.fillWidth: true }
         }
         Label {
             text: qsTr("Series")

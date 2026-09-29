@@ -43,7 +43,7 @@ MenuItem {
                 const key = item.action ? item.action.shortcut : undefined
                 return typeof key === "number" ? Shortcuts.text(key, "") : Shortcuts.text(-1, key ? String(key) : "")
             }
-            color: item.palette.placeholderText
+            color: item.enabled ? Theme.quiet : item.palette.placeholderText
         }
     }
 }

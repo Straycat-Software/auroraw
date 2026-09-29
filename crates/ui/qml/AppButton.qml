@@ -26,6 +26,17 @@ Button {
         border.color: control.filled ? color : (control.hovered ? Theme.quiet : Theme.surface.border)
         Behavior on color { ColorAnimation { duration: Theme.motion } }
         Behavior on border.color { ColorAnimation { duration: Theme.motion } }
+        // Keyboard focus only (`visualFocus`): the flat background has no bevel for Fusion's own
+        // focus frame to hang on, so it is drawn here, just outside the border.
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: -3
+            radius: parent.radius + 3
+            color: "transparent"
+            border.width: 2
+            border.color: Theme.accent
+            visible: control.visualFocus
+        }
     }
     contentItem: Label {
         text: control.text

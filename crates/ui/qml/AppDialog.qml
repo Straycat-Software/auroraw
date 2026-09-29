@@ -48,6 +48,7 @@ Dialog {
         visible: control.title !== ""
         text: control.title
         font.bold: true
+        elide: Text.ElideRight
         leftPadding: 24
         rightPadding: 24
         topPadding: 20

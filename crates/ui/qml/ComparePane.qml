@@ -188,7 +188,7 @@ Item {
         anchors.margins: 4
         text: pane.name
         elide: Text.ElideRight
-        color: "#eaeaeb"
+        color: Theme.surface.text
         font.pixelSize: 12
     }
 

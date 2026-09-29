@@ -24,6 +24,17 @@ TabButton {
             color: control.checked ? Theme.accent : "transparent"
             Behavior on color { ColorAnimation { duration: Theme.motion } }
         }
+        // Keyboard focus only (`visualFocus`): an outline round the tab, since the underline alone
+        // says which tab is current, not which one has the focus.
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: Theme.radiusControl
+            color: "transparent"
+            border.width: 2
+            border.color: Theme.accent
+            visible: control.visualFocus
+        }
     }
     contentItem: Label {
         text: control.text
