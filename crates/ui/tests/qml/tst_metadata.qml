@@ -159,6 +159,90 @@ AppTestCase {
             verify(f.key !== "custom:Model release", "no row for a custom field yet")
     }
 
+    // Copy always reads the grid's active photo (its cursor), never the selection (D-124's own
+    // precedent for the Info panel): photo 0 here, whatever else is selected at the time. Copy
+    // takes every field, so the tests below narrow the dialog's own `checkedFields` to just the
+    // ones each is about before confirming -- this suite's photos are shared across tests (each
+    // uses fields of its own so they do not interfere), and pasting all seventeen would leak
+    // whatever an earlier, unrelated test left on photo 0 onto photos this test never meant to touch.
+    function copyFromFirst() {
+        click(0)
+        mouseClick(app.keywordPanel.metadataPanel.copyButton)
+        wait(30)
+    }
+
+    // Opens Paste, narrows its dialog to exactly `keys` (bypassing individual checkbox clicks: the
+    // dedicated unchecking test below exercises that click itself), and confirms. The dialog, for a
+    // test that wants to look at it further.
+    function pasteOnly(keys) {
+        mouseClick(app.keywordPanel.metadataPanel.pasteButton)
+        const dialog = app.keywordPanel.metadataPanel.pasteDialog
+        tryVerify(() => dialog.opened, 5000)
+        const only = {}
+        for (const key of keys)
+            only[key] = true
+        dialog.checkedFields = only
+        dialog.confirm()
+        return dialog
+    }
+
+    function test_copy_reads_the_cursor_photo_and_paste_applies_every_checked_field() {
+        click(0)
+        typeField("rights", "Copied rights")
+        typeField("usage-terms", "Copied usage terms")
+        copyFromFirst()
+        selectFirst(3)
+        pasteOnly(["rights", "usage-terms"])
+        tryVerify(() => JSON.parse(app.photos.metadataOf("rights")).value === "Copied rights", 5000)
+        compare(JSON.parse(app.photos.metadataOf("usage-terms")).value, "Copied usage terms")
+    }
+
+    function test_unchecking_a_field_in_the_paste_dialog_leaves_it_untouched() {
+        click(0)
+        typeField("sublocation", "Kept on the source")
+        typeField("web-statement", "Also copied")
+        copyFromFirst()
+        // A value this selection already agrees on, so an untouched "web-statement" is provable
+        // afterwards.
+        selectFirst(2)
+        typeField("web-statement", "Already here")
+        mouseClick(app.keywordPanel.metadataPanel.pasteButton)
+        const dialog = app.keywordPanel.metadataPanel.pasteDialog
+        tryVerify(() => dialog.opened, 5000)
+        // Narrow to just these two, then really click "web-statement" off, exercising the checkbox itself.
+        dialog.checkedFields = { "sublocation": true, "web-statement": true }
+        const row = dialog.rowFor("web-statement")
+        verify(row, "the row for web-statement exists")
+        wait(30)
+        mouseClick(row.checkBox)
+        dialog.confirm()
+        tryVerify(() => JSON.parse(app.photos.metadataOf("sublocation")).value === "Kept on the source", 5000)
+        compare(JSON.parse(app.photos.metadataOf("web-statement")).value, "Already here", "left unchecked, left alone")
+    }
+
+    function test_pasting_a_blank_copied_field_clears_the_target() {
+        click(0)
+        typeField("instructions", "")
+        copyFromFirst()
+        selectFirst(2)
+        typeField("instructions", "Not blank yet")
+        pasteOnly(["instructions"])
+        tryVerify(() => JSON.parse(app.photos.metadataOf("instructions")).value === "", 5000)
+    }
+
+    function test_undo_brings_a_multi_field_paste_back_in_one_step() {
+        click(0)
+        typeField("city", "Québec")
+        typeField("region", "Québec")
+        copyFromFirst()
+        selectFirst(3)
+        pasteOnly(["city", "region"])
+        tryVerify(() => JSON.parse(app.photos.metadataOf("region")).value === "Québec", 5000)
+        app.actions.undo.trigger()
+        tryVerify(() => JSON.parse(app.photos.metadataOf("city")).value === "", 5000)
+        tryVerify(() => JSON.parse(app.photos.metadataOf("region")).value === "", 5000, "one undo step, both fields back")
+    }
+
     function test_the_dialog_speaks_french() {
         app.launcher.chooseLanguage("fr")
         wait(250)

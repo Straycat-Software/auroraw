@@ -1646,110 +1646,110 @@
         <translation>Les nouveaux mots-clés vont au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="561"/>
+        <location filename="../qml/KeywordPanel.qml" line="562"/>
         <source>Show the keyword panel</source>
         <translation>Afficher le panneau des mots-clés</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="571"/>
+        <location filename="../qml/KeywordPanel.qml" line="572"/>
         <source>Show the photos with this keyword</source>
         <translation>Afficher les photos avec ce mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="575"/>
+        <location filename="../qml/KeywordPanel.qml" line="576"/>
         <source>Rename…</source>
         <translation>Renommer…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="579"/>
+        <location filename="../qml/KeywordPanel.qml" line="580"/>
         <source>Properties…</source>
         <translation>Propriétés…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="584"/>
+        <location filename="../qml/KeywordPanel.qml" line="585"/>
         <source>Move to…</source>
         <translation>Déplacer vers…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="588"/>
+        <location filename="../qml/KeywordPanel.qml" line="589"/>
         <source>Move to the top level</source>
         <translation>Déplacer au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="594"/>
+        <location filename="../qml/KeywordPanel.qml" line="595"/>
         <source>Delete…</source>
         <translation>Supprimer…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="605"/>
+        <location filename="../qml/KeywordPanel.qml" line="606"/>
         <source>Rename the keyword</source>
         <translation>Renommer le mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="629"/>
+        <location filename="../qml/KeywordPanel.qml" line="630"/>
         <source>Name</source>
         <translation>Nom</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="643"/>
+        <location filename="../qml/KeywordPanel.qml" line="644"/>
         <source>Rename</source>
         <translation>Renommer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="649"/>
-        <location filename="../qml/KeywordPanel.qml" line="707"/>
-        <location filename="../qml/KeywordPanel.qml" line="824"/>
-        <location filename="../qml/KeywordPanel.qml" line="908"/>
+        <location filename="../qml/KeywordPanel.qml" line="650"/>
+        <location filename="../qml/KeywordPanel.qml" line="708"/>
+        <location filename="../qml/KeywordPanel.qml" line="825"/>
+        <location filename="../qml/KeywordPanel.qml" line="909"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="663"/>
+        <location filename="../qml/KeywordPanel.qml" line="664"/>
         <source>Move the keyword</source>
         <translation>Déplacer le mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="684"/>
+        <location filename="../qml/KeywordPanel.qml" line="685"/>
         <source>Move “%1” under:</source>
         <translation>Déplacer «&#xa0;%1&#xa0;» sous&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="685"/>
+        <location filename="../qml/KeywordPanel.qml" line="686"/>
         <source>There is nowhere to move “%1”.</source>
         <translation>Il n’y a nulle part où déplacer «&#xa0;%1&#xa0;».</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="694"/>
+        <location filename="../qml/KeywordPanel.qml" line="695"/>
         <source>New parent</source>
         <translation>Nouveau parent</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="700"/>
+        <location filename="../qml/KeywordPanel.qml" line="701"/>
         <source>Move</source>
         <translation>Déplacer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="727"/>
+        <location filename="../qml/KeywordPanel.qml" line="728"/>
         <source>Delete the keyword</source>
         <translation>Supprimer le mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="744"/>
+        <location filename="../qml/KeywordPanel.qml" line="745"/>
         <source>Removing it from %1 photo(s)…</source>
         <translation>Retrait de %1 photo(s) en cours…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="759"/>
+        <location filename="../qml/KeywordPanel.qml" line="760"/>
         <source>Removing it from %1 of %2 photo(s)…</source>
         <translation>Retrait de %1 sur %2 photo(s) en cours…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="769"/>
+        <location filename="../qml/KeywordPanel.qml" line="770"/>
         <source>Stopped: %1 photo(s) done. Delete again to finish.</source>
         <translation>Arrêté&#xa0;: %1 photo(s) traitées. Supprimez-le à nouveau pour terminer.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/KeywordPanel.qml" line="781"/>
+        <location filename="../qml/KeywordPanel.qml" line="782"/>
         <source>Delete “%1” and the %n keyword(s) under it?</source>
         <translation>
             <numerusform>Supprimer «&#xa0;%1&#xa0;» et le mot-clé placé dessous&#xa0;?</numerusform>
@@ -1757,12 +1757,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="782"/>
+        <location filename="../qml/KeywordPanel.qml" line="783"/>
         <source>Delete “%1”?</source>
         <translation>Supprimer «&#xa0;%1&#xa0;»&#xa0;?</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/KeywordPanel.qml" line="789"/>
+        <location filename="../qml/KeywordPanel.qml" line="790"/>
         <source>%n photo(s) will lose it. You can undo this.</source>
         <translation>
             <numerusform>%n photo le perdra. Vous pouvez annuler.</numerusform>
@@ -1770,52 +1770,52 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="790"/>
+        <location filename="../qml/KeywordPanel.qml" line="791"/>
         <source>No photo has it. You can undo this.</source>
         <translation>Aucune photo ne l’a. Vous pouvez annuler.</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="809"/>
+        <location filename="../qml/KeywordPanel.qml" line="810"/>
         <source>Delete</source>
         <translation>Supprimer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="816"/>
+        <location filename="../qml/KeywordPanel.qml" line="817"/>
         <source>Cancel sweep</source>
         <translation>Annuler le retrait</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="824"/>
+        <location filename="../qml/KeywordPanel.qml" line="825"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="841"/>
+        <location filename="../qml/KeywordPanel.qml" line="842"/>
         <source>Keyword properties</source>
         <translation>Propriétés du mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="867"/>
+        <location filename="../qml/KeywordPanel.qml" line="868"/>
         <source>“%1”</source>
         <translation>«&#xa0;%1&#xa0;»</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="871"/>
+        <location filename="../qml/KeywordPanel.qml" line="872"/>
         <source>Synonyms, one a line:</source>
         <translation>Synonymes, un par ligne&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="878"/>
+        <location filename="../qml/KeywordPanel.qml" line="879"/>
         <source>Synonyms</source>
         <translation>Synonymes</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="889"/>
+        <location filename="../qml/KeywordPanel.qml" line="890"/>
         <source>Do not export</source>
         <translation>Ne pas exporter</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="902"/>
+        <location filename="../qml/KeywordPanel.qml" line="903"/>
         <source>Save</source>
         <translation>Enregistrer</translation>
     </message>
@@ -2148,93 +2148,123 @@
 <context>
     <name>MetadataPanel</name>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="23"/>
+        <location filename="../qml/MetadataPanel.qml" line="65"/>
         <source>Title</source>
         <translation>Titre</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="24"/>
+        <location filename="../qml/MetadataPanel.qml" line="66"/>
         <source>Caption</source>
         <translation>Légende</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="25"/>
+        <location filename="../qml/MetadataPanel.qml" line="67"/>
         <source>Creator</source>
         <translation>Créateur</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="26"/>
+        <location filename="../qml/MetadataPanel.qml" line="68"/>
         <source>Copyright</source>
         <translation>Droits d&apos;auteur</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="27"/>
+        <location filename="../qml/MetadataPanel.qml" line="69"/>
         <source>Usage terms</source>
         <translation>Conditions d&apos;utilisation</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="28"/>
+        <location filename="../qml/MetadataPanel.qml" line="70"/>
         <source>Web statement of rights</source>
         <translation>Déclaration des droits en ligne</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="29"/>
+        <location filename="../qml/MetadataPanel.qml" line="71"/>
         <source>Credit</source>
         <translation>Crédit</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="30"/>
+        <location filename="../qml/MetadataPanel.qml" line="72"/>
         <source>Source</source>
         <translation>Source</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="31"/>
+        <location filename="../qml/MetadataPanel.qml" line="73"/>
         <source>Headline</source>
         <translation>Manchette</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="32"/>
+        <location filename="../qml/MetadataPanel.qml" line="74"/>
         <source>Instructions</source>
         <translation>Instructions</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="33"/>
+        <location filename="../qml/MetadataPanel.qml" line="75"/>
         <source>Sublocation</source>
         <translation>Sous-lieu</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="34"/>
+        <location filename="../qml/MetadataPanel.qml" line="76"/>
         <source>City</source>
         <translation>Ville</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="35"/>
+        <location filename="../qml/MetadataPanel.qml" line="77"/>
         <source>Region</source>
         <translation>Région</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="36"/>
+        <location filename="../qml/MetadataPanel.qml" line="78"/>
         <source>Country</source>
         <translation>Pays</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="37"/>
+        <location filename="../qml/MetadataPanel.qml" line="79"/>
         <source>Country code</source>
         <translation>Code du pays</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="38"/>
+        <location filename="../qml/MetadataPanel.qml" line="80"/>
         <source>Persons shown</source>
         <translation>Personnes visibles</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="39"/>
+        <location filename="../qml/MetadataPanel.qml" line="81"/>
         <source>Event</source>
         <translation>Événement</translation>
     </message>
     <message>
+        <location filename="../qml/MetadataPanel.qml" line="108"/>
+        <source>Copy</source>
+        <translation>Copier</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataPanel.qml" line="114"/>
+        <source>Paste…</source>
+        <translation>Coller…</translation>
+    </message>
+    <message>
         <location filename="../qml/MetadataPanel.qml" line="126"/>
-        <location filename="../qml/MetadataPanel.qml" line="137"/>
+        <source>Paste metadata</source>
+        <translation>Coller les métadonnées</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataPanel.qml" line="210"/>
+        <source>(empty)</source>
+        <translation>(vide)</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataPanel.qml" line="219"/>
+        <source>Paste</source>
+        <translation>Coller</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataPanel.qml" line="225"/>
+        <source>Cancel</source>
+        <translation>Annuler</translation>
+    </message>
+    <message>
+        <location filename="../qml/MetadataPanel.qml" line="308"/>
+        <location filename="../qml/MetadataPanel.qml" line="319"/>
         <source>Multiple values</source>
         <translation>Valeurs multiples</translation>
     </message>

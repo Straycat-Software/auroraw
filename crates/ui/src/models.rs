@@ -299,6 +299,21 @@ pub mod qobject {
             value: &QString,
         ) -> i32;
 
+        /// The photo in `row`'s own raw value of one metadata field: `metadataOf`'s own shape, but one
+        /// specific photo rather than the selection's agreement — the Copy step of copy/paste metadata
+        /// (WP10 item 1, spec §5.7). Empty when `row` or `field` is not one.
+        #[qinvokable]
+        #[cxx_name = "metadataAt"]
+        fn metadata_at(self: &PhotoGrid, row: i32, field: &QString) -> QString;
+
+        /// Sets several metadata fields on every selected photo, as one action (one step of the
+        /// history, however many fields or photos): the Paste step of copy/paste metadata. `fields` is
+        /// JSON `{"<key>": "<value>", ...}`, the fields left checked in the Paste dialog (a checked,
+        /// blank one clears the target). How many photos.
+        #[qinvokable]
+        #[cxx_name = "pasteMetadataSelection"]
+        fn paste_metadata_selection(self: Pin<&mut PhotoGrid>, fields: &QString) -> i32;
+
         /// The photo in `row` (its identifier, empty when there is none).
         #[qinvokable]
         #[cxx_name = "idAt"]
@@ -2161,6 +2176,31 @@ impl qobject::PhotoGrid {
         )
     }
 
+    /// The photo in `row`'s own raw value of `field` (the Copy step of copy/paste metadata, WP10
+    /// item 1): `technical_info_at`'s own row resolution, `metadata_of`'s own field read, for one
+    /// specific photo instead of the selection's agreement.
+    pub fn metadata_at(&self, row: i32, field: &QString) -> QString {
+        let Some(item) = usize::try_from(row)
+            .ok()
+            .and_then(|row| self.items.get(row))
+        else {
+            return QString::default();
+        };
+        let Some(session) = session::current() else {
+            return QString::default();
+        };
+        let Some(field) = auroraw_engine::MetadataField::parse(&field.to_string()) else {
+            return QString::default();
+        };
+        let value = session
+            .engine
+            .metadata_field_of(&[item.id], &field)
+            .into_iter()
+            .next()
+            .unwrap_or_default();
+        QString::from(value.as_str())
+    }
+
     pub fn set_metadata_selection(
         mut self: Pin<&mut Self>,
         field: &QString,
@@ -2198,6 +2238,52 @@ impl qobject::PhotoGrid {
         // `BACKGROUND_THRESHOLD` items this only waits for the job to start, not to finish (D-126 volet
         // B): `batchJob` is set for the panel to watch instead, and it defers its own read-back to when
         // the job actually ends (`Bus.jobFinished`/`jobCancelled`).
+        self.as_mut().submit_batch(&session, command);
+        rows.len() as i32
+    }
+
+    /// Sets several metadata fields on every selected photo, as one action (the Paste step of
+    /// copy/paste metadata, WP10 item 1): `fields` is JSON `{"<key>": "<value>", ...}`, the fields
+    /// left checked in the Paste dialog. `create_keyword_selection`'s own cross-product shape (one
+    /// command a photo a field), through `submit_batch` so a large paste becomes a background job
+    /// the same way a large plain batch already does (D-127).
+    pub fn paste_metadata_selection(mut self: Pin<&mut Self>, fields: &QString) -> i32 {
+        let Some(session) = session::current() else {
+            return 0;
+        };
+        let Ok(serde_json::Value::Object(map)) = serde_json::from_str(&fields.to_string()) else {
+            return 0;
+        };
+        let fields: Vec<(auroraw_engine::MetadataField, String)> = map
+            .into_iter()
+            .filter_map(|(key, value)| {
+                let field = auroraw_engine::MetadataField::parse(&key)?;
+                let value = value.as_str()?.to_string();
+                Some((field, value))
+            })
+            .collect();
+        let rows = self.selected_rows();
+        if rows.is_empty() || fields.is_empty() {
+            return 0;
+        }
+        let mut commands: Vec<Command> = self
+            .photos_of(&rows)
+            .into_iter()
+            .flat_map(|photo_id| {
+                fields
+                    .iter()
+                    .map(move |(field, value)| Command::SetMetadataField {
+                        photo_id,
+                        field: field.clone(),
+                        value: value.clone(),
+                    })
+            })
+            .collect();
+        let command = if commands.len() == 1 {
+            commands.remove(0)
+        } else {
+            Command::Batch { commands }
+        };
         self.as_mut().submit_batch(&session, command);
         rows.len() as i32
     }

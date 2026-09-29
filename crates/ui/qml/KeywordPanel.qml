@@ -482,6 +482,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             photoGrid: panel.photoGrid
+            library: panel.library
         }
 
         InfoPanel {
