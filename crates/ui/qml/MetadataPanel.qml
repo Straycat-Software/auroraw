@@ -51,72 +51,77 @@ Item {
         }
     }
 
-    ListView {
-        id: list
+    AppListFrame {
         anchors.fill: parent
-        clip: true
-        spacing: 6
-        model: panel.fields
-        ScrollBar.vertical: ScrollBar {}
 
-        delegate: ColumnLayout {
-            id: row
-            required property var modelData
-            required property int index
-            width: ListView.view.width
-            spacing: 2
+        ListView {
+            id: list
+            anchors.fill: parent
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            spacing: 6
+            model: panel.fields
+            ScrollBar.vertical: AppScrollBar {}
 
-            property bool mixed: false
-            property alias singleLine: singleLine
-            property alias multiLine: multiLine
+            delegate: ColumnLayout {
+                id: row
+                required property var modelData
+                required property int index
+                width: ListView.view.width
+                spacing: 2
 
-            // What the selection agrees on, or "" while it does not (the field then shows the
-            // "Multiple values" placeholder instead).
-            function load() {
-                const answer = JSON.parse(panel.photoGrid.metadataOf(row.modelData.key))
-                row.mixed = answer.mixed
-                const text = answer.mixed ? "" : answer.value
-                singleLine.text = text
-                multiLine.text = text
-            }
+                property bool mixed: false
+                property alias singleLine: singleLine
+                property alias multiLine: multiLine
 
-            // Applies `value` to the whole selection, then reloads (a value the engine normalises,
-            // such as a list field's blank lines dropped, is shown as it was actually kept).
-            function apply(value) {
-                panel.photoGrid.setMetadataSelection(row.modelData.key, value)
-                row.load()
-            }
+                // What the selection agrees on, or "" while it does not (the field then shows the
+                // "Multiple values" placeholder instead).
+                function load() {
+                    const answer = JSON.parse(panel.photoGrid.metadataOf(row.modelData.key))
+                    row.mixed = answer.mixed
+                    const text = answer.mixed ? "" : answer.value
+                    singleLine.text = text
+                    multiLine.text = text
+                }
 
-            Component.onCompleted: row.load()
+                // Applies `value` to the whole selection, then reloads (a value the engine normalises,
+                // such as a list field's blank lines dropped, is shown as it was actually kept).
+                function apply(value) {
+                    panel.photoGrid.setMetadataSelection(row.modelData.key, value)
+                    row.load()
+                }
 
-            Label {
-                text: row.modelData.label
-                color: Theme.quiet
-            }
-            TextField {
-                id: singleLine
-                visible: !row.modelData.multiline
-                Layout.fillWidth: true
-                placeholderText: row.mixed ? qsTr("Multiple values") : ""
-                onActiveFocusChanged: if (!activeFocus) row.apply(text)
-                Keys.onReturnPressed: row.apply(text)
-                Keys.onEnterPressed: row.apply(text)
-            }
-            TextArea {
-                id: multiLine
-                visible: row.modelData.multiline
-                Layout.fillWidth: true
-                Layout.preferredHeight: 52
-                wrapMode: TextArea.Wrap
-                placeholderText: row.mixed ? qsTr("Multiple values") : ""
-                onActiveFocusChanged: if (!activeFocus) row.apply(text)
-                // Unlike TextField, Fusion gives TextArea no background of its own: without one it read
-                // as bare text loose on the panel, not as a field (Patrick's own review caught this).
-                background: Rectangle {
-                    color: palette.base
-                    radius: Theme.radiusControl
-                    border.width: 1
-                    border.color: multiLine.activeFocus ? palette.highlight : palette.mid
+                Component.onCompleted: row.load()
+
+                Label {
+                    text: row.modelData.label
+                    color: Theme.quiet
+                }
+                TextField {
+                    id: singleLine
+                    visible: !row.modelData.multiline
+                    Layout.fillWidth: true
+                    placeholderText: row.mixed ? qsTr("Multiple values") : ""
+                    onActiveFocusChanged: if (!activeFocus) row.apply(text)
+                    Keys.onReturnPressed: row.apply(text)
+                    Keys.onEnterPressed: row.apply(text)
+                }
+                TextArea {
+                    id: multiLine
+                    visible: row.modelData.multiline
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 52
+                    wrapMode: TextArea.Wrap
+                    placeholderText: row.mixed ? qsTr("Multiple values") : ""
+                    onActiveFocusChanged: if (!activeFocus) row.apply(text)
+                    // Unlike TextField, Fusion gives TextArea no background of its own: without one it read
+                    // as bare text loose on the panel, not as a field (Patrick's own review caught this).
+                    background: Rectangle {
+                        color: palette.base
+                        radius: Theme.radiusControl
+                        border.width: 1
+                        border.color: multiLine.activeFocus ? palette.highlight : palette.mid
+                    }
                 }
             }
         }

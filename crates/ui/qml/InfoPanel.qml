@@ -114,32 +114,37 @@ Item {
         color: Theme.quiet
     }
 
-    ListView {
-        id: list
+    AppListFrame {
         anchors.fill: parent
-        clip: true
-        spacing: 6
         visible: panel.rows.length > 0
-        model: panel.rows
-        ScrollBar.vertical: ScrollBar {}
 
-        delegate: ColumnLayout {
-            id: delegateRoot
-            required property var modelData
-            readonly property string key: modelData.key
-            readonly property string label: modelData.label
-            readonly property string value: modelData.value
-            width: ListView.view.width
-            spacing: 2
+        ListView {
+            id: list
+            anchors.fill: parent
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            spacing: 6
+            model: panel.rows
+            ScrollBar.vertical: AppScrollBar {}
 
-            Label {
-                text: delegateRoot.label
-                color: Theme.quiet
-            }
-            Label {
-                Layout.fillWidth: true
-                text: delegateRoot.value
-                wrapMode: Text.Wrap
+            delegate: ColumnLayout {
+                id: delegateRoot
+                required property var modelData
+                readonly property string key: modelData.key
+                readonly property string label: modelData.label
+                readonly property string value: modelData.value
+                width: ListView.view.width
+                spacing: 2
+
+                Label {
+                    text: delegateRoot.label
+                    color: Theme.quiet
+                }
+                Label {
+                    Layout.fillWidth: true
+                    text: delegateRoot.value
+                    wrapMode: Text.Wrap
+                }
             }
         }
     }

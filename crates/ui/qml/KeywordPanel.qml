@@ -373,119 +373,124 @@ Rectangle {
             Item { Layout.fillWidth: !panel.canAdd && panel.createUnder === "" }
         }
 
-        ListView {
-            id: tree
+        AppListFrame {
             visible: tabs.currentIndex === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            model: panel.keywords
-            ScrollBar.vertical: ScrollBar {}
 
-            delegate: Item {
-                id: row
-                required property int index
-                required property string keywordId
-                required property string name
-                required property int depth
-                required property int photos
-                required property int carried
-                required property bool hasChildren
-                required property bool expanded
-                width: ListView.view.width
-                height: 28
+            ListView {
+                id: tree
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: panel.keywords
+                ScrollBar.vertical: AppScrollBar {}
 
-                // Dropping a keyword here makes it a child of this one (when that is possible).
-                Rectangle {
-                    anchors.fill: parent
-                    visible: rowDrop.containsDrag && rowDrop.allowed
-                    color: palette.highlight
-                    opacity: 0.35
-                    border.color: palette.highlight
-                }
-                DropArea {
-                    id: rowDrop
-                    property bool allowed: false
-                    anchors.fill: parent
-                    keys: ["keyword"]
-                    onEntered: drag => allowed = drag.source.keywordId !== row.keywordId
-                                              && panel.keywords.canMove(drag.source.keywordId, row.keywordId)
-                    onDropped: drop => panel.dropOn(drop.source.keywordId, row.keywordId)
-                }
+                delegate: Item {
+                    id: row
+                    required property int index
+                    required property string keywordId
+                    required property string name
+                    required property int depth
+                    required property int photos
+                    required property int carried
+                    required property bool hasChildren
+                    required property bool expanded
+                    width: ListView.view.width
+                    height: 28
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: row.depth * 14
-                    spacing: 2
-                    Label {
-                        Layout.preferredWidth: 16
-                        horizontalAlignment: Text.AlignHCenter
-                        text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
-                        color: Theme.quiet
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: row.hasChildren
-                            onClicked: panel.keywords.toggleExpanded(row.index)
-                        }
+                    // Dropping a keyword here makes it a child of this one (when that is possible).
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: rowDrop.containsDrag && rowDrop.allowed
+                        color: palette.highlight
+                        opacity: 0.35
+                        border.color: palette.highlight
                     }
-                    CheckBox {
-                        id: check
-                        tristate: true
-                        padding: 0
-                        focusPolicy: Qt.NoFocus
-                        checkState: row.carried === 2 ? Qt.Checked : row.carried === 1 ? Qt.PartiallyChecked : Qt.Unchecked
-                        enabled: panel.photoGrid.selectedCount > 0
-                        Accessible.name: row.name
-                        // The state comes from the selection, not from the click: the click asks for it.
-                        nextCheckState: function () { return checkState }
-                        onClicked: panel.assign(row.keywordId, row.carried !== 2)
+                    DropArea {
+                        id: rowDrop
+                        property bool allowed: false
+                        anchors.fill: parent
+                        keys: ["keyword"]
+                        onEntered: drag => allowed = drag.source.keywordId !== row.keywordId
+                                                  && panel.keywords.canMove(drag.source.keywordId, row.keywordId)
+                        onDropped: drop => panel.dropOn(drop.source.keywordId, row.keywordId)
                     }
-                    Label {
-                        Layout.fillWidth: true
-                        text: row.name
-                        elide: Text.ElideRight
-                        MouseArea {
-                            id: nameArea
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            drag.target: ghost
-                            drag.threshold: 8
-                            onPressed: mouse => {
-                                if (mouse.button !== Qt.LeftButton)
-                                    return
-                                const at = mapToItem(panel, mouse.x, mouse.y)
-                                ghost.x = at.x - ghost.Drag.hotSpot.x
-                                ghost.y = at.y - ghost.Drag.hotSpot.y
-                                ghost.keywordId = row.keywordId
-                                ghost.label = row.name
-                            }
-                            drag.onActiveChanged: {
-                                if (drag.active) {
-                                    ghost.visible = true
-                                    ghost.Drag.active = true
-                                    panel.dragging = true
-                                } else {
-                                    // (Not here: the drop can move the keyword and the list then rebuilds its rows,
-                                    // this one included.)
-                                    panel.endDrag()
-                                }
-                            }
-                            onClicked: mouse => {
-                                panel.createUnder = row.keywordId
-                                panel.createUnderName = row.name
-                                if (mouse.button === Qt.RightButton) {
-                                    menu.row = row.index
-                                    menu.keywordId = row.keywordId
-                                    menu.keywordName = row.name
-                                    menu.popup()
-                                }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: row.depth * 14
+                        spacing: 2
+                        Label {
+                            Layout.preferredWidth: 16
+                            horizontalAlignment: Text.AlignHCenter
+                            text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
+                            color: Theme.quiet
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: row.hasChildren
+                                onClicked: panel.keywords.toggleExpanded(row.index)
                             }
                         }
-                    }
-                    Label {
-                        text: row.photos
-                        color: Theme.quiet
-                        Layout.rightMargin: 6
+                        CheckBox {
+                            id: check
+                            tristate: true
+                            padding: 0
+                            focusPolicy: Qt.NoFocus
+                            checkState: row.carried === 2 ? Qt.Checked : row.carried === 1 ? Qt.PartiallyChecked : Qt.Unchecked
+                            enabled: panel.photoGrid.selectedCount > 0
+                            Accessible.name: row.name
+                            // The state comes from the selection, not from the click: the click asks for it.
+                            nextCheckState: function () { return checkState }
+                            onClicked: panel.assign(row.keywordId, row.carried !== 2)
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            text: row.name
+                            elide: Text.ElideRight
+                            MouseArea {
+                                id: nameArea
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                drag.target: ghost
+                                drag.threshold: 8
+                                onPressed: mouse => {
+                                    if (mouse.button !== Qt.LeftButton)
+                                        return
+                                    const at = mapToItem(panel, mouse.x, mouse.y)
+                                    ghost.x = at.x - ghost.Drag.hotSpot.x
+                                    ghost.y = at.y - ghost.Drag.hotSpot.y
+                                    ghost.keywordId = row.keywordId
+                                    ghost.label = row.name
+                                }
+                                drag.onActiveChanged: {
+                                    if (drag.active) {
+                                        ghost.visible = true
+                                        ghost.Drag.active = true
+                                        panel.dragging = true
+                                    } else {
+                                        // (Not here: the drop can move the keyword and the list then rebuilds its rows,
+                                        // this one included.)
+                                        panel.endDrag()
+                                    }
+                                }
+                                onClicked: mouse => {
+                                    panel.createUnder = row.keywordId
+                                    panel.createUnderName = row.name
+                                    if (mouse.button === Qt.RightButton) {
+                                        menu.row = row.index
+                                        menu.keywordId = row.keywordId
+                                        menu.keywordName = row.name
+                                        menu.popup()
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            text: row.photos
+                            color: Theme.quiet
+                            Layout.rightMargin: 6
+                        }
                     }
                 }
             }

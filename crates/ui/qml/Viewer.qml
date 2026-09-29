@@ -581,6 +581,7 @@ FocusScope {
         visible: view.showFilmstrip
         orientation: ListView.Horizontal
         clip: true
+        boundsBehavior: Flickable.StopAtBounds
         spacing: 4
         model: view.photos
         currentIndex: view.row

@@ -153,10 +153,11 @@ Rectangle {
             Layout.preferredHeight: Math.max(1, Math.ceil(panel.count / 2)) * cellHeight
             Layout.maximumHeight: parent.height - 140
             clip: true
+            boundsBehavior: Flickable.StopAtBounds
             model: panel.similar
             cellWidth: Math.floor(width / 2)
             cellHeight: cellWidth * 3 / 4 + 4
-            ScrollBar.vertical: ScrollBar {}
+            ScrollBar.vertical: AppScrollBar {}
             delegate: Item {
                 id: entry
                 required property var modelData

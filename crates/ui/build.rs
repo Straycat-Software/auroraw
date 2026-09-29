@@ -17,6 +17,8 @@ fn main() {
         QmlFile::from("qml/AppShadow.qml"),
         QmlFile::from("qml/AppTabButton.qml"),
         QmlFile::from("qml/AppSpinBox.qml"),
+        QmlFile::from("qml/AppListFrame.qml"),
+        QmlFile::from("qml/AppScrollBar.qml"),
         QmlFile::from("qml/AppDialog.qml"),
         QmlFile::from("qml/AppDialogButtonBox.qml"),
         QmlFile::from("qml/AppWindow.qml"),

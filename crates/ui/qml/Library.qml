@@ -702,6 +702,7 @@ FocusScope {
                 Layout.fillHeight: true
                 clip: true
                 focus: true
+                boundsBehavior: Flickable.StopAtBounds
                 model: root.photoGrid
                 cellWidth: root.thumbW + 4
                 cellHeight: root.thumbH + 4
@@ -712,7 +713,7 @@ FocusScope {
                 readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
                 readonly property int visibleRows: Math.max(1, Math.floor(height / cellHeight))
 
-                ScrollBar.vertical: ScrollBar {}
+                ScrollBar.vertical: AppScrollBar {}
 
                 // The window was resized and the rows re-flowed: the cursor stays in view (once the
                 // view has laid its cells out again).

@@ -67,10 +67,22 @@ AppDialog {
         }
         RowLayout {
             spacing: 12
+            Layout.fillWidth: true
+            // D-128 (Patrick's own review, "Settings does not resize when the language changes"):
+            // this row negotiates a width that fits `contentItem` correctly on its first layout
+            // pass, but the spin box's own implicit width settles a moment later (its font metrics
+            // are not final on the very first pass) and the row then grows to match, without the
+            // outer ColumnLayout reclaiming it back down — nothing here re-runs that first
+            // negotiation. `Layout.maximumWidth`, bound straight to the column, is a hard ceiling
+            // instead: unlike `Layout.minimumWidth` (which only sets a floor for shrinking, and
+            // turned out not to be what let this row grow past it), the layout can never place this
+            // row wider than its own column, whatever any child settles on afterwards.
+            Layout.maximumWidth: parent.width
             Label {
                 text: qsTr("Photos of one camera at most this many seconds apart form a series:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
             }
             AppSpinBox {
                 id: gapBox
@@ -97,10 +109,13 @@ AppDialog {
         }
         RowLayout {
             spacing: 12
+            Layout.fillWidth: true
+            Layout.maximumWidth: parent.width
             Label {
                 text: qsTr("Photos are similar when at most this many of the 64 bits of their pictures' fingerprints differ:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
             }
             AppSpinBox {
                 id: similarDistanceBox
@@ -114,10 +129,13 @@ AppDialog {
         }
         RowLayout {
             spacing: 12
+            Layout.fillWidth: true
+            Layout.maximumWidth: parent.width
             Label {
                 text: qsTr("...and they were taken at most this many minutes apart:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
+                Layout.minimumWidth: 0
             }
             AppSpinBox {
                 id: similarMinutesBox
