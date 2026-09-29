@@ -514,3 +514,43 @@ mod windows_sharing {
         );
     }
 }
+
+#[test]
+fn a_file_from_outside_is_kept_recoverably_under_removed_and_never_leaves_its_place() {
+    let (_dir, ws) = new_workspace();
+    let relative = std::path::Path::new("external-xmp")
+        .join("source")
+        .join("d/a.xmp");
+    let first = ws.keep_recoverably(&relative, b"one").unwrap();
+    let second = ws.keep_recoverably(&relative, b"two").unwrap();
+    assert_ne!(
+        first, second,
+        "the same name in the same second is another file"
+    );
+    assert_eq!(fs::read(&first).unwrap(), b"one");
+    assert_eq!(fs::read(&second).unwrap(), b"two");
+    assert!(first.starts_with(ws.root().join("removed").join("external-xmp")));
+    assert!(matches!(
+        ws.keep_recoverably(std::path::Path::new("../escape.xmp"), b"x"),
+        Err(WorkspaceError::Outside(_))
+    ));
+}
+
+#[test]
+fn a_file_written_beside_its_target_replaces_it_whole_and_leaves_no_temporary_file() {
+    let dir = auroraw_testkit::temp_dir();
+    let target = dir.path().join("a.xmp");
+    auroraw_workspace::write_beside(&target, b"first").unwrap();
+    auroraw_workspace::write_beside(&target, b"second and longer").unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"second and longer");
+    let names: Vec<String> = fs::read_dir(dir.path())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["a.xmp"]);
+    // A folder that does not exist is an error here, not created.
+    let missing = dir.path().join("nope/b.xmp");
+    assert!(auroraw_workspace::write_beside(&missing, b"x").is_err());
+    assert!(!dir.path().join("nope").exists());
+}

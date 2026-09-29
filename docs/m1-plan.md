@@ -779,7 +779,7 @@ The IPTC and XMP fields (§6 item 8), editing one photo and batches with undo, c
 of metadata (settled 2026-09-29, D-128), **keyword vocabulary** (hierarchy, synonyms, "do not export" flag) with the flat and
 hierarchical forms written and read, collections and **smart collections**, external XMP change
 detection and its confirmation (D-047, §6 item 9; settled 2026-09-29, D-133 and D-134), **XMP export to source folders** (D-024,
-opt-in), offline **place names** and the place filter. *Stretch*: importing a vocabulary from
+opt-in; the files written and merged, settled 2026-09-29, D-135), offline **place names** and the place filter. *Stretch*: importing a vocabulary from
 another application.
 
 **Carried over from D-099, settled 2026-09-28 (D-126):** sidecars of *existing* photos used to be edited by

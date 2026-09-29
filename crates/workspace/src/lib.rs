@@ -22,3 +22,4 @@ pub use error::WorkspaceError;
 pub use layout::LAYOUT_VERSION;
 pub use scan::{Entry, FileStat, Foreign, ForeignReason, Scan};
 pub use workspace::{Access, RemovedPhoto, Workspace, WriteOutcome};
+pub use write::write_beside;

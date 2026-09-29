@@ -438,6 +438,18 @@ pub enum Command {
         /// The photos.
         photos: Vec<PhotoId>,
     },
+    /// Writes the XMP files other applications read beside the originals (spec §5.7, D-024): one per photo
+    /// of the scope, merged into a file that already exists (only what Auroraw owns is rewritten; develop
+    /// settings and the rest stay) or created. On explicit request only (D-066). A background job that
+    /// reports [`crate::Outcome::XmpExportStarted`] at once and [`crate::Event::XmpExportFinished`] at the
+    /// end. A file another application changed since Auroraw last saw it is held back and put to the
+    /// review of external changes; nothing about a photo changes, so nothing is added to the history.
+    ExportXmp {
+        /// Which photos.
+        scope: crate::XmpScope,
+        /// How.
+        options: crate::XmpExportOptions,
+    },
     /// Cancels a background job (a keyword rename's sidecar refresh) started earlier.
     CancelJob {
         /// The job to cancel.

@@ -82,3 +82,27 @@ pub(crate) fn write_atomic(
     }
     result
 }
+
+/// Writes `bytes` to `target` atomically with the temporary file **beside** it (`<name>.part`), for a
+/// file that is not in the workspace: the XMP export writes into a source folder, which may be on
+/// another volume than the workspace's `.auroraw/tmp/`, where a rename would not be atomic (design
+/// note 003 §8.1 item 9). A crash leaves the old file or the new one. The folder must exist: an
+/// export never creates folders in someone's source.
+pub fn write_beside(target: &Path, bytes: &[u8]) -> io::Result<()> {
+    if let Some(parent) = target.parent()
+        && !parent.as_os_str().is_empty()
+        && !parent.is_dir()
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "the folder does not exist",
+        ));
+    }
+    let name = target
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "no file name"))?;
+    let mut tmp_name = name.to_os_string();
+    tmp_name.push(".part");
+    let tmp = target.with_file_name(tmp_name);
+    write_atomic(target, &tmp, bytes, true, Interrupt::Never)
+}

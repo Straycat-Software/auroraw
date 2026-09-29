@@ -285,7 +285,7 @@ over. Three boundaries have their own mapping, made by the code that crosses the
 | Boundary | What is done |
 | --- | --- |
 | **Reading foreign XMP** at import (Lightroom, darktable, digiKam, ExifTool; never modified) | Read: `xmp:Rating` (-1 is rejected), `xmp:Label`, `dc:subject`, `lr:hierarchicalSubject`, `digiKam:TagsList`, the title, caption, creator, rights and IPTC properties above. Ignored (and not copied): develop settings of other software, which are not portable (spec §5.8). Ratings and keywords are copied into the photo sidecar, and keywords are matched to the vocabulary **by path** (case aside, as the vocabulary itself compares; a path it lacks is created). In practice (D-133): the rating is one axis, `-1` for rejected (`xmp:Rating` `-1`, or `aur:Flag` rejected) to `5`, a new photo arriving rejected with no stars; the keywords are the union of `lr:hierarchicalSubject`, `digiKam:TagsList` (whose `/` is the hierarchy) and the `dc:subject` names that are not a level of any path; the file tied to a photo is `photo.ARW.xmp`, else `photo.xmp` when only one photo of the folder has that stem. |
-| **XMP export to the source folders** (D-024, D-028) | A **derived** file built from the photo sidecar: the effective EXIF values in the standard properties (overlays applied), `-1` for rejected if chosen, the **do-not-export keywords removed**, and **no `aur:Files`, locations or identifiers of Auroraw** other than the marker that lets Auroraw recognise its own export (D-047) and the few properties that make the round trip exact: `aur:Flag` and, when `-1` is written, `aur:Stars`. |
+| **XMP export to the source folders** (D-024, D-028) | A **derived** file built from the photo sidecar: the effective EXIF values in the standard properties (overlays applied), `-1` for rejected if chosen, the **do-not-export keywords removed**, and **no `aur:Files`, locations or identifiers of Auroraw** other than the marker that lets Auroraw recognise its own export (D-047) and the few properties that make the round trip exact: `aur:Flag` and, when `-1` is written, `aur:Stars`. In practice (D-135): the marker is `aur:Export="1"` (the version of the convention); an existing file is rewritten only in the properties Auroraw owns, and a `digiKam:TagsList` it holds is rewritten with the same keywords; capture data is written for a new file, with the overlay applied, and touched in an existing one only where an overlay corrected it; a keyword under a do-not-export ancestor is dropped too, since a path names its ancestors. |
 | **Metadata in exported images** (D-046) | The effective metadata of the exported version according to the recipe: by default everything except the location and the camera's serial number, and never the do-not-export keywords, paths or workspace identifiers. |
 
 ### 8.1 When an XMP file already exists at the destination [proposed]
@@ -321,18 +321,20 @@ since Auroraw last looked.
    from or wrote to each such file, with the file's size and modification time. It describes this
    machine's view of files outside the workspace. If it is lost (a rebuild, another machine), the
    export has no base and **falls back to two-way**: every field that differs is treated as a
-   conflict and asked about, once.
+   conflict and asked about, once. In practice (D-135): the base is taken as empty, so what the file has and Auroraw lacks is offered as the file's and a field both have differently is a conflict, and the file is held back for the review of D-134 (nothing is overwritten).
 5. **The options in the export dialog:**
    - **Merge** (default), as above;
    - **Replace**, after a confirmation: the existing file is **moved to the workspace's `removed/`
      folder**, never deleted (architecture §5.3), and a new derived file is written;
    - **Skip files that already exist**, for someone who wants only to add the missing ones.
+
+   In practice (D-135): Replace keeps the old file under `removed/external-xmp/<source>/` before writing, and writes nothing if it cannot be kept. A file the three-way check finds changed by the other application is **held back** (not written) and recorded as pending exactly as a scan records it, so the banner and the review window settle it; exporting again then writes.
 6. **No feedback loop.** After writing, Auroraw records the new size and modification time as the base,
    so its own write is not reported as an external change (D-047). A file that carries Auroraw's
    marker and whose content matches the base is recognised as its own export.
 7. **Which file is meant** follows D-028: `photo.xmp` by default, or `photo.ARW.xmp`, as the photographer
    chose. Two photos that would write the same name (a RAW and a JPEG sharing a stem, both with
-   `photo.xmp`) are reported before anything is written, and the pair's RAW takes the name (D-032).
+   `photo.xmp`) are reported before anything is written, and the pair's RAW takes the name (D-032). In practice (D-135): a file the photo already owns (§8, D-133's rules) is the destination whatever the naming, so a folder never holds two `.xmp` for one photo; a RAW and its JPEG are one photo, so the clash only arises between two originals sharing a stem (`A.png`, `A.tif`), which both get the full name (`A.png.xmp`) and are counted in the report.
 8. **A file that cannot be parsed** is **never overwritten or merged**: it is reported and skipped,
    unless the photographer chooses Replace, which keeps the old one in `removed/`.
 9. **Writes are atomic.** The temporary file is created **beside the destination** and renamed, since the
@@ -367,7 +369,7 @@ since Auroraw last looked.
 | --- | --- |
 | The hash and the fingerprint in `aur:Files`, relinking, "original changed" | Note 004 |
 | The development chain, the history, the snapshots | M2 |
-| The interface of the three-way merge and of conflicts (§8.1), and the same merge for external changes noticed outside an export (D-047) | WP10, done for external changes noticed at a scan (D-134); the export's own use of the same merge comes with the export |
+| The interface of the three-way merge and of conflicts (§8.1), and the same merge for external changes noticed outside an export (D-047) | WP10, done for external changes noticed at a scan (D-134); the export uses the same merge and the same review (D-135) |
 | Whether a foreign tool that rewrites a workspace sidecar (it should not) is detected | WP10 |
 | The exact property order and the full schema page | WP1 |
 

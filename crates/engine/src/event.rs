@@ -90,6 +90,18 @@ pub enum Event {
         /// was cancelled first. Always `true` for a branch small enough to run synchronously.
         finished: bool,
     },
+    /// An XMP export (`Command::ExportXmp`, D-024) ended: what happened to each photo. `cancelled` is
+    /// whether it was stopped by `Command::CancelJob` before the last photo (what was written stays
+    /// written, and the report counts only the photos it got to). Followed by `JobFinished` or
+    /// `JobCancelled`; when files were held back, [`Event::ExternalChanges`] comes first.
+    XmpExportFinished {
+        /// The job.
+        job: JobId,
+        /// What happened.
+        report: crate::XmpExportReport,
+        /// Whether it stopped early.
+        cancelled: bool,
+    },
     /// A background job made progress.
     JobProgress {
         /// The job.
