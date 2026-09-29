@@ -45,6 +45,7 @@ pub mod qobject {
         #[qproperty(i32, mark_serial, cxx_name = "markSerial")]
         #[qproperty(i32, selection_series, cxx_name = "selectionSeries")]
         #[qproperty(i32, series_filter, cxx_name = "seriesFilter")]
+        #[qproperty(QString, batch_job, cxx_name = "batchJob")]
         type PhotoGrid = super::PhotoGridRust;
 
         /// Loads the open workspace's photos, newest first, those rated `minRating` or more (the
@@ -439,6 +440,12 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setRating"]
         fn set_rating(self: Pin<&mut PhotoGrid>, row: i32, rating: i32);
+
+        /// Cancels the background batch job `batchJob` names, if it is still running (a no-op
+        /// otherwise: it may already have finished) — D-126 volet B.
+        #[qinvokable]
+        #[cxx_name = "cancelBatch"]
+        fn cancel_batch(self: &PhotoGrid);
     }
 
     unsafe extern "RustQt" {
@@ -631,9 +638,17 @@ pub mod qobject {
         #[cxx_name = "moveKeyword"]
         fn move_keyword(self: Pin<&mut KeywordList>, id: &QString, parent: &QString) -> QString;
 
-        /// Deletes `id` and its branch; empty, or why not.
+        /// Deletes `id` and its branch: empty when it is already done (the branch's own `branch()` said
+        /// how much of it), `job:<id>` when it started as a background sweep instead (D-126 volet B, a
+        /// branch too large to do at once) — watch `Bus.jobProgress`/`keywordDeleted` for that `id` and
+        /// call `remove` again to resume it if it was cancelled — or why it refused either way.
         #[qinvokable]
         fn remove(self: Pin<&mut KeywordList>, id: &QString) -> QString;
+
+        /// Cancels the background sweep the last `remove()` started, if it is still running.
+        #[qinvokable]
+        #[cxx_name = "cancelDelete"]
+        fn cancel_delete(self: &KeywordList);
     }
 
     unsafe extern "RustQt" {
@@ -905,7 +920,7 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use auroraw_catalogue::{Cursor, Filter, FlagFilter};
-use auroraw_engine::{Command, Engine, KnownWorkspace};
+use auroraw_engine::{Command, Engine, JobId, KnownWorkspace, Outcome};
 use auroraw_types::{PhotoId, SeriesId};
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::{
@@ -1000,6 +1015,12 @@ pub struct PhotoGridRust {
     rubber_base: Option<std::collections::HashSet<PhotoId>>,
     /// The photos selected, by identifier, and where ranges start (D-097).
     selection: Selection,
+    /// A `Command::Batch` past `batch_job::BACKGROUND_THRESHOLD` items, started by one of the selection
+    /// edits below instead of applying at once (D-126 volet B): what `cancelBatch` cancels. `batch_job`
+    /// (the qproperty) carries the same id as a string, empty when none is running, for the status
+    /// strip and the metadata panel to watch.
+    batch_job_id: Option<JobId>,
+    batch_job: QString,
 }
 
 /// How long an unconfirmed rating is trusted over the catalogue (a command the engine refused).
@@ -1803,6 +1824,35 @@ impl qobject::PhotoGrid {
             .collect()
     }
 
+    /// Submits `command` (a plain edit, or a `Batch` of them): waits only long enough to learn whether
+    /// it applied at once or, past `batch_job::BACKGROUND_THRESHOLD` items, started as a background job
+    /// instead (D-126 volet B) — `Outcome::BatchStarted` comes back once the job is merely spawned, not
+    /// once it finishes, so this is still effectively fire-and-forget for the interface. Sets `batchJob`
+    /// to the job's id when one started, so the status strip and the metadata panel can watch it.
+    fn submit_batch(mut self: Pin<&mut Self>, session: &crate::session::Session, command: Command) {
+        match session.engine.submit_and_wait(command) {
+            Ok(Outcome::BatchStarted { job }) => {
+                self.as_mut().rust_mut().batch_job_id = Some(job);
+                self.as_mut()
+                    .set_batch_job(QString::from(job.to_string().as_str()));
+            }
+            // Applied at once (or refused): nothing left running under this selection's own name. (A
+            // previous, unrelated batch that is still genuinely running loses its progress display here
+            // too, a rare case of two batches overlapping — it still runs to completion regardless.)
+            _ => {
+                self.as_mut().rust_mut().batch_job_id = None;
+                self.as_mut().set_batch_job(QString::default());
+            }
+        }
+    }
+
+    /// Cancels the background batch job `batchJob` names, if it is still running.
+    pub fn cancel_batch(&self) {
+        if let (Some(session), Some(job_id)) = (session::current(), self.batch_job_id) {
+            let _ = session.engine.submit(Command::CancelJob { job_id });
+        }
+    }
+
     pub fn flag_selection(mut self: Pin<&mut Self>, kind: &QString) -> i32 {
         use auroraw_engine::Flag;
         let Some(session) = session::current() else {
@@ -1835,7 +1885,7 @@ impl qobject::PhotoGrid {
         } else {
             Command::Batch { commands }
         };
-        let _ = session.engine.submit(command);
+        self.as_mut().submit_batch(&session, command);
         // The cells show it at once (a rejected one stays, dimmed, until the list is read again).
         for row in &rows {
             self.as_mut().rust_mut().items[*row].flag = new;
@@ -1898,7 +1948,7 @@ impl qobject::PhotoGrid {
         } else {
             Command::Batch { commands }
         };
-        let _ = session.engine.submit(command);
+        self.as_mut().submit_batch(&session, command);
         for row in &rows {
             self.as_mut().rust_mut().items[*row].label = new;
             // (A collapsed series' row stands for all its members.)
@@ -1948,7 +1998,7 @@ impl qobject::PhotoGrid {
         QString::from(serde_json::Value::Object(map).to_string().as_str())
     }
 
-    pub fn keyword_selection(self: Pin<&mut Self>, keyword: &QString, add: bool) -> i32 {
+    pub fn keyword_selection(mut self: Pin<&mut Self>, keyword: &QString, add: bool) -> i32 {
         let Some(session) = session::current() else {
             return 0;
         };
@@ -1981,7 +2031,7 @@ impl qobject::PhotoGrid {
         } else {
             Command::Batch { commands }
         };
-        let _ = session.engine.submit(command);
+        self.as_mut().submit_batch(&session, command);
         rows.len() as i32
     }
 
@@ -2111,7 +2161,11 @@ impl qobject::PhotoGrid {
         )
     }
 
-    pub fn set_metadata_selection(self: Pin<&mut Self>, field: &QString, value: &QString) -> i32 {
+    pub fn set_metadata_selection(
+        mut self: Pin<&mut Self>,
+        field: &QString,
+        value: &QString,
+    ) -> i32 {
         let Some(session) = session::current() else {
             return 0;
         };
@@ -2140,8 +2194,11 @@ impl qobject::PhotoGrid {
         // Waited for, unlike a rating or a label: the grid mirrors those locally at once (its cells show
         // them), so a fire-and-forget submit is enough; the metadata panel has no cell of its own to
         // mirror into and reads the field straight back afterwards (`metadataOf`) to show exactly what
-        // was kept - a list field's blank lines dropped, say - which needs the write to have landed.
-        let _ = session.engine.submit_and_wait(command);
+        // was kept - a list field's blank lines dropped, say - which needs the write to have landed. Past
+        // `BACKGROUND_THRESHOLD` items this only waits for the job to start, not to finish (D-126 volet
+        // B): `batchJob` is set for the panel to watch instead, and it defers its own read-back to when
+        // the job actually ends (`Bus.jobFinished`/`jobCancelled`).
+        self.as_mut().submit_batch(&session, command);
         rows.len() as i32
     }
 
@@ -2221,7 +2278,7 @@ impl qobject::PhotoGrid {
         } else {
             Command::Batch { commands }
         };
-        let _ = session.engine.submit(command);
+        self.as_mut().submit_batch(&session, command);
         // The cells show the new rating at once; the engine's own events confirm it.
         for row in &rows {
             self.as_mut().rust_mut().items[*row].rating = rating;

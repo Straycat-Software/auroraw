@@ -229,8 +229,13 @@ pub enum Command {
         value: String,
     },
     /// Applies several edits (`SetRating`, `SetFlag`, `SetLabel`, `AddKeyword`, `RemoveKeyword`, `CreateKeyword`) as **one action**:
-    /// one step of the history, and all or nothing (a failing edit takes back the ones before it). How a
-    /// batch of ratings, a series resolved, or a paste of metadata onto many photos is undone in one go.
+    /// one step of the history. How a batch of ratings, a series resolved, or a paste of metadata onto many
+    /// photos is undone in one go. Up to [`crate::batch_job::BACKGROUND_THRESHOLD`] items, this is all or
+    /// nothing (a failing edit takes back the ones before it) and blocks the coordinator until it is done;
+    /// past it, it runs as a cancellable background job instead (D-126 volet B, `Outcome::BatchStarted`):
+    /// no rollback (a cancelled batch keeps whatever prefix it already applied, as its own, possibly
+    /// partial, undoable step), since holding thousands of edits back for an all-or-nothing guarantee
+    /// would defeat the point of not blocking on them.
     Batch {
         /// The edits, in order.
         commands: Vec<Command>,
@@ -253,6 +258,16 @@ pub enum Command {
         photo_id: PhotoId,
         /// The keyword.
         keyword_id: KeywordId,
+    },
+    /// Removes several keywords from one photo in a single change (D-126 volet B): what a large
+    /// `DeleteKeyword` sweep sends per photo instead of one `RemoveKeyword` per keyword of the
+    /// branch, so the whole branch's departure from one photo is one `Change::Keywords`, not
+    /// several. Not built by a person's own gesture; the coordinator's own background job uses it.
+    RemoveKeywords {
+        /// The photo.
+        photo_id: PhotoId,
+        /// The keywords.
+        keyword_ids: Vec<KeywordId>,
     },
     /// Adds a keyword to the vocabulary. An action of the person's (D-099): it is a step of the history,
     /// and it can be part of a [`Command::Batch`] with the keyword's first assignments (which name it by
@@ -284,10 +299,16 @@ pub enum Command {
         /// Its new parent, or `None` for the top level.
         new_parent: Option<KeywordId>,
     },
-    /// Deletes a keyword and its whole branch (a step of the history, and an undo brings all of it back):
-    /// the keywords leave the vocabulary, the catalogue and every photo that carried one. Done on the
-    /// coordinator, like a batch of ratings; [`crate::Outcome::KeywordsChanged`] says how many keywords
-    /// and photos it touched.
+    /// Deletes a keyword and its whole branch: the keywords leave the vocabulary, the catalogue and every
+    /// photo that carried one, the photos first (so that a rebuild never finds a sidecar naming a keyword
+    /// that is gone). Up to [`crate::batch_job::BACKGROUND_THRESHOLD`] photos, this is one step of the
+    /// history, done on the coordinator like a batch of ratings, all or nothing; an undo brings all of it
+    /// back; [`crate::Outcome::KeywordsChanged`] says how many keywords and photos it touched. Past that
+    /// many, it runs as a cancellable background job instead (D-126 volet B, `Outcome::DeleteKeywordStarted`):
+    /// the keyword stays in the vocabulary until every carrying photo has swept it, so a cancelled sweep
+    /// never leaves a dangling reference; the history entry (a possibly partial one, if cancelled) is only
+    /// recorded once the sweep stops, and resubmitting the same keyword resumes it, exactly like
+    /// `Command::RemoveSource` finishing what an earlier run left.
     DeleteKeyword {
         /// The keyword at the top of the branch.
         keyword_id: KeywordId,

@@ -69,6 +69,10 @@ Item {
             property bool mixed: false
             property alias singleLine: singleLine
             property alias multiLine: multiLine
+            // A large selection's edit runs as a background job instead of landing at once (D-126
+            // volet B): the job that `apply()` started, while it is still applying, so `load()` is
+            // deferred to when it actually ends rather than reading back a stale, pre-edit value.
+            property string pendingJob: ""
 
             // What the selection agrees on, or "" while it does not (the field then shows the
             // "Multiple values" placeholder instead).
@@ -80,11 +84,33 @@ Item {
                 multiLine.text = text
             }
 
-            // Applies `value` to the whole selection, then reloads (a value the engine normalises,
-            // such as a list field's blank lines dropped, is shown as it was actually kept).
+            // Applies `value` to the whole selection, then reloads once it has actually landed (a value
+            // the engine normalises, such as a list field's blank lines dropped, is shown as it was
+            // actually kept) — at once for a selection small enough to apply synchronously, or once the
+            // background job `setMetadataSelection` started for a larger one reports its end.
             function apply(value) {
                 panel.photoGrid.setMetadataSelection(row.modelData.key, value)
-                row.load()
+                const job = panel.photoGrid.batchJob
+                if (job === "")
+                    row.load()
+                else
+                    row.pendingJob = job
+            }
+
+            Connections {
+                target: Bus
+                function onJobFinished(job) {
+                    if (job === row.pendingJob) {
+                        row.pendingJob = ""
+                        row.load()
+                    }
+                }
+                function onJobCancelled(job) {
+                    if (job === row.pendingJob) {
+                        row.pendingJob = ""
+                        row.load()
+                    }
+                }
             }
 
             Component.onCompleted: row.load()

@@ -1428,137 +1428,137 @@
 <context>
     <name>InfoPanel</name>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="39"/>
+        <location filename="../qml/InfoPanel.qml" line="41"/>
         <source>%1 s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="40"/>
+        <location filename="../qml/InfoPanel.qml" line="42"/>
         <source>1/%1 s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="51"/>
+        <location filename="../qml/InfoPanel.qml" line="53"/>
         <source>ISO %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="55"/>
+        <location filename="../qml/InfoPanel.qml" line="57"/>
         <source>%1 mm</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="60"/>
+        <location filename="../qml/InfoPanel.qml" line="62"/>
         <source>Normal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="61"/>
+        <location filename="../qml/InfoPanel.qml" line="63"/>
         <source>Flipped horizontally</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="62"/>
+        <location filename="../qml/InfoPanel.qml" line="64"/>
         <source>Rotated 180°</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="63"/>
+        <location filename="../qml/InfoPanel.qml" line="65"/>
         <source>Flipped vertically</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="64"/>
+        <location filename="../qml/InfoPanel.qml" line="66"/>
         <source>Rotated 90° counterclockwise, flipped</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="65"/>
+        <location filename="../qml/InfoPanel.qml" line="67"/>
         <source>Rotated 90° clockwise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="66"/>
+        <location filename="../qml/InfoPanel.qml" line="68"/>
         <source>Rotated 90° clockwise, flipped</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="67"/>
+        <location filename="../qml/InfoPanel.qml" line="69"/>
         <source>Rotated 90° counterclockwise</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="80"/>
+        <location filename="../qml/InfoPanel.qml" line="82"/>
         <source>Capture date</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="81"/>
+        <location filename="../qml/InfoPanel.qml" line="83"/>
         <source>Camera</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="82"/>
+        <location filename="../qml/InfoPanel.qml" line="84"/>
         <source>Lens</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="83"/>
+        <location filename="../qml/InfoPanel.qml" line="85"/>
         <source>Shutter speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="84"/>
+        <location filename="../qml/InfoPanel.qml" line="86"/>
         <source>Aperture</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="85"/>
+        <location filename="../qml/InfoPanel.qml" line="87"/>
         <source>ISO</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="86"/>
+        <location filename="../qml/InfoPanel.qml" line="88"/>
         <source>Focal length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="88"/>
+        <location filename="../qml/InfoPanel.qml" line="90"/>
         <source>35 mm equivalent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="90"/>
+        <location filename="../qml/InfoPanel.qml" line="92"/>
         <source>Dimensions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="91"/>
+        <location filename="../qml/InfoPanel.qml" line="93"/>
         <source>Orientation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="92"/>
+        <location filename="../qml/InfoPanel.qml" line="94"/>
         <source>Latitude</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="93"/>
+        <location filename="../qml/InfoPanel.qml" line="95"/>
         <source>Longitude</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="94"/>
+        <location filename="../qml/InfoPanel.qml" line="96"/>
         <source>Altitude</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="95"/>
+        <location filename="../qml/InfoPanel.qml" line="97"/>
         <source>Serial number</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/InfoPanel.qml" line="111"/>
+        <location filename="../qml/InfoPanel.qml" line="113"/>
         <source>No photo to show</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1566,175 +1566,190 @@
 <context>
     <name>KeywordPanel</name>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="178"/>
+        <location filename="../qml/KeywordPanel.qml" line="196"/>
         <source>A keyword needs a name, without |.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="180"/>
+        <location filename="../qml/KeywordPanel.qml" line="198"/>
         <source>A synonym cannot contain |.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="182"/>
+        <location filename="../qml/KeywordPanel.qml" line="200"/>
         <source>A keyword cannot be moved under itself or under one of its own keywords.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="184"/>
+        <location filename="../qml/KeywordPanel.qml" line="202"/>
         <source>There is already a keyword named “%1” there.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="226"/>
+        <location filename="../qml/KeywordPanel.qml" line="246"/>
         <source>Keywords</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="227"/>
+        <location filename="../qml/KeywordPanel.qml" line="246"/>
         <source>Metadata</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="228"/>
+        <location filename="../qml/KeywordPanel.qml" line="246"/>
         <source>Info</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="229"/>
+        <location filename="../qml/KeywordPanel.qml" line="246"/>
         <source>Collections</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="235"/>
+        <location filename="../qml/KeywordPanel.qml" line="293"/>
         <source>Hide the panel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="244"/>
+        <location filename="../qml/KeywordPanel.qml" line="302"/>
         <source>Find or add a keyword…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="245"/>
+        <location filename="../qml/KeywordPanel.qml" line="303"/>
         <source>Find or add a keyword</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="271"/>
+        <location filename="../qml/KeywordPanel.qml" line="329"/>
         <source>Add “%1” at the top level</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="272"/>
+        <location filename="../qml/KeywordPanel.qml" line="330"/>
         <source>Add “%1” under %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="280"/>
+        <location filename="../qml/KeywordPanel.qml" line="338"/>
         <source>Shift+Enter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="289"/>
+        <location filename="../qml/KeywordPanel.qml" line="347"/>
         <source>New keywords go under %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="297"/>
+        <location filename="../qml/KeywordPanel.qml" line="355"/>
         <source>New keywords go at the top level</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="503"/>
+        <location filename="../qml/KeywordPanel.qml" line="561"/>
         <source>Show the keyword panel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="513"/>
+        <location filename="../qml/KeywordPanel.qml" line="571"/>
         <source>Show the photos with this keyword</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="517"/>
+        <location filename="../qml/KeywordPanel.qml" line="575"/>
         <source>Rename…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="521"/>
+        <location filename="../qml/KeywordPanel.qml" line="579"/>
         <source>Properties…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="526"/>
+        <location filename="../qml/KeywordPanel.qml" line="584"/>
         <source>Move to…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="530"/>
+        <location filename="../qml/KeywordPanel.qml" line="588"/>
         <source>Move to the top level</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="536"/>
+        <location filename="../qml/KeywordPanel.qml" line="594"/>
         <source>Delete…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="547"/>
+        <location filename="../qml/KeywordPanel.qml" line="605"/>
         <source>Rename the keyword</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="571"/>
+        <location filename="../qml/KeywordPanel.qml" line="629"/>
         <source>Name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="585"/>
+        <location filename="../qml/KeywordPanel.qml" line="643"/>
         <source>Rename</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="591"/>
         <location filename="../qml/KeywordPanel.qml" line="649"/>
         <location filename="../qml/KeywordPanel.qml" line="707"/>
-        <location filename="../qml/KeywordPanel.qml" line="791"/>
+        <location filename="../qml/KeywordPanel.qml" line="824"/>
+        <location filename="../qml/KeywordPanel.qml" line="908"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="605"/>
+        <location filename="../qml/KeywordPanel.qml" line="663"/>
         <source>Move the keyword</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="626"/>
+        <location filename="../qml/KeywordPanel.qml" line="684"/>
         <source>Move “%1” under:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="627"/>
+        <location filename="../qml/KeywordPanel.qml" line="685"/>
         <source>There is nowhere to move “%1”.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="636"/>
+        <location filename="../qml/KeywordPanel.qml" line="694"/>
         <source>New parent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="642"/>
+        <location filename="../qml/KeywordPanel.qml" line="700"/>
         <source>Move</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="664"/>
+        <location filename="../qml/KeywordPanel.qml" line="727"/>
         <source>Delete the keyword</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../qml/KeywordPanel.qml" line="744"/>
+        <source>Removing it from %1 photo(s)…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/KeywordPanel.qml" line="759"/>
+        <source>Removing it from %1 of %2 photo(s)…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/KeywordPanel.qml" line="769"/>
+        <source>Stopped: %1 photo(s) done. Delete again to finish.</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message numerus="yes">
-        <location filename="../qml/KeywordPanel.qml" line="686"/>
+        <location filename="../qml/KeywordPanel.qml" line="781"/>
         <source>Delete “%1” and the %n keyword(s) under it?</source>
         <translation>
             <numerusform>Delete “%1” and the %n keyword under it?</numerusform>
@@ -1742,12 +1757,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="687"/>
+        <location filename="../qml/KeywordPanel.qml" line="782"/>
         <source>Delete “%1”?</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/KeywordPanel.qml" line="693"/>
+        <location filename="../qml/KeywordPanel.qml" line="789"/>
         <source>%n photo(s) will lose it. You can undo this.</source>
         <translation>
             <numerusform>%n photo will lose it. You can undo this.</numerusform>
@@ -1755,42 +1770,52 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="694"/>
+        <location filename="../qml/KeywordPanel.qml" line="790"/>
         <source>No photo has it. You can undo this.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="701"/>
+        <location filename="../qml/KeywordPanel.qml" line="809"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="724"/>
+        <location filename="../qml/KeywordPanel.qml" line="816"/>
+        <source>Cancel sweep</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/KeywordPanel.qml" line="824"/>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/KeywordPanel.qml" line="841"/>
         <source>Keyword properties</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="750"/>
+        <location filename="../qml/KeywordPanel.qml" line="867"/>
         <source>“%1”</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="754"/>
+        <location filename="../qml/KeywordPanel.qml" line="871"/>
         <source>Synonyms, one a line:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="761"/>
+        <location filename="../qml/KeywordPanel.qml" line="878"/>
         <source>Synonyms</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="772"/>
+        <location filename="../qml/KeywordPanel.qml" line="889"/>
         <source>Do not export</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="785"/>
+        <location filename="../qml/KeywordPanel.qml" line="902"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2008,61 +2033,71 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1216"/>
+        <location filename="../qml/Library.qml" line="1168"/>
+        <source>Applying to %1 of %2 photo(s)…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1207"/>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Library.qml" line="1262"/>
         <source>Open in the image view</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1217"/>
-        <location filename="../qml/Library.qml" line="1242"/>
+        <location filename="../qml/Library.qml" line="1263"/>
+        <location filename="../qml/Library.qml" line="1288"/>
         <source>Show in file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1219"/>
+        <location filename="../qml/Library.qml" line="1265"/>
         <source>Similar photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1220"/>
+        <location filename="../qml/Library.qml" line="1266"/>
         <source>Open or close the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1221"/>
+        <location filename="../qml/Library.qml" line="1267"/>
         <source>Group as a series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1222"/>
+        <location filename="../qml/Library.qml" line="1268"/>
         <source>Take out of the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1223"/>
+        <location filename="../qml/Library.qml" line="1269"/>
         <source>Resolve the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1224"/>
+        <location filename="../qml/Library.qml" line="1270"/>
         <source>Reopen the series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1233"/>
-        <location filename="../qml/Library.qml" line="1251"/>
+        <location filename="../qml/Library.qml" line="1279"/>
+        <location filename="../qml/Library.qml" line="1297"/>
         <source>Pick</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1234"/>
-        <location filename="../qml/Library.qml" line="1252"/>
+        <location filename="../qml/Library.qml" line="1280"/>
+        <location filename="../qml/Library.qml" line="1298"/>
         <source>Reject</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1235"/>
-        <location filename="../qml/Library.qml" line="1253"/>
+        <location filename="../qml/Library.qml" line="1281"/>
+        <location filename="../qml/Library.qml" line="1299"/>
         <source>Clear the flag</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2198,8 +2233,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="100"/>
-        <location filename="../qml/MetadataPanel.qml" line="111"/>
+        <location filename="../qml/MetadataPanel.qml" line="126"/>
+        <location filename="../qml/MetadataPanel.qml" line="137"/>
         <source>Multiple values</source>
         <translation type="unfinished"></translation>
     </message>

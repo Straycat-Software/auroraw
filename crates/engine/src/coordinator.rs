@@ -19,6 +19,7 @@ use auroraw_sources::relink::{self, FoundFile, KnownFile, ScanOutcome};
 use auroraw_types::{CollectionId, ContentHash, KeywordId, PhotoId, SeriesId, SourceId, Timestamp};
 use auroraw_workspace::{FileStat, Workspace};
 
+use crate::batch_job;
 use crate::command::Command;
 use crate::error::{EngineError, Result};
 use crate::event::Event;
@@ -81,13 +82,31 @@ pub enum Outcome {
         /// The job scanning the source.
         job: JobId,
     },
-    /// `MoveKeyword`'s and `DeleteKeyword`'s report: how many keywords the action touched and how many
-    /// photos it changed (a move: how many sidecars will have their paths refreshed).
+    /// `MoveKeyword`'s and a small `DeleteKeyword`'s report: how many keywords the action touched and how
+    /// many photos it changed (a move: how many sidecars will have their paths refreshed).
     KeywordsChanged {
         /// Keywords moved or deleted (with their branch).
         keywords: usize,
         /// Photos changed.
         photos: usize,
+    },
+    /// A `DeleteKeyword` past [`crate::batch_job::BACKGROUND_THRESHOLD`] photos started as a background
+    /// sweep instead (D-126 volet B): its job, and how many keywords and photos it will touch, if it runs
+    /// to completion. [`Event::KeywordDeleted`] reports how it actually ended.
+    DeleteKeywordStarted {
+        /// The job doing the sweep.
+        job: JobId,
+        /// How many keywords the branch has.
+        keywords: usize,
+        /// How many photos carry the branch right now.
+        photos: usize,
+    },
+    /// A `Batch` past [`crate::batch_job::BACKGROUND_THRESHOLD`] items started as a background job
+    /// instead (D-126 volet B): its id, for progress and cancellation. Unlike a small batch, this is not
+    /// yet applied when it is returned.
+    BatchStarted {
+        /// The job applying the batch.
+        job: JobId,
     },
     /// `GroupPhotos`'s new series.
     SeriesGrouped(SeriesId),
@@ -197,6 +216,19 @@ pub(crate) enum Inbound {
         stat: Option<SidecarStat>,
         backfill: Option<(PhotoId, ContentHash)>,
     },
+    /// A `batch_job` (a large `Batch` or `DeleteKeyword` sweep, D-126 volet B) applied one item: `edit`
+    /// is run through [`Coordinator::apply_edit`], exactly as a small batch's own loop would run it,
+    /// and `ack` is signalled once it lands, so the job thread paces its next send to the coordinator's
+    /// own speed (`crate::batch_job`'s own doc comment says why that matters for cancellation).
+    BatchItem {
+        job: JobId,
+        edit: Command,
+        ack: mpsc::Sender<()>,
+    },
+    /// A `batch_job` is over, finished or cancelled: apply what its completion means (one history
+    /// entry either way, and, for a `DeleteKeyword` sweep, the vocabulary branch too, once every photo
+    /// has lost it).
+    BatchDone { job: JobId },
 }
 
 fn keyword_set(meta: &auroraw_format::sidecar::Metadata) -> KeywordSet {
@@ -230,6 +262,8 @@ pub(crate) struct Coordinator {
     jobs: HashMap<JobId, CancelToken>,
     /// Where the answer to an index job's pause goes.
     index_decisions: HashMap<JobId, mpsc::Sender<bool>>,
+    /// Background batch jobs in flight (D-126 volet B), by the job that is applying them.
+    batch_jobs: HashMap<JobId, BatchJob>,
     next_job: u64,
     /// What the person did to their photos, for Undo and Redo (D-096).
     history: History,
@@ -255,6 +289,28 @@ struct Refresh {
     affected: usize,
 }
 
+/// A background batch job in flight (D-126 volet B): what it has applied so far, and what its
+/// completion means.
+struct BatchJob {
+    /// The changes its items have made so far, in the order they landed.
+    changes: Vec<Change>,
+    kind: BatchJobKind,
+}
+
+enum BatchJobKind {
+    /// A `Command::Batch` past the threshold: finishing it just records whatever landed, cancelled
+    /// or not.
+    Batch,
+    /// A `Command::DeleteKeyword` past the threshold: finishing it re-checks the catalogue fresh and
+    /// removes the vocabulary branch too, but only once no photo carries any of it any more (whether
+    /// because the sweep ran to completion, or happened to be cancelled at exactly that point makes
+    /// no difference) — never while a photo might still name a keyword the vocabulary no longer has.
+    DeleteKeyword {
+        keyword_id: KeywordId,
+        branch: Vec<KeywordId>,
+    },
+}
+
 impl Coordinator {
     pub(crate) fn new(
         workspace: Arc<Workspace>,
@@ -269,6 +325,7 @@ impl Coordinator {
             inbound,
             jobs: HashMap::new(),
             index_decisions: HashMap::new(),
+            batch_jobs: HashMap::new(),
             next_job: 0,
             history: History::default(),
             refresh_queue: VecDeque::new(),
@@ -440,6 +497,16 @@ impl Coordinator {
                     stat,
                     backfill,
                 } => self.handle_imported(photo.map(|p| *p), stat, backfill),
+                Inbound::BatchItem { job, edit, ack } => {
+                    if let Ok(Some(change)) = self.apply_edit(&edit)
+                        && let Some(state) = self.batch_jobs.get_mut(&job)
+                    {
+                        state.changes.push(change);
+                    } // an Err (the photo left meanwhile) or a no-op edit is simply skipped: no rollback,
+                    // matching remove_job/index_job's own "what was done stays done" precedent.
+                    let _ = ack.send(());
+                }
+                Inbound::BatchDone { job } => self.finish_batch_job(job),
             }
         }
         let _ = self.events.send(Event::Stopped);
@@ -475,7 +542,8 @@ impl Coordinator {
             | Command::SetLabel { .. }
             | Command::SetMetadataField { .. }
             | Command::AddKeyword { .. }
-            | Command::RemoveKeyword { .. } => {
+            | Command::RemoveKeyword { .. }
+            | Command::RemoveKeywords { .. } => {
                 let change = self.apply_edit(&command)?;
                 self.record(change.into_iter().collect());
                 Ok(Outcome::Applied)
@@ -683,6 +751,31 @@ impl Coordinator {
                     after: keyword_set(m),
                 })
             }),
+            Command::RemoveKeywords {
+                photo_id,
+                keyword_ids,
+            } => self.edit_photo(*photo_id, |m| {
+                if !m.keyword_ids.iter().any(|k| keyword_ids.contains(k)) {
+                    return None;
+                }
+                let before = keyword_set(m);
+                let mut i = 0;
+                while i < m.keyword_ids.len() {
+                    if keyword_ids.contains(&m.keyword_ids[i]) {
+                        m.keyword_ids.remove(i);
+                        if i < m.keyword_paths.len() {
+                            m.keyword_paths.remove(i);
+                        }
+                    } else {
+                        i += 1;
+                    }
+                }
+                Some(Change::Keywords {
+                    photo: *photo_id,
+                    before,
+                    after: keyword_set(m),
+                })
+            }),
             Command::CreateKeyword { name, parent, id } => {
                 Ok(Some(self.make_keyword(name, *parent, *id)?.1))
             }
@@ -733,8 +826,28 @@ impl Coordinator {
             .send(Event::HistoryChanged(self.history.state()));
     }
 
-    /// Applies several edits as one action: one step in the history, all or nothing.
+    /// Applies several edits as one action: one step in the history, all or nothing. Past
+    /// `batch_job::BACKGROUND_THRESHOLD` items, runs as a background job instead (D-126 volet B):
+    /// see `Command::Batch`'s own doc comment for what changes.
     fn batch(&mut self, commands: Vec<Command>) -> Result<Outcome> {
+        if commands.len() > batch_job::BACKGROUND_THRESHOLD {
+            let job = self.spawn_job();
+            self.batch_jobs.insert(
+                job,
+                BatchJob {
+                    changes: Vec::new(),
+                    kind: BatchJobKind::Batch,
+                },
+            );
+            batch_job::spawn(
+                job,
+                commands,
+                self.events.clone(),
+                self.inbound.clone(),
+                self.jobs[&job].clone(),
+            );
+            return Ok(Outcome::BatchStarted { job });
+        }
         let mut changes: Vec<Change> = Vec::new();
         for command in &commands {
             match self.apply_edit(command) {
@@ -1102,12 +1215,47 @@ impl Coordinator {
 
     /// Deletes a keyword and its branch: the photos that carry any of it lose it first (one change per
     /// photo, as `RemoveKeyword`), then the vocabulary loses the entries, so that a rebuild never finds
-    /// a sidecar naming a keyword that is gone. All or nothing.
+    /// a sidecar naming a keyword that is gone. Up to `batch_job::BACKGROUND_THRESHOLD` photos, all or
+    /// nothing, synchronously; past it, a background sweep instead (D-126 volet B), `DeleteKeyword`'s
+    /// own doc comment says what changes.
     fn delete_keyword(&mut self, keyword_id: KeywordId) -> Result<Outcome> {
         let vocabulary = self.read_vocabulary()?;
         find_keyword(&vocabulary.keywords, keyword_id)?;
         let branch = descendants_of(&vocabulary.keywords, keyword_id);
         let photos = self.catalogue.photos_with_keywords(&branch)?;
+
+        if photos.len() > batch_job::BACKGROUND_THRESHOLD {
+            let job = self.spawn_job();
+            self.batch_jobs.insert(
+                job,
+                BatchJob {
+                    changes: Vec::new(),
+                    kind: BatchJobKind::DeleteKeyword {
+                        keyword_id,
+                        branch: branch.clone(),
+                    },
+                },
+            );
+            let items = photos
+                .iter()
+                .map(|p| Command::RemoveKeywords {
+                    photo_id: *p,
+                    keyword_ids: branch.clone(),
+                })
+                .collect();
+            batch_job::spawn(
+                job,
+                items,
+                self.events.clone(),
+                self.inbound.clone(),
+                self.jobs[&job].clone(),
+            );
+            return Ok(Outcome::DeleteKeywordStarted {
+                job,
+                keywords: branch.len(),
+                photos: photos.len(),
+            });
+        }
 
         let mut changes: Vec<Change> = Vec::new();
         for photo in &photos {
@@ -1160,11 +1308,70 @@ impl Coordinator {
             keywords: deltas,
         });
         self.record(changes);
-        let _ = self.events.send(Event::KeywordDeleted(keyword_id));
+        let _ = self.events.send(Event::KeywordDeleted {
+            keyword_id,
+            job: None,
+            keywords: branch.len(),
+            photos: touched,
+            finished: true,
+        });
         Ok(Outcome::KeywordsChanged {
             keywords: branch.len(),
             photos: touched,
         })
+    }
+
+    /// A background batch job (`Command::Batch` or a `DeleteKeyword` sweep, D-126 volet B) is over,
+    /// finished or cancelled: records the one history entry it makes either way, and, for a
+    /// `DeleteKeyword` sweep that left no photo still carrying the branch, removes it from the
+    /// vocabulary too (re-checked fresh here, not assumed from whether it was cancelled: a photo that
+    /// picked the keyword back up from an unrelated command while the sweep ran is exactly as real a
+    /// reason to keep the branch as one the sweep had not reached yet).
+    fn finish_batch_job(&mut self, job: JobId) {
+        self.jobs.remove(&job);
+        let Some(state) = self.batch_jobs.remove(&job) else {
+            return;
+        };
+        match state.kind {
+            BatchJobKind::Batch => self.record(state.changes),
+            BatchJobKind::DeleteKeyword { keyword_id, branch } => {
+                let mut changes = state.changes;
+                let touched = changes.len();
+                let finished = matches!(
+                    self.catalogue.photos_with_keywords(&branch),
+                    Ok(remaining) if remaining.is_empty()
+                );
+                if finished && let Ok(vocabulary) = self.read_vocabulary() {
+                    let deltas: Vec<KeywordDelta> = branch
+                        .iter()
+                        .filter_map(|id| vocabulary.keywords.iter().find(|k| k.id == *id))
+                        .map(|entry| KeywordDelta {
+                            id: entry.id,
+                            before: Some(entry.clone()),
+                            after: None,
+                        })
+                        .collect();
+                    if !deltas.is_empty()
+                        && self
+                            .apply_vocabulary(&deltas, Direction::Redo, false)
+                            .is_ok()
+                    {
+                        changes.push(Change::Vocabulary {
+                            action: VocabularyAction::Delete,
+                            keywords: deltas,
+                        });
+                    }
+                }
+                self.record(changes);
+                let _ = self.events.send(Event::KeywordDeleted {
+                    keyword_id,
+                    job: Some(job),
+                    keywords: branch.len(),
+                    photos: touched,
+                    finished,
+                });
+            }
+        }
     }
 
     /// Takes back changes that were made, newest first (an action that failed half way).

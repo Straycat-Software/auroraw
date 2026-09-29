@@ -156,6 +156,31 @@ impl Fixture {
             }
         }
     }
+
+    /// Waits for a `DeleteKeyword` sweep of `keyword`'s branch to end (D-126 volet B, past
+    /// `BACKGROUND_THRESHOLD` photos): `(finished, photos, label)`, `photos` being how many this sweep
+    /// itself changed and `label` the last `HistoryChanged`'s undo label seen along the way (as
+    /// `undo_label` reads it, but this may drain far more events first, so it is not composed with it).
+    fn wait_for_keyword_deleted(&self, keyword: KeywordId) -> (bool, usize, Option<Label>) {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let mut label = None;
+        loop {
+            match self.events.recv_timeout(Duration::from_millis(100)) {
+                Some(Event::HistoryChanged(state)) => label = state.undo,
+                Some(Event::KeywordDeleted {
+                    keyword_id,
+                    finished,
+                    photos,
+                    ..
+                }) if keyword_id == keyword => return (finished, photos, label),
+                Some(Event::JobFinished(_) | Event::JobCancelled(_)) => {
+                    self.refreshes_ended.set(self.refreshes_ended.get() + 1);
+                }
+                Some(_) => {}
+                None => assert!(Instant::now() < deadline, "the sweep never ended"),
+            }
+        }
+    }
 }
 
 fn paths_of(meta: &Metadata) -> Vec<String> {
@@ -485,6 +510,135 @@ fn deleting_a_branch_takes_it_off_the_photos_and_undo_gives_everything_back() {
     f.engine.undo().unwrap();
     f.engine.submit_and_wait(Command::Rebuild).unwrap();
     assert_eq!(f.rows(), rows_before);
+}
+
+/// D-126 volet B: past `BACKGROUND_THRESHOLD` photos, `DeleteKeyword` sweeps them in the background
+/// instead of in one synchronous loop, reporting progress; the vocabulary loses the branch only once
+/// the sweep confirms (from a fresh catalogue read) that no photo carries it any more, and the whole
+/// sweep is still one history entry, undoable like a small delete.
+#[test]
+fn deleting_a_large_branch_runs_as_a_background_sweep_and_undo_brings_it_all_back() {
+    let n = auroraw_engine::BACKGROUND_THRESHOLD + 1;
+    let f = fixture(n);
+    let travel = f.create("Travel", None);
+    for photo in &f.photos {
+        f.give(*photo, travel);
+    }
+    f.events.drain();
+
+    let Outcome::DeleteKeywordStarted {
+        job: _,
+        keywords,
+        photos,
+    } = f
+        .engine
+        .submit_and_wait(Command::DeleteKeyword { keyword_id: travel })
+        .unwrap()
+    else {
+        panic!("expected DeleteKeywordStarted");
+    };
+    assert_eq!((keywords, photos), (1, n), "the whole branch, every photo");
+
+    let (finished, touched, label) = f.wait_for_keyword_deleted(travel);
+    assert!(
+        finished,
+        "nothing else touched these photos: it ran to the end"
+    );
+    assert_eq!(touched, n);
+    assert!(f.vocabulary().is_empty(), "the keyword is gone");
+    assert!(f.rows().is_empty());
+    for photo in &f.photos {
+        assert!(f.meta(*photo).keyword_ids.is_empty());
+    }
+    assert_eq!(
+        label.map(|l| (l.kind, l.count)),
+        Some((LabelKind::KeywordDelete, 1)),
+        "one keyword, one history entry, however many photos it touched"
+    );
+
+    let Outcome::History(_) = f.engine.undo().unwrap() else {
+        panic!("expected History");
+    };
+    assert_eq!(f.vocabulary().len(), 1, "Travel is back");
+    for photo in &f.photos {
+        assert_eq!(f.meta(*photo).keyword_ids, vec![travel]);
+    }
+
+    f.engine.redo().unwrap();
+    assert!(f.vocabulary().is_empty());
+    for photo in &f.photos {
+        assert!(f.meta(*photo).keyword_ids.is_empty());
+    }
+}
+
+/// D-126 volet B: cancelling a large sweep never leaves a photo naming a keyword the vocabulary no
+/// longer has (the sweep's own doc comment's invariant) — the branch simply stays until every carrying
+/// photo has actually lost it, and deleting it again resumes rather than starting over. (The exact
+/// moment the cancellation lands is a genuine race against the sweep's own pace; this asserts what must
+/// hold whichever way that race goes, and specifically checks the partial-then-resumed path when it
+/// does — as it reliably does in practice, since the coordinator paces every item through real sidecar
+/// I/O while the cancel is one lightweight message on the same queue.)
+#[test]
+fn cancelling_a_large_branchs_sweep_keeps_it_until_deleting_it_again_finishes_it() {
+    let n = auroraw_engine::BACKGROUND_THRESHOLD + 1;
+    let f = fixture(n);
+    let travel = f.create("Travel", None);
+    for photo in &f.photos {
+        f.give(*photo, travel);
+    }
+    f.events.drain();
+
+    let Outcome::DeleteKeywordStarted { job, .. } = f
+        .engine
+        .submit_and_wait(Command::DeleteKeyword { keyword_id: travel })
+        .unwrap()
+    else {
+        panic!("expected DeleteKeywordStarted");
+    };
+    f.engine.submit(Command::CancelJob { job_id: job }).unwrap();
+
+    let (finished, touched, label) = f.wait_for_keyword_deleted(travel);
+    if !finished {
+        assert!(
+            touched < n,
+            "the cancel actually caught it short of the end"
+        );
+        assert_eq!(
+            f.vocabulary().len(),
+            1,
+            "stays until every photo has lost it"
+        );
+        let remaining = f
+            .engine
+            .read_catalogue()
+            .unwrap()
+            .photos_with_keywords(&[travel])
+            .unwrap();
+        assert_eq!(remaining.len(), n - touched);
+        if touched > 0 {
+            assert_eq!(
+                label.map(|l| (l.kind, l.count)),
+                Some((LabelKind::Keywords, touched)),
+                "a real, undoable step for whatever it did reach"
+            );
+        }
+
+        match f
+            .engine
+            .submit_and_wait(Command::DeleteKeyword { keyword_id: travel })
+            .unwrap()
+        {
+            Outcome::DeleteKeywordStarted { .. } => {
+                f.wait_for_keyword_deleted(travel);
+            }
+            Outcome::KeywordsChanged { .. } => {}
+            other => panic!("expected another sweep or an immediate finish, got {other:?}"),
+        }
+    }
+    assert!(f.vocabulary().is_empty(), "gone, one way or another");
+    for photo in &f.photos {
+        assert!(f.meta(*photo).keyword_ids.is_empty());
+    }
 }
 
 #[test]

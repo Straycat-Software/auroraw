@@ -792,6 +792,16 @@ Turning keyword deletion and batch edits into background jobs with progress them
 synchronously on the coordinator) is separate, later work, with its own product questions (cancellation
 policy, whether every small interactive batch becomes asynchronous) — not part of this.
 
+**Volet B, settled 2026-09-28 (D-127):** answered. Not every batch: a size threshold
+(`batch_job::BACKGROUND_THRESHOLD`, 200 items) decides — under it, `DeleteKeyword` and `Batch` still run
+exactly as above, synchronously, all-or-nothing; past it, both run as a cancellable background job instead,
+one shared mechanism for both, with progress in the interface (the keyword panel's delete dialog, the
+library's status strip). Cancellation policy: no rollback — a cancelled job keeps whatever prefix already
+landed as its own real, undoable step (a delete's vocabulary branch stays until every carrying photo has
+actually lost it, and deleting it again resumes); an all-or-nothing guarantee across a job that can take
+real time, with the person free to act meanwhile, was not worth the cost of holding thousands of edits
+hostage to it.
+
 Done when: a keyword hierarchy and a rating round trip through ExifTool and one other
 application; an external change to a sidecar is detected, shown and applied on confirmation
 without a feedback loop; a batch edit of 10,000 photos is one transaction, undoable.

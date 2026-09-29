@@ -8,7 +8,7 @@ use core::pin::Pin;
 use std::collections::{HashMap, HashSet};
 
 use auroraw_catalogue::KeywordRow;
-use auroraw_engine::{Command, EngineError, KeywordId, Outcome};
+use auroraw_engine::{Command, EngineError, JobId, KeywordId, Outcome};
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::{
     QByteArray, QHash, QHashPair_i32_QByteArray, QModelIndex, QString, QVariant, QVector,
@@ -38,6 +38,9 @@ pub struct KeywordListRust {
     /// How many selected photos carry each keyword, and how many are selected.
     usage: HashMap<KeywordId, usize>,
     selected: usize,
+    /// A `DeleteKeyword` sweep started by `remove()`, past `BACKGROUND_THRESHOLD` (D-126 volet B):
+    /// what `cancelDelete` cancels.
+    delete_job: Option<JobId>,
 }
 
 fn text(value: &str) -> QString {
@@ -482,7 +485,10 @@ impl KeywordList {
         }
     }
 
-    /// Deletes the keyword and its branch (one step of the history); empty, or why not.
+    /// Deletes the keyword and its branch (one step of the history, D-126 volet B: past
+    /// `BACKGROUND_THRESHOLD` photos, a cancellable background sweep instead — `job:<id>`, and the
+    /// vocabulary keeps the branch until `Bus.keywordDeleted` says the sweep actually finished); empty
+    /// when it is already done, or why it refused.
     pub fn remove(mut self: Pin<&mut Self>, id: &QString) -> QString {
         let Some(session) = session::current() else {
             return text("other:No workspace is open.");
@@ -494,11 +500,23 @@ impl KeywordList {
             .engine
             .submit_and_wait(Command::DeleteKeyword { keyword_id })
         {
+            Ok(Outcome::DeleteKeywordStarted { job, .. }) => {
+                self.as_mut().rust_mut().delete_job = Some(job);
+                text(&format!("job:{job}"))
+            }
             Ok(_) => {
                 self.as_mut().refresh();
                 QString::default()
             }
             Err(e) => text(&reason(&e)),
+        }
+    }
+
+    /// Cancels the background sweep `remove()` started, if any is still running (a no-op otherwise: it
+    /// may already have finished).
+    pub fn cancel_delete(&self) {
+        if let (Some(session), Some(job_id)) = (session::current(), self.delete_job) {
+            let _ = session.engine.submit(Command::CancelJob { job_id });
         }
     }
 

@@ -711,13 +711,18 @@ Rectangle {
         }
     }
 
-    // Deleting takes the keyword and its branch off every photo: the numbers are said, and it can be undone.
+    // Deleting takes the keyword and its branch off every photo: the numbers are said, and it can be
+    // undone. Past BACKGROUND_THRESHOLD photos it runs as a background sweep instead (D-126 volet B):
+    // the dialog stays open with a progress bar and a cancel button until it actually ends.
     AppDialog {
         id: deleteDialog
         property string keywordId: ""
         property string keywordName: ""
         property int branchKeywords: 1
         property int branchPhotos: 0
+        property string job: ""
+        property real progress: 0
+        property string status: ""
         preferredWidth: 480
         title: qsTr("Delete the keyword")
 
@@ -727,12 +732,43 @@ Rectangle {
             keywordName = info.name
             branchKeywords = info.keywords
             branchPhotos = info.photos
+            job = ""
+            status = ""
             open()
         }
 
         function confirm() {
-            panel.note = panel.explain(panel.keywords.remove(keywordId))
-            close()
+            const result = panel.keywords.remove(keywordId)
+            if (result.indexOf("job:") === 0) {
+                job = result.substring(4)
+                status = qsTr("Removing it from %1 photo(s)…").arg(branchPhotos)
+            } else {
+                panel.note = panel.explain(result)
+                close()
+            }
+        }
+
+        onClosed: job = ""
+
+        Connections {
+            target: Bus
+            function onJobProgress(job, done, total) {
+                if (job !== deleteDialog.job || total <= 0)
+                    return
+                deleteDialog.progress = done / total
+                deleteDialog.status = qsTr("Removing it from %1 of %2 photo(s)…").arg(done).arg(total)
+            }
+            function onKeywordDeleted(job, keywordId, keywords, photos, finished) {
+                if (job !== deleteDialog.job)
+                    return
+                deleteDialog.job = ""
+                panel.keywords.refresh()
+                if (finished) {
+                    deleteDialog.close()
+                } else {
+                    deleteDialog.status = qsTr("Stopped: %1 photo(s) done. Delete again to finish.").arg(photos)
+                }
+            }
         }
 
         contentItem: ColumnLayout {
@@ -740,6 +776,7 @@ Rectangle {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
+                visible: deleteDialog.job === ""
                 text: deleteDialog.branchKeywords > 1
                       ? qsTr("Delete “%1” and the %n keyword(s) under it?", "", deleteDialog.branchKeywords - 1).arg(deleteDialog.keywordName)
                       : qsTr("Delete “%1”?").arg(deleteDialog.keywordName)
@@ -747,10 +784,23 @@ Rectangle {
             Label {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
+                visible: deleteDialog.job === ""
                 text: deleteDialog.branchPhotos > 0
                       ? qsTr("%n photo(s) will lose it. You can undo this.", "", deleteDialog.branchPhotos)
                       : qsTr("No photo has it. You can undo this.")
                 color: Theme.quiet
+            }
+            ProgressBar {
+                Layout.fillWidth: true
+                visible: deleteDialog.job !== ""
+                value: deleteDialog.progress
+            }
+            Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                visible: deleteDialog.status !== ""
+                color: Theme.quiet
+                text: deleteDialog.status
             }
         }
 
@@ -758,11 +808,20 @@ Rectangle {
             AppButton {
                 text: qsTr("Delete")
                 highlighted: true
+                visible: deleteDialog.job === ""
                 DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
                 onClicked: deleteDialog.confirm()
             }
             AppButton {
-                text: qsTr("Cancel")
+                text: qsTr("Cancel sweep")
+                visible: deleteDialog.job !== ""
+                DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
+                onClicked: panel.keywords.cancelDelete()
+            }
+            AppButton {
+                // Before confirming, this declines; once a sweep is running, closing does not cancel it
+                // (it keeps going in the background) — "Cancel sweep" is the button that does.
+                text: deleteDialog.job === "" ? qsTr("Cancel") : qsTr("Close")
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
                 onClicked: deleteDialog.close()
             }

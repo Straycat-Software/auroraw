@@ -97,6 +97,27 @@ pub mod qobject {
         #[cxx_name = "jobCancelled"]
         fn job_cancelled(self: Pin<&mut Bus>, job: &QString);
 
+        /// A background job ran to completion (D-126 volet B: a large `Batch`'s own completion, and,
+        /// incidentally, any other job kind's — nothing else emits this yet).
+        #[qsignal]
+        #[cxx_name = "jobFinished"]
+        fn job_finished(self: Pin<&mut Bus>, job: &QString);
+
+        /// A keyword branch was deleted (D-126 volet B): a small one right away, `job` empty; one past
+        /// `BACKGROUND_THRESHOLD` photos once its background sweep actually ends, `job` its id.
+        /// `finished` is `false` only for a sweep that was cancelled before every carrying photo was
+        /// reached (the keyword stayed in the vocabulary; deleting it again resumes the sweep).
+        #[qsignal]
+        #[cxx_name = "keywordDeleted"]
+        fn keyword_deleted(
+            self: Pin<&mut Bus>,
+            job: &QString,
+            keyword_id: &QString,
+            keywords: i32,
+            photos: i32,
+            finished: bool,
+        );
+
         /// A scan of a source finished. `duplicates` (issue #16) is how many files turned out to
         /// be a confirmed second location of an existing photo: joined to it, not added as their
         /// own.
@@ -298,6 +319,29 @@ fn dispatch(event: Event, session: &Session) {
         Event::JobCancelled(job) => {
             let job = job.to_string();
             on_gui(move |bus| bus.job_cancelled(&QString::from(job.as_str())));
+        }
+        Event::JobFinished(job) => {
+            let job = job.to_string();
+            on_gui(move |bus| bus.job_finished(&QString::from(job.as_str())));
+        }
+        Event::KeywordDeleted {
+            keyword_id,
+            job,
+            keywords,
+            photos,
+            finished,
+        } => {
+            let job = job.map_or_else(String::new, |j| j.to_string());
+            let keyword_id = keyword_id.to_string();
+            on_gui(move |bus| {
+                bus.keyword_deleted(
+                    &QString::from(job.as_str()),
+                    &QString::from(keyword_id.as_str()),
+                    keywords as i32,
+                    photos as i32,
+                    finished,
+                )
+            });
         }
         _ => {}
     }

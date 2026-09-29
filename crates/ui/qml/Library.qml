@@ -1149,18 +1149,64 @@ FocusScope {
                 }
             }
 
-            // What is selected: the photo, or how many photos (the panels come with a later work package).
+            // What is selected: the photo, or how many photos (the panels come with a later work
+            // package); or, while a selection edit runs as a background job (D-126 volet B, past
+            // `BACKGROUND_THRESHOLD` items), its own progress and a way to cancel it.
             Rectangle {
+                id: statusStrip
                 Layout.fillWidth: true
                 Layout.preferredHeight: 28
                 color: root.palette.window
+                readonly property bool running: root.photoGrid.batchJob !== ""
+
+                Connections {
+                    target: Bus
+                    function onJobProgress(job, done, total) {
+                        if (job !== root.photoGrid.batchJob || total <= 0)
+                            return
+                        batchProgress.value = done / total
+                        batchLabel.text = qsTr("Applying to %1 of %2 photo(s)…").arg(done).arg(total)
+                    }
+                    function onJobFinished(job) {
+                        if (job === root.photoGrid.batchJob)
+                            root.photoGrid.batchJob = ""
+                    }
+                    function onJobCancelled(job) {
+                        if (job === root.photoGrid.batchJob)
+                            root.photoGrid.batchJob = ""
+                    }
+                }
+
                 Label {
+                    visible: !statusStrip.running
                     x: 6
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.summary
                     color: Theme.quiet
                     elide: Text.ElideRight
                     width: parent.width - 12
+                }
+
+                RowLayout {
+                    visible: statusStrip.running
+                    anchors.fill: parent
+                    anchors.leftMargin: 6
+                    anchors.rightMargin: 6
+                    spacing: 8
+                    ProgressBar {
+                        id: batchProgress
+                        Layout.preferredWidth: 120
+                    }
+                    Label {
+                        id: batchLabel
+                        Layout.fillWidth: true
+                        color: Theme.quiet
+                        elide: Text.ElideRight
+                    }
+                    AppButton {
+                        text: qsTr("Cancel")
+                        onClicked: root.photoGrid.cancelBatch()
+                    }
                 }
             }
         }

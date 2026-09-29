@@ -14,6 +14,7 @@
 //!
 //! The coordinator thread stops when every [`Engine`] handle for it has been dropped.
 
+mod batch_job;
 mod command;
 mod coordinator;
 mod duplicates_api;
@@ -42,6 +43,7 @@ pub use auroraw_format::sidecar::{ColourLabel, Flag};
 pub use auroraw_imaging::{Aids, MaskKind};
 pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
 pub use auroraw_types::KeywordId;
+pub use batch_job::BACKGROUND_THRESHOLD;
 pub use command::{Command, MetadataField};
 pub use coordinator::Outcome;
 pub use duplicates_api::{DuplicatePhoto, LocationRef, format_report as duplicates_report};

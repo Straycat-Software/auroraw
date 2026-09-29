@@ -71,8 +71,25 @@ pub enum Event {
     /// A keyword and its branch were moved (the catalogue already reflects it; the sidecars' path
     /// snapshots follow in a background job).
     KeywordMoved(KeywordId),
-    /// A keyword and its branch were deleted.
-    KeywordDeleted(KeywordId),
+    /// A keyword and its branch were deleted. For a branch past
+    /// [`crate::batch_job::BACKGROUND_THRESHOLD`] photos (D-126 volet B, `job` is `Some`), this is the
+    /// background sweep's end, not its start (`Outcome::DeleteKeywordStarted`, returned when it was
+    /// submitted, is that): either it finished (`finished`: `true`, the vocabulary lost the branch too)
+    /// or it was cancelled first (`finished`: `false` — the keyword stays in the vocabulary, and
+    /// resubmitting `Command::DeleteKeyword` on it resumes the sweep).
+    KeywordDeleted {
+        /// The keyword.
+        keyword_id: KeywordId,
+        /// The background job that swept the photos, for a branch large enough to need one.
+        job: Option<JobId>,
+        /// How many keywords the branch has.
+        keywords: usize,
+        /// How many photos this sweep changed (not necessarily every carrying photo, for a cancelled one).
+        photos: usize,
+        /// Whether every carrying photo lost the branch (and the vocabulary lost it too), or the sweep
+        /// was cancelled first. Always `true` for a branch small enough to run synchronously.
+        finished: bool,
+    },
     /// A background job made progress.
     JobProgress {
         /// The job.
