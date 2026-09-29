@@ -5,17 +5,15 @@ import QtQuick.Layouts
 import org.auroraw.ui
 
 // A sentence at the top of the window that says what could not be done, until it is dismissed.
-Rectangle {
+AppBanner {
     id: root
+    tone: "notice"
     property alias text: label.text
     signal dismissed
     property alias dismissButton: dismissButton
 
     visible: text !== ""
     implicitHeight: 40
-    // D-129: retuned to sit with the cool-neutral surfaces; still a muted amber, matching `warning`.
-    color: "#433319"
-    border.color: "#7a5c29"
 
     RowLayout {
         anchors.fill: parent
@@ -25,7 +23,7 @@ Rectangle {
             id: label
             Layout.fillWidth: true
             elide: Text.ElideRight
-            color: "white"
+            color: Theme.white
             Accessible.role: Accessible.StaticText
         }
         AppButton {

@@ -589,7 +589,7 @@ FocusScope {
                                 radius: 7
                                 color: Theme.labelColour(dot.modelData)
                                 border.width: root.photoGrid.labelFilter === dot.modelData ? 2 : 0
-                                border.color: "white"
+                                border.color: Theme.white
                             }
                             onClicked: {
                                 root.filterLabel(dot.modelData)
@@ -1038,7 +1038,7 @@ FocusScope {
                             width: stars.implicitWidth + 8
                             height: stars.implicitHeight + 2
                             radius: Theme.radiusControl
-                            color: "#a0000000"
+                            color: Theme.scrimLight
                             Text {
                                 id: stars
                                 anchors.centerIn: parent
@@ -1055,7 +1055,7 @@ FocusScope {
                             width: flagMark.implicitWidth + 8
                             height: flagMark.implicitHeight + 2
                             radius: Theme.radiusControl
-                            color: "#a0000000"
+                            color: Theme.scrimLight
                             Text {
                                 id: flagMark
                                 anchors.centerIn: parent
@@ -1074,13 +1074,13 @@ FocusScope {
                             width: badgeText.implicitWidth + 10
                             height: badgeText.implicitHeight + 2
                             radius: Theme.radiusControl
-                            color: "#c0000000"
+                            color: Theme.scrimStrong
                             Text {
                                 id: badgeText
                                 anchors.centerIn: parent
                                 // The photos listed, and of how many when the filters hide some of the series.
                                 text: cell.badgeLabel
-                                color: cell.seriesResolved ? Theme.picked : "white"
+                                color: cell.seriesResolved ? Theme.picked : Theme.white
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -1105,7 +1105,7 @@ FocusScope {
                             width: noRawText.implicitWidth + 8
                             height: noRawText.implicitHeight + 2
                             radius: Theme.radiusControl
-                            color: "#a0000000"
+                            color: Theme.scrimLight
                             Text {
                                 id: noRawText
                                 anchors.centerIn: parent

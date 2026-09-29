@@ -34,6 +34,26 @@ QtObject {
     readonly property color danger: "#df6f62"
     readonly property color quiet: "#9fa1a8"
 
+    // A banner under the header has one of exactly two tones (D-135), by what it says, and `AppBanner` is
+    // the only way to draw one: `notice` for something that could not be done (an amber close to `warning`),
+    // `info` for news that offers an action (a card was inserted, another application changed metadata; a
+    // teal of `accentSecondary`'s family). Text on either is `white`.
+    readonly property color noticeGround: "#433319"
+    readonly property color noticeEdge: "#7a5c29"
+    readonly property color infoGround: "#183936"
+    readonly property color infoEdge: "#2a6f68"
+    readonly property color white: "#ffffff"
+
+    // What is laid over a picture so that it reads over any image (D-135), by how much it must hold back
+    // the picture: `scrimLight` for the chips over a thumbnail and the viewer's floating toolbar,
+    // `scrimMedium` for a caption over a picture, `scrimStrong` for a badge, the histogram and the viewer's
+    // info bar and filmstrip. `scrimDim` is the veil over the whole window while a system folder dialog is
+    // open. Black at 63, 69, 75 and 40 %.
+    readonly property color scrimLight: "#a0000000"
+    readonly property color scrimMedium: "#b0000000"
+    readonly property color scrimStrong: "#c0000000"
+    readonly property color scrimDim: "#66000000"
+
     // A colour label (spec §5.3), by the name the grid gives it.
     function labelColour(name) {
         switch (name) {

@@ -186,7 +186,7 @@ Rectangle {
                         padding: 2
                         font.pixelSize: 11
                         text: panel.closeness(entry.modelData.distance) + " %"
-                        background: Rectangle { color: "#b0000000"; radius: Theme.radiusControl }
+                        background: Rectangle { color: Theme.scrimMedium; radius: Theme.radiusControl }
                     }
                     MouseArea {
                         id: hover

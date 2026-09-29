@@ -16,7 +16,7 @@ Rectangle {
     width: 240
     height: 110
     radius: Theme.radiusContainer
-    color: "#c0000000"
+    color: Theme.scrimStrong
 
     onCountsChanged: canvas.requestPaint()
 

@@ -390,7 +390,7 @@ ApplicationWindow {
         closePolicy: Popup.NoAutoClose
         visible: window.nativeDialogOpen
         padding: 0
-        background: Rectangle { color: "#66000000" }
+        background: Rectangle { color: Theme.scrimDim }
         contentItem: Label {
             text: qsTr("Choose a folder in the folder dialog…")
             horizontalAlignment: Text.AlignHCenter
