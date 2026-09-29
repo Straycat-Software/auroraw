@@ -114,7 +114,7 @@ Item {
                 // as bare text loose on the panel, not as a field (Patrick's own review caught this).
                 background: Rectangle {
                     color: palette.base
-                    radius: 3
+                    radius: Theme.radiusControl
                     border.width: 1
                     border.color: multiLine.activeFocus ? palette.highlight : palette.mid
                 }

@@ -14,6 +14,8 @@ fn main() {
         QmlFile::from("qml/Main.qml"),
         QmlFile::from("qml/Theme.qml").singleton(true),
         QmlFile::from("qml/AppButton.qml"),
+        QmlFile::from("qml/AppTabButton.qml"),
+        QmlFile::from("qml/AppSpinBox.qml"),
         QmlFile::from("qml/AppDialog.qml"),
         QmlFile::from("qml/AppWindow.qml"),
         QmlFile::from("qml/AppActions.qml"),

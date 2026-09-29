@@ -70,13 +70,26 @@ Rectangle {
         text: tabRow.tabTexts[slot]
         width: Math.ceil(tabRow.tabWidth(slot))
         horizontalPadding: Math.min(4, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        // D-127: the same transparent-tab, accent-underline look as the header's AppTabButton.
+        background: Rectangle {
+            color: "transparent"
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 2
+                color: tab.checked ? Theme.accent : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.motion } }
+            }
+        }
         contentItem: Label {
             text: tab.text
             font: tab.font
-            color: tab.palette.buttonText
+            color: tab.checked ? tab.palette.buttonText : Theme.quiet
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+            Behavior on color { ColorAnimation { duration: Theme.motion } }
         }
     }
 
@@ -512,7 +525,7 @@ Rectangle {
         anchors.margins: 6
         visible: panel.expanded && panel.note !== ""
         height: noteLabel.implicitHeight + 12
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.window
         border.color: Theme.danger
         Label {
@@ -534,7 +547,7 @@ Rectangle {
         z: 100
         width: 180
         height: 26
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.highlight
         opacity: 0.85
         Drag.keys: ["keyword"]
@@ -820,7 +833,7 @@ Rectangle {
                 // Unlike TextField, Fusion gives TextArea no background of its own (D-122).
                 background: Rectangle {
                     color: palette.base
-                    radius: 3
+                    radius: Theme.radiusControl
                     border.width: 1
                     border.color: synonymsField.activeFocus ? palette.highlight : palette.mid
                 }

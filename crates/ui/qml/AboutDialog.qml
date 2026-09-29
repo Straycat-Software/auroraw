@@ -42,7 +42,8 @@ AppDialog {
         }
         Label {
             text: "https://auroraw.org"
-            color: Theme.accent
+            // D-127: the second, sparing accent — a link is exactly the rare highlight it's for.
+            color: Theme.accentSecondary
         }
     }
 

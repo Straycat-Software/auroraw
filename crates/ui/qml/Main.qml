@@ -17,31 +17,34 @@ ApplicationWindow {
     minimumHeight: 420
     color: palette.window
     background: Rectangle { color: window.palette.window }
-    // The grey and its accents come from `Theme` (D-094); dialogs and menus inherit this palette.
+    // The surface ladder and its accents come from `Theme` (D-094, refreshed by D-127); every
+    // control inherits this palette. Dialogs and popups paint their own `Theme.surface.raised`
+    // background (AppDialog.qml, AppMenu.qml) rather than reading it from here, since Fusion's own
+    // dialog/popup roles (`window`, `base`) are shared with the canvas and sunken surfaces.
     palette {
-        window: Theme.grey.window
-        windowText: Theme.grey.text
-        base: Theme.grey.base
-        alternateBase: Theme.grey.window
-        text: Theme.grey.text
-        button: Theme.grey.button
-        buttonText: Theme.grey.text
-        light: Theme.grey.light
-        midlight: Theme.grey.button
-        mid: Theme.grey.dark
-        dark: Theme.grey.dark
+        window: Theme.surface.window
+        windowText: Theme.surface.text
+        base: Theme.surface.sunken
+        alternateBase: Theme.surface.window
+        text: Theme.surface.text
+        button: Theme.surface.hover
+        buttonText: Theme.surface.text
+        light: Theme.surface.border
+        midlight: Theme.surface.hover
+        mid: Theme.surface.sunken
+        dark: Theme.surface.sunken
         shadow: "#000000"
         highlight: Theme.accent
         highlightedText: "#ffffff"
-        placeholderText: Theme.grey.placeholder
+        placeholderText: Theme.surface.placeholder
         // What cannot be used is dimmed (Fusion draws a disabled control from these).
         disabled {
-            windowText: Theme.grey.placeholder
-            text: Theme.grey.placeholder
-            buttonText: Theme.grey.placeholder
+            windowText: Theme.surface.placeholder
+            text: Theme.surface.placeholder
+            buttonText: Theme.surface.placeholder
         }
-        toolTipBase: Theme.grey.base
-        toolTipText: Theme.grey.text
+        toolTipBase: Theme.surface.sunken
+        toolTipText: Theme.surface.text
     }
     title: launcher.screen === "workspace" ? launcher.workspaceName + " — Auroraw" : "Auroraw"
 
@@ -270,20 +273,20 @@ ApplicationWindow {
                 visible: window.inWorkspace
                 background: null
                 currentIndex: window.currentTask === "catalogue" ? 0 : 1
-                TabButton {
+                AppTabButton {
                     text: qsTr("Catalogue")
                     enabled: !window.dialogOpen
                     width: implicitWidth
                     onClicked: window.currentTask = "catalogue"
                 }
-                TabButton {
+                AppTabButton {
                     text: qsTr("Cull")
                     enabled: !window.dialogOpen
                     width: implicitWidth
                     onClicked: window.currentTask = "cull"
                 }
-                TabButton { text: qsTr("Develop"); enabled: false; width: implicitWidth }
-                TabButton { text: qsTr("Publish"); enabled: false; width: implicitWidth }
+                AppTabButton { text: qsTr("Develop"); enabled: false; width: implicitWidth }
+                AppTabButton { text: qsTr("Publish"); enabled: false; width: implicitWidth }
             }
             Item { Layout.fillWidth: true }
         }

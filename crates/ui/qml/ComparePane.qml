@@ -91,7 +91,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#141414"
+        color: "#0e0e11"
         border.width: pane.focused ? 2 : 0
         border.color: Theme.accent
     }
@@ -188,7 +188,7 @@ Item {
         anchors.margins: 4
         text: pane.name
         elide: Text.ElideRight
-        color: "#e0e0e0"
+        color: "#eaeaeb"
         font.pixelSize: 12
     }
 

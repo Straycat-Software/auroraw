@@ -236,7 +236,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: "#141414"
+        color: "#0e0e11"
     }
 
     // The view is over the grid: what it does not take itself (a click on the dark around the picture, a right click
@@ -345,7 +345,7 @@ FocusScope {
         text: qsTr("The original is not available")
         color: Theme.warning
         padding: 6
-        background: Rectangle { color: "#b0000000"; radius: 3 }
+        background: Rectangle { color: "#b0000000"; radius: Theme.radiusControl }
     }
 
     // What the person can do with the mouse: the keys are the way, these are for finding them.
@@ -355,7 +355,7 @@ FocusScope {
         anchors.margins: 8
         width: tools.implicitWidth + 12
         height: tools.implicitHeight + 8
-        radius: 4
+        radius: Theme.radiusContainer
         color: "#a0000000"
         RowLayout {
             id: tools
@@ -555,7 +555,7 @@ FocusScope {
             Label {
                 Layout.fillWidth: true
                 text: view.summary
-                color: "#e0e0e0"
+                color: "#eaeaeb"
                 elide: Text.ElideRight
             }
             Label {
@@ -608,7 +608,7 @@ FocusScope {
             Rectangle {
                 anchors.fill: parent
                 anchors.margins: 4
-                color: "#262626"
+                color: "#1c1d21"
                 border.width: frame.index === view.row ? 2 : 0
                 border.color: Theme.accent
                 Image {

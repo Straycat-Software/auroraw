@@ -321,7 +321,7 @@ Item {
         anchors.bottom: parent.bottom
         visible: panel.note !== ""
         height: noteLabel.implicitHeight + 12
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.window
         border.color: Theme.danger
         Label {
@@ -343,7 +343,7 @@ Item {
         z: 100
         width: 180
         height: 26
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.highlight
         opacity: 0.85
         Drag.keys: ["collection"]

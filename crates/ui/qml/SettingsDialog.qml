@@ -72,7 +72,7 @@ AppDialog {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            SpinBox {
+            AppSpinBox {
                 id: gapBox
                 from: 0
                 to: 600
@@ -102,7 +102,7 @@ AppDialog {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            SpinBox {
+            AppSpinBox {
                 id: similarDistanceBox
                 from: 1
                 to: 24
@@ -119,7 +119,7 @@ AppDialog {
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            SpinBox {
+            AppSpinBox {
                 id: similarMinutesBox
                 from: 1
                 to: 10080

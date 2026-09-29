@@ -13,8 +13,9 @@ Rectangle {
 
     visible: text !== ""
     implicitHeight: 40
-    color: "#4a3f1e"
-    border.color: "#7a6a30"
+    // D-127: retuned to sit with the cool-neutral surfaces; still a muted amber, matching `warning`.
+    color: "#433319"
+    border.color: "#7a5c29"
 
     RowLayout {
         anchors.fill: parent
