@@ -42,6 +42,12 @@ QtObject {
         return "transparent"
     }
 
+    // The image view and comparison's own ground (Patrick's own review of D-127): a perceptual
+    // 50% grey (CIELAB L* 50, the photographic "18% card" reflectance, #777777), not part of the
+    // surface ladder — a neutral surround for judging a photograph, independent of the chrome
+    // around it.
+    readonly property color viewerGround: "#777777"
+
     // Two radius tiers (D-127): controls (buttons, fields, chips) are the smaller one; dialogs,
     // popups and floating chrome are the larger one, so a container reads as distinct from the
     // flatter controls inside it.

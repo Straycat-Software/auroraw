@@ -11,6 +11,11 @@ Button {
     id: control
     opacity: enabled ? 1 : 0.4
     readonly property bool filled: highlighted || checked
+    // Fusion's own padding read as cramped (Patrick's own review of D-127): more room on every side.
+    topPadding: 8
+    bottomPadding: 8
+    leftPadding: 16
+    rightPadding: 16
 
     background: Rectangle {
         radius: Theme.radiusControl

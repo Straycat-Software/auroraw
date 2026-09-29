@@ -69,7 +69,7 @@ Rectangle {
         required property int slot
         text: tabRow.tabTexts[slot]
         width: Math.ceil(tabRow.tabWidth(slot))
-        horizontalPadding: Math.min(4, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        horizontalPadding: Math.min(8, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
         // D-127: the same transparent-tab, accent-underline look as the header's AppTabButton.
         background: Rectangle {
             color: "transparent"
@@ -284,10 +284,12 @@ Rectangle {
             function tabWidth(slot) {
                 const n = Math.max(measures.count, 1)
                 const label = labelWidth(slot)
-                if (room >= labelsTotal + 8 * n)
-                    return label + 8
-                if (room >= labelsTotal + 2 * n)
-                    return label + 2 + (room - labelsTotal - 2 * n) / n
+                // The generous ceiling was 8 (4px padding a side); Patrick's own review of D-127 found the
+                // inactive tabs, with no fill of their own, read as one run-on string without more room.
+                if (room >= labelsTotal + 16 * n)
+                    return label + 16
+                if (room >= labelsTotal + 4 * n)
+                    return label + 4 + (room - labelsTotal - 4 * n) / n
                 return labelsTotal > 0 ? Math.max(room, 0) * label / labelsTotal : label
             }
             TabBar {
@@ -651,7 +653,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Rename")
                 highlighted: true
@@ -708,7 +710,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Move")
                 highlighted: true
@@ -767,7 +769,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Delete")
                 highlighted: true
@@ -851,7 +853,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Save")
                 highlighted: true

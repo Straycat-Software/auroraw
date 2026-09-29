@@ -91,7 +91,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#0e0e11"
+        color: Theme.viewerGround
         border.width: pane.focused ? 2 : 0
         border.color: Theme.accent
     }

@@ -9,6 +9,10 @@ import org.auroraw.ui
 TabButton {
     id: control
     opacity: enabled ? 1 : 0.4
+    // Room between tabs (Patrick's own review: with no fill and no gap, inactive tabs read as one
+    // run-on string); the underline below spans this same padded width, not just the label.
+    leftPadding: 16
+    rightPadding: 16
 
     background: Rectangle {
         color: "transparent"

@@ -12,7 +12,7 @@ AppDialog {
     title: qsTr("About Auroraw")
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: 16
         Label {
             text: qsTr("Auroraw %1").arg(dialog.launcher.version())
             font.pixelSize: 18
@@ -47,7 +47,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             text: qsTr("Close")
             highlighted: true

@@ -268,7 +268,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: "#0e0e11"
+        color: Theme.viewerGround
     }
     // What a click on the dark between the panes must not do: reach the grid under this view.
     MouseArea {

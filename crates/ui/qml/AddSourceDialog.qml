@@ -35,8 +35,8 @@ AppDialog {
 
     contentItem: GridLayout {
         columns: 3
-        columnSpacing: 8
-        rowSpacing: 10
+        columnSpacing: 12
+        rowSpacing: 14
 
         Label {
             Layout.columnSpan: 3
@@ -77,7 +77,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             id: addButton
             visible: dialog.mergeQuestion === ""

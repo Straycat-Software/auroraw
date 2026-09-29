@@ -11,10 +11,9 @@ MenuItem {
     leftPadding: 8
     rightPadding: 8
 
-    // D-127: a soft rounded fill on hover, the interface's one motion exception — replacing
-    // Fusion's own square, edge-to-edge highlight.
+    // D-127: a soft fill on hover, the interface's one motion exception, square like the menu
+    // itself (Patrick's own review) rather than Fusion's own edge-to-edge highlight.
     background: Rectangle {
-        radius: Theme.radiusControl
         color: item.highlighted ? Qt.rgba(item.palette.windowText.r, item.palette.windowText.g, item.palette.windowText.b, 0.08) : "transparent"
         Behavior on color { ColorAnimation { duration: Theme.motion } }
     }

@@ -17,6 +17,7 @@ fn main() {
         QmlFile::from("qml/AppTabButton.qml"),
         QmlFile::from("qml/AppSpinBox.qml"),
         QmlFile::from("qml/AppDialog.qml"),
+        QmlFile::from("qml/AppDialogButtonBox.qml"),
         QmlFile::from("qml/AppWindow.qml"),
         QmlFile::from("qml/AppActions.qml"),
         QmlFile::from("qml/AppMenu.qml"),

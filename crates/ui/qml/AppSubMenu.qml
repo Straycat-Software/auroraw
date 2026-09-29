@@ -8,8 +8,9 @@ import org.auroraw.ui
 // cut short. The width follows the rows (every `implicitWidth` read here is a dependency of the binding).
 //
 // D-127 (the visual refresh): the popup sits on the `raised` tier — lighter than the window behind
-// it, not Fusion's own default (`base`, the same sunken surface as a text field) — with the larger
-// radius tier and a hairline border. Every cascading submenu is one of these too.
+// it, not Fusion's own default (`base`, the same sunken surface as a text field) — with a hairline
+// border. Square corners, deliberately: Patrick's own review asked for the menu not to be rounded,
+// unlike the dialogs and the floating toolbar. Every cascading submenu is one of these too.
 Menu {
     id: control
     topPadding: 4
@@ -24,7 +25,6 @@ Menu {
         return widest + leftPadding + rightPadding
     }
     background: Rectangle {
-        radius: Theme.radiusContainer
         color: Theme.surface.raised
         border.width: 1
         border.color: Theme.surface.border

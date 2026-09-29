@@ -236,7 +236,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: "#0e0e11"
+        color: Theme.viewerGround
     }
 
     // The view is over the grid: what it does not take itself (a click on the dark around the picture, a right click

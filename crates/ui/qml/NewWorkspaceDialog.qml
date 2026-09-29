@@ -49,8 +49,8 @@ AppDialog {
 
     contentItem: GridLayout {
         columns: 3
-        columnSpacing: 8
-        rowSpacing: 10
+        columnSpacing: 12
+        rowSpacing: 14
 
         Label { text: qsTr("Name") }
         TextField {
@@ -90,7 +90,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             id: createButton
             text: qsTr("Create")

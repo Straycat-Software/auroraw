@@ -432,7 +432,7 @@ Item {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Rename")
                 highlighted: true
@@ -489,7 +489,7 @@ Item {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Move")
                 highlighted: true
@@ -549,7 +549,7 @@ Item {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Delete")
                 highlighted: true
