@@ -17,6 +17,8 @@ mod commands;
 #[allow(unsafe_code)]
 mod duplicates;
 #[allow(unsafe_code)]
+mod external_changes;
+#[allow(unsafe_code)]
 mod files;
 #[allow(unsafe_code)]
 mod folders;

@@ -367,7 +367,7 @@ since Auroraw last looked.
 | --- | --- |
 | The hash and the fingerprint in `aur:Files`, relinking, "original changed" | Note 004 |
 | The development chain, the history, the snapshots | M2 |
-| The interface of the three-way merge and of conflicts (§8.1), and the same merge for external changes noticed outside an export (D-047) | WP10 |
+| The interface of the three-way merge and of conflicts (§8.1), and the same merge for external changes noticed outside an export (D-047) | WP10, done for external changes noticed at a scan (D-130); the export's own use of the same merge comes with the export |
 | Whether a foreign tool that rewrites a workspace sidecar (it should not) is detected | WP10 |
 | The exact property order and the full schema page | WP1 |
 

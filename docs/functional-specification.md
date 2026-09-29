@@ -608,7 +608,7 @@ model:
   import: "12 photos have metadata changed by another application". The photographer accepts
   with one click, or ignores.
 - The merge compares against the last state Auroraw read, so only fields changed outside are
-  applied, and a field changed on both sides is put to the photographer [proposed].
+  applied, and a field changed on both sides is put to the photographer [decided, D-130].
 - Auroraw recognises the XMP files it exported itself (D-024) and never reports them as external
   changes [proposed].
 

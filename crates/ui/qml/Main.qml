@@ -56,6 +56,9 @@ ApplicationWindow {
     property alias settingsDialog: settingsDialog
     property alias aboutDialog: aboutDialog
     property alias duplicatesDialog: duplicatesDialog
+    property alias externalBanner: externalBanner
+    property alias externalDialog: externalDialog
+    property alias externalChanges: externalChanges
     property alias openDialog: openDialog
     property alias importDialog: importDialog
     property alias cardBanner: cardBanner
@@ -99,7 +102,7 @@ ApplicationWindow {
     readonly property bool nativeDialogOpen: nativeDialogForced || openDialog.visible || catalogueFlow.browsing || newDialog.browsing
                                             || importDialog.browsing || libraryView.exportDialog.visible || duplicatesDialog.browsing
     readonly property bool dialogOpen: newDialog.visible || settingsDialog.visible || importDialog.visible || libraryView.dialogOpen
-                                       || aboutDialog.visible || duplicatesDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
+                                       || aboutDialog.visible || duplicatesDialog.visible || externalDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
     readonly property bool inWorkspace: launcher.screen === "workspace"
     // The grid is what the person is looking at and can act on: the selection commands mean something.
     readonly property bool gridActive: inWorkspace && currentTask === "cull" && !dialogOpen && photoGrid.count > 0
@@ -175,6 +178,7 @@ ApplicationWindow {
             importForm.job = ""
             importDialog.loadRemembered()
             cardBanner.rememberCurrent()
+            externalBanner.count = externalChanges.pending()
             libraryView.filterBy(0)
             window.currentTask = photoGrid.count === 0 ? "catalogue" : "cull"
         }
@@ -201,6 +205,8 @@ ApplicationWindow {
         function onCollectionsChanged() { libraryView.collectionsWereChanged() }
         function onHistoryApplied(photoIds) { libraryView.historyApplied(photoIds === "" ? [] : photoIds.split(",")) }
         function onJobCancelled() { libraryView.reload() }
+        // Photos with a change other software made to the XMP file beside the original, waiting for an answer.
+        function onExternalChanges(photos) { externalBanner.count = photos }
         function onPhotoChanged(photoId) { libraryView.photoChanged(photoId) }
     }
     // A question that waited for a dialog is put once no dialog is open.
@@ -308,6 +314,14 @@ ApplicationWindow {
             onImportRequested: path => window.showImport(path)
         }
 
+        ExternalBanner {
+            id: externalBanner
+            Layout.fillWidth: true
+            external: externalChanges
+            host: window
+            onReviewRequested: externalDialog.open()
+        }
+
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -358,6 +372,8 @@ ApplicationWindow {
     AboutDialog { id: aboutDialog; launcher: launcher }
     DuplicatesDialog { id: duplicatesDialog; duplicates: duplicates; hostWindow: window }
     Duplicates { id: duplicates }
+    ExternalChangesDialog { id: externalDialog; external: externalChanges; hostWindow: window }
+    ExternalChanges { id: externalChanges }
 
     Popup {
         id: waiting

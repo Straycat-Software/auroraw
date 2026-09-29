@@ -45,12 +45,15 @@ fn main() {
         QmlFile::from("qml/SimilarPanel.qml"),
         QmlFile::from("qml/FileSaveDialog.qml"),
         QmlFile::from("qml/DuplicatesDialog.qml"),
+        QmlFile::from("qml/ExternalBanner.qml"),
+        QmlFile::from("qml/ExternalChangesDialog.qml"),
     ];
     let mut builder = CxxQtBuilder::new_qml_module(QmlModule::new("org.auroraw.ui").qml_files(qml))
         .qt_module("Quick")
         .files([
             "src/bus.rs",
             "src/duplicates.rs",
+            "src/external_changes.rs",
             "src/files.rs",
             "src/folders.rs",
             "src/history.rs",

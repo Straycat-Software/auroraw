@@ -341,6 +341,8 @@ pub enum LabelKind {
     SeriesResolve,
     /// A series was reopened.
     SeriesReopen,
+    /// Changes another application made to XMP files next to originals were accepted (D-047, WP10).
+    ExternalChanges,
 }
 
 impl LabelKind {
@@ -385,6 +387,7 @@ impl LabelKind {
             LabelKind::SeriesUngroup => "series-ungroup",
             LabelKind::SeriesResolve => "series-resolve",
             LabelKind::SeriesReopen => "series-reopen",
+            LabelKind::ExternalChanges => "external-changes",
         }
     }
 
@@ -513,6 +516,14 @@ impl Entry {
                 }
             }
         };
+        Self { label, changes }
+    }
+
+    /// An entry named `label` whatever its changes are: for an action whose kind is not what `new` would
+    /// guess from them (accepting external changes may create keywords, which `new` would call "keyword
+    /// created").
+    pub fn labelled(label: Label, changes: Vec<Change>) -> Self {
+        debug_assert!(!changes.is_empty());
         Self { label, changes }
     }
 

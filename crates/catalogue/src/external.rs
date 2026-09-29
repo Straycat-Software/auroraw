@@ -69,6 +69,56 @@ fn stat_of(size: i64, modified_ns: Option<i64>) -> ExternalStat {
     }
 }
 
+/// A row as SQLite gives it, before its JSON is read.
+type RawRow = (
+    String,
+    String,
+    i64,
+    Option<i64>,
+    String,
+    Option<String>,
+    Option<i64>,
+    Option<i64>,
+);
+
+fn raw_row(r: &rusqlite::Row<'_>) -> rusqlite::Result<RawRow> {
+    Ok((
+        r.get(0)?,
+        r.get(1)?,
+        r.get(2)?,
+        r.get(3)?,
+        r.get(4)?,
+        r.get(5)?,
+        r.get(6)?,
+        r.get(7)?,
+    ))
+}
+
+/// A row whose photo identifier and base can be read; anything else is no row.
+fn parse_row(
+    (photo, path, size, modified_ns, base, pending, pending_size, pending_ns): RawRow,
+) -> Option<ExternalRow> {
+    let base = serde_json::from_str::<Fields>(&base).ok()?;
+    let pending = match (pending, pending_size) {
+        (Some(json), Some(size)) => {
+            serde_json::from_str::<Fields>(&json)
+                .ok()
+                .map(|file| ExternalPending {
+                    stat: stat_of(size, pending_ns),
+                    file,
+                })
+        }
+        _ => None,
+    };
+    Some(ExternalRow {
+        photo_id: photo.parse().ok()?,
+        path,
+        stat: stat_of(size, modified_ns),
+        base,
+        pending,
+    })
+}
+
 impl Catalogue {
     /// The tracked external file of every photo whose original is in `source`, without their fields.
     pub fn external_stats(&self, source: &SourceId) -> Result<HashMap<PhotoId, ExternalKnown>> {
@@ -106,45 +156,71 @@ impl Catalogue {
         let row = self
             .conn
             .query_row(
-                "SELECT path, size, modified_ns, base, pending, pending_size, pending_modified_ns
+                "SELECT photo_id, path, size, modified_ns, base, pending, pending_size, pending_modified_ns
                  FROM external_xmp WHERE photo_id = ?1",
                 [photo.to_string()],
-                |r| {
-                    Ok((
-                        r.get::<_, String>(0)?,
-                        stat_of(r.get(1)?, r.get(2)?),
-                        r.get::<_, String>(3)?,
-                        r.get::<_, Option<String>>(4)?,
-                        r.get::<_, Option<i64>>(5)?,
-                        r.get::<_, Option<i64>>(6)?,
-                    ))
-                },
+                raw_row,
             )
             .optional()?;
-        let Some((path, stat, base, pending, pending_size, pending_ns)) = row else {
-            return Ok(None);
-        };
-        let Ok(base) = serde_json::from_str::<Fields>(&base) else {
-            return Ok(None);
-        };
-        let pending = match (pending, pending_size) {
-            (Some(json), Some(size)) => {
-                serde_json::from_str::<Fields>(&json)
-                    .ok()
-                    .map(|file| ExternalPending {
-                        stat: stat_of(size, pending_ns),
-                        file,
-                    })
+        Ok(row.and_then(parse_row))
+    }
+
+    /// Every photo with a change noticed in its external file and not yet answered, by file path.
+    pub fn pending_externals(&self) -> Result<Vec<ExternalRow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT photo_id, path, size, modified_ns, base, pending, pending_size, pending_modified_ns
+             FROM external_xmp WHERE pending IS NOT NULL ORDER BY path, photo_id",
+        )?;
+        let rows = stmt.query_map([], raw_row)?;
+        let mut out = Vec::new();
+        for row in rows {
+            if let Some(row) = parse_row(row?) {
+                out.push(row);
             }
-            _ => None,
-        };
-        Ok(Some(ExternalRow {
-            photo_id: *photo,
-            path,
-            stat,
-            base,
-            pending,
-        }))
+        }
+        Ok(out)
+    }
+
+    /// Notes a change in a photo's external file that nobody has answered yet (replacing an earlier
+    /// one): the base stays what it was, for the comparison. `false` when the photo has no tracked file.
+    pub fn set_external_pending(
+        &mut self,
+        photo: &PhotoId,
+        pending: &ExternalPending,
+    ) -> Result<bool> {
+        let changed = self.conn.execute(
+            "UPDATE external_xmp SET pending = ?2, pending_size = ?3, pending_modified_ns = ?4
+             WHERE photo_id = ?1",
+            params![
+                photo.to_string(),
+                serde_json::to_string(&pending.file)?,
+                pending.stat.size as i64,
+                pending.stat.modified_ns
+            ],
+        )?;
+        Ok(changed > 0)
+    }
+
+    /// Answers changes: for each photo, the base becomes `fields`, read at `stat` (what was accepted,
+    /// ignored, or found to agree already), and nothing is pending any more. One transaction; a photo
+    /// with no tracked file is skipped.
+    pub fn settle_externals(&mut self, settled: &[(PhotoId, ExternalStat, Fields)]) -> Result<()> {
+        let tx = self.conn.transaction()?;
+        for (photo, stat, fields) in settled {
+            tx.execute(
+                "UPDATE external_xmp SET size = ?2, modified_ns = ?3, base = ?4,
+                   pending = NULL, pending_size = NULL, pending_modified_ns = NULL
+                 WHERE photo_id = ?1",
+                params![
+                    photo.to_string(),
+                    stat.size as i64,
+                    stat.modified_ns,
+                    serde_json::to_string(fields)?
+                ],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
     }
 
     /// Records what was read from a photo's external file: its `path`, the `stat` it was read at and
@@ -341,5 +417,89 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM external_xmp", [], |r| r.get(0))
             .unwrap();
         assert_eq!(rows, 0, "the table is there, empty");
+    }
+
+    #[test]
+    fn a_change_waits_as_pending_beside_the_base_until_it_is_answered() {
+        let mut cat = Catalogue::open_in_memory(WorkspaceId::random()).unwrap();
+        let (source, a, b) = (SourceId::random(), PhotoId::random(), PhotoId::random());
+        photo_row(&cat, a, &source);
+        photo_row(&cat, b, &source);
+        cat.set_external_base(&a, "z/a.xmp", STAT, &fields("a"))
+            .unwrap();
+        cat.set_external_base(&b, "b.xmp", STAT, &fields("b"))
+            .unwrap();
+        assert!(cat.pending_externals().unwrap().is_empty());
+
+        let newer = ExternalStat {
+            size: 2000,
+            modified_ns: Some(5),
+        };
+        let pending = ExternalPending {
+            stat: newer,
+            file: fields("a2"),
+        };
+        assert!(cat.set_external_pending(&a, &pending).unwrap());
+        assert!(
+            !cat.set_external_pending(&PhotoId::random(), &pending)
+                .unwrap()
+        );
+        let rows = cat.pending_externals().unwrap();
+        assert_eq!(rows.len(), 1, "only the photo with a change waiting");
+        assert_eq!(rows[0].photo_id, a);
+        assert_eq!(rows[0].base, fields("a"), "the base is what it was");
+        assert_eq!(rows[0].pending, Some(pending.clone()));
+        assert_eq!(cat.external_of(&a).unwrap().unwrap().pending, Some(pending));
+
+        // A newer change replaces the older.
+        let newest = ExternalPending {
+            stat: ExternalStat {
+                size: 2100,
+                modified_ns: Some(6),
+            },
+            file: fields("a3"),
+        };
+        cat.set_external_pending(&a, &newest).unwrap();
+        assert_eq!(cat.pending_externals().unwrap()[0].pending, Some(newest));
+
+        // Answered: the base becomes what was answered, at its stat, and nothing is pending.
+        cat.settle_externals(&[
+            (a, newer, fields("a2")),
+            (PhotoId::random(), newer, fields("x")),
+        ])
+        .unwrap();
+        assert!(cat.pending_externals().unwrap().is_empty());
+        let row = cat.external_of(&a).unwrap().unwrap();
+        assert_eq!(
+            (row.stat, row.base, row.path.as_str()),
+            (newer, fields("a2"), "z/a.xmp")
+        );
+    }
+
+    #[test]
+    fn pending_changes_are_listed_by_file_path() {
+        let mut cat = Catalogue::open_in_memory(WorkspaceId::random()).unwrap();
+        let source = SourceId::random();
+        let ids: Vec<PhotoId> = (0..3).map(|_| PhotoId::random()).collect();
+        for (id, path) in ids.iter().zip(["c.xmp", "a.xmp", "b.xmp"]) {
+            photo_row(&cat, *id, &source);
+            cat.set_external_base(id, path, STAT, &fields(path))
+                .unwrap();
+            cat.set_external_pending(
+                id,
+                &ExternalPending {
+                    stat: STAT,
+                    file: fields("new"),
+                },
+            )
+            .unwrap();
+        }
+        let paths: Vec<String> = cat
+            .pending_externals()
+            .unwrap()
+            .into_iter()
+            .map(|r| r.path)
+            .collect();
+        assert_eq!(paths, ["a.xmp", "b.xmp", "c.xmp"]);
     }
 }

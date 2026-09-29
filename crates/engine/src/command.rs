@@ -419,6 +419,25 @@ pub enum Command {
         /// Whether to dissolve the automatic, unresolved series first.
         regroup: bool,
     },
+    /// Accepts the changes another application made to the XMP files next to these photos' originals
+    /// (D-047, WP10): what was noticed by a scan and is waiting for an answer, as it was noticed (no
+    /// source access). Each photo takes the fields only the file changed and the keywords it added or
+    /// removed, and for a field changed on both sides its own value stays unless it is listed in
+    /// `use_file`. One undoable step for all the photos, named "external changes"; the file becomes the
+    /// new base either way. A photo with nothing waiting is skipped. Reports
+    /// [`crate::Outcome::ExternalResolved`].
+    AcceptExternalChanges {
+        /// The photos.
+        photos: Vec<PhotoId>,
+        /// The conflicts to settle in the file's favour: photo and field.
+        use_file: Vec<(PhotoId, crate::ExternalField)>,
+    },
+    /// Declines the changes waiting for these photos: the file becomes the new base without anything
+    /// being applied, and it is not reported again until it changes again. Not a step of the history.
+    IgnoreExternalChanges {
+        /// The photos.
+        photos: Vec<PhotoId>,
+    },
     /// Cancels a background job (a keyword rename's sidecar refresh) started earlier.
     CancelJob {
         /// The job to cancel.

@@ -118,10 +118,12 @@ pub(crate) fn owners<'a>(
     owned
 }
 
-/// Whether a scan has to open `xmp` to know what it holds: nothing is known of it yet, or it is not
-/// the file that was tracked.
+/// Whether a scan has to open `xmp` to know what it holds: nothing is known of it yet, it is not the
+/// file that was tracked, or it is at a stat that is neither the one the base was read at nor the one a
+/// change was already noticed at (so an unanswered change is not read again at every scan, and an
+/// answered one is not read at all: answering makes its stat the base's).
 pub(crate) fn needs_reading(known: Option<&ExternalKnown>, xmp: &XmpFile) -> bool {
-    known.is_none_or(|k| k.path != xmp.path)
+    known.is_none_or(|k| k.path != xmp.path || (k.stat != xmp.stat && k.pending != Some(xmp.stat)))
 }
 
 #[cfg(test)]
@@ -134,7 +136,8 @@ mod tests {
         Entry {
             path: path.into(),
             size: 10,
-            modified: Some(UNIX_EPOCH + Duration::new(1_700_000_000, 123)),
+            // (A multiple of 100 ns: Windows keeps no finer time, and would round anything else.)
+            modified: Some(UNIX_EPOCH + Duration::new(1_700_000_000, 500)),
         }
     }
 
@@ -218,7 +221,7 @@ mod tests {
         let entries = vec![entry("a.xmp")];
         let xmp = owners(&entries, &[], ["a.jpg"]).remove("a.jpg").unwrap();
         assert_eq!(xmp.stat.size, 10);
-        assert_eq!(xmp.stat.modified_ns, Some(1_700_000_000_000_000_123));
+        assert_eq!(xmp.stat.modified_ns, Some(1_700_000_000_000_000_500));
         assert!(needs_reading(None, &xmp));
         let known = ExternalKnown {
             path: "a.xmp".into(),

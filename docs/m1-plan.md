@@ -778,7 +778,7 @@ and undoing it restores every rating; the series and their resolution survive a 
 The IPTC and XMP fields (§6 item 8), editing one photo and batches with undo, copy and paste
 of metadata (settled 2026-09-29, D-128), **keyword vocabulary** (hierarchy, synonyms, "do not export" flag) with the flat and
 hierarchical forms written and read, collections and **smart collections**, external XMP change
-detection and its confirmation (D-047, §6 item 9), **XMP export to source folders** (D-024,
+detection and its confirmation (D-047, §6 item 9; settled 2026-09-29, D-129 and D-130), **XMP export to source folders** (D-024,
 opt-in), offline **place names** and the place filter. *Stretch*: importing a vocabulary from
 another application.
 

@@ -28,10 +28,27 @@ That is everything: on a new computer, open the copied workspace and re-add the 
 rebuilt. Two computers can share a workspace folder through an ordinary sync tool, as long as only one runs
 Auroraw on it at a time.
 
+## When another application changes a photo's XMP file
+
+Other software (Lightroom, darktable, digiKam, ExifTool...) may keep an **XMP file** next to a photo. Auroraw only
+ever reads it, never writes it. When a rescan finds that such a file changed since Auroraw last read it, a banner
+says *N photos have metadata changed by another application*, with **Review…** and **Ignore**.
+
+**Review…** lists the photos with what changed, *yours → the file's*: the rating, colour label, title, caption,
+the copyright and other information fields, and the keywords the file gained or lost. **Accept** (or **Accept
+all**, one click) applies the changes; **Ignore** leaves your photos as they are. Either way, Auroraw remembers
+the file as it now stands and does not mention it again until it changes again. Accepting is one step of the undo
+(*Undo accepting external changes*), and a keyword the file names that you do not have yet is added to your
+keyword list.
+
+Only what the file changed is offered, so your own work is not touched: a field you changed and the file did not
+stays as you have it. When **both** changed the same field to different values, the review shows both and keeps
+**yours** unless you choose *Take the file's*.
+
 ## What can be undone
 
-Ratings, flags, colour labels, keywords and the vocabulary, series (grouping, taking out, resolving), each as one
-step, with `Ctrl+Z`. Undo is not kept after you close the workspace.
+Ratings, flags, colour labels, keywords and the vocabulary, series (grouping, taking out, resolving), accepting
+another application's changes, each as one step, with `Ctrl+Z`. Undo is not kept after you close the workspace.
 
 Adding or removing a source and importing are not undone with `Ctrl+Z`; removing a source can be reversed by
 adding the folder again and choosing *Restore them*.

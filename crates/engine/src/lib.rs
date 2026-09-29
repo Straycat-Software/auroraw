@@ -20,6 +20,8 @@ mod coordinator;
 mod duplicates_api;
 mod error;
 mod event;
+mod external_api;
+mod external_merge;
 mod external_xmp;
 mod history;
 mod import_flow;
@@ -50,6 +52,7 @@ pub use coordinator::Outcome;
 pub use duplicates_api::{DuplicatePhoto, LocationRef, format_report as duplicates_report};
 pub use error::{EngineError, Result};
 pub use event::Event;
+pub use external_api::{ExternalChange, ExternalField, ExternalPhoto};
 pub use history::{
     Change, CollectionAction, CollectionDelta, HistoryState, KeywordDelta, KeywordSet, Label,
     LabelKind, SeriesAction, VocabularyAction,

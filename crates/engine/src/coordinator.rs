@@ -9,7 +9,10 @@ use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::SystemTime;
 
-use auroraw_catalogue::{Catalogue, SidecarStat};
+use auroraw_catalogue::{Catalogue, ExternalPending, ExternalStat, SidecarStat};
+use auroraw_format::sidecar::external::{
+    Field as ExternalField, Fields, Merge, keyword_key, merge,
+};
 use auroraw_format::sidecar::{FileEntry, FileRole, Location, PhotoSidecar, VersionSidecar};
 use auroraw_format::state::{KeywordEntry, SourceEntry, Vocabulary};
 use auroraw_import::{DiscoveredFile, PairRule, Profile, pair_files};
@@ -23,9 +26,11 @@ use crate::batch_job;
 use crate::command::Command;
 use crate::error::{EngineError, Result};
 use crate::event::Event;
+use crate::external_merge::{metadata_field, mine_of, pending_diff};
 use crate::external_xmp::ExternalSeen;
 use crate::history::{
-    Change, Direction, Entry, History, HistoryState, KeywordDelta, KeywordSet, VocabularyAction,
+    Change, Direction, Entry, History, HistoryState, KeywordDelta, KeywordSet, Label, LabelKind,
+    VocabularyAction,
 };
 use crate::import_job::{self, ImportJob};
 use crate::index_job::{self, IndexJob};
@@ -122,6 +127,12 @@ pub enum Outcome {
     RemoveStarted {
         /// The job removing the source.
         job: JobId,
+    },
+    /// `AcceptExternalChanges` or `IgnoreExternalChanges`: how many photos had a change waiting and were
+    /// answered.
+    ExternalResolved {
+        /// How many photos.
+        photos: usize,
     },
     /// `Undo` or `Redo` did it, and this is what the next Undo and Redo would do.
     History(HistoryState),
@@ -536,9 +547,10 @@ impl Coordinator {
                     source_id,
                     unreadable,
                 } => {
+                    let photos = self.settle_external();
                     let _ = self.events.send(Event::ExternalChanges {
                         source_id: Some(source_id),
-                        photos: 0,
+                        photos,
                         unreadable,
                     });
                 }
@@ -638,6 +650,10 @@ impl Coordinator {
                 Ok(Outcome::Applied)
             }
             Command::DetectSeries { regroup } => self.detect_series(regroup),
+            Command::AcceptExternalChanges { photos, use_file } => {
+                self.accept_external(photos, use_file)
+            }
+            Command::IgnoreExternalChanges { photos } => self.ignore_external(photos),
             Command::CancelJob { job_id } => self.cancel_job(job_id),
             Command::AddSource { name, root, kind } => self.add_source(name, root, kind),
             Command::ScanSource { source_id } => self.scan_source(source_id),
@@ -2116,15 +2132,358 @@ impl Coordinator {
             .collect()
     }
 
-    /// The external XMP files an index job read (`Inbound::ExternalXmp`, D-047): each photo's base is
-    /// what was read, whatever it was tracking before. A photo that has left since is not there, and
-    /// its row is refused by the foreign key: nothing to record.
+    /// The external XMP files an index job read (`Inbound::ExternalXmp`, D-047): a photo whose tracked file
+    /// is this one is compared with what the file says now, against its base and against the photo as it
+    /// is (slice 2's three-way check); anything else (no base yet, another file tracked before) is
+    /// baselined silently. A comparison with nothing to take or ask (the file only changed in ways that
+    /// are not fields, or to what the photo already says) simply moves the base along; otherwise the
+    /// file's newer fields wait as a pending change for an answer. A photo that has left since is not
+    /// there, and its row is refused by the foreign key: nothing to record.
     fn handle_external_seen(&mut self, seen: Vec<ExternalSeen>) {
+        let key_paths = self
+            .read_vocabulary()
+            .map(|v| auroraw_catalogue::keyword_paths(&v.keywords))
+            .unwrap_or_default();
         for one in seen {
-            let _ =
-                self.catalogue
-                    .set_external_base(&one.photo_id, &one.path, one.stat, &one.fields);
+            let row = self.catalogue.external_of(&one.photo_id).ok().flatten();
+            let tracked = row.filter(|r| r.path == one.path);
+            let compared = tracked.and_then(|row| {
+                let (photo, _) = self.read_photo(&one.photo_id).ok()?;
+                Some(merge(
+                    Some(&row.base),
+                    &one.fields,
+                    &mine_of(&photo.meta, &key_paths),
+                ))
+            });
+            match compared {
+                Some(changes) if !changes.is_empty() => {
+                    let _ = self.catalogue.set_external_pending(
+                        &one.photo_id,
+                        &ExternalPending {
+                            stat: one.stat,
+                            file: one.fields,
+                        },
+                    );
+                }
+                _ => {
+                    let _ = self.catalogue.set_external_base(
+                        &one.photo_id,
+                        &one.path,
+                        one.stat,
+                        &one.fields,
+                    );
+                }
+            }
         }
+    }
+
+    /// Looks at every change waiting for an answer with fresh eyes: one the photo has come to agree with
+    /// (edited by hand to the same values since) is settled on the spot; the rest are counted. What the
+    /// banner and `Event::ExternalChanges` report.
+    fn settle_external(&mut self) -> usize {
+        let Ok(rows) = self.catalogue.pending_externals() else {
+            return 0;
+        };
+        if rows.is_empty() {
+            return 0;
+        }
+        let key_paths = self
+            .read_vocabulary()
+            .map(|v| auroraw_catalogue::keyword_paths(&v.keywords))
+            .unwrap_or_default();
+        let (mut waiting, mut agreed) = (0, Vec::new());
+        for row in rows {
+            let Ok((photo, _)) = self.read_photo(&row.photo_id) else {
+                continue;
+            };
+            let Some(diff) = pending_diff(&row, &photo.meta, &key_paths) else {
+                continue;
+            };
+            match row.pending {
+                Some(pending) if diff.is_empty() => {
+                    agreed.push((row.photo_id, pending.stat, pending.file));
+                }
+                _ => waiting += 1,
+            }
+        }
+        let _ = self.catalogue.settle_externals(&agreed);
+        waiting
+    }
+
+    /// Tells the interface how many changes wait for an answer now.
+    fn report_external(&mut self) {
+        let photos = self.settle_external();
+        let _ = self.events.send(Event::ExternalChanges {
+            source_id: None,
+            photos,
+            unreadable: 0,
+        });
+    }
+
+    /// Declines the changes waiting for these photos (`Command::IgnoreExternalChanges`): the file
+    /// becomes the base as it stands, nothing is applied and nothing is recorded in the history.
+    fn ignore_external(&mut self, photos: Vec<PhotoId>) -> Result<Outcome> {
+        let mut answered = Vec::new();
+        for photo in photos {
+            if answered.iter().any(|(id, _, _)| *id == photo) {
+                continue;
+            }
+            if let Some(pending) = self
+                .catalogue
+                .external_of(&photo)?
+                .and_then(|row| row.pending)
+            {
+                answered.push((photo, pending.stat, pending.file));
+            }
+        }
+        self.catalogue.settle_externals(&answered)?;
+        self.report_external();
+        Ok(Outcome::ExternalResolved {
+            photos: answered.len(),
+        })
+    }
+
+    /// Accepts the changes waiting for these photos (`Command::AcceptExternalChanges`), all as one step
+    /// of the history: keywords the vocabulary lacks are created first (one `Change::Vocabulary` at the
+    /// head, so that an undo takes them off the photos before it takes them out), then each photo takes
+    /// its fields and keyword changes in one write. Nothing is applied if anything fails.
+    fn accept_external(
+        &mut self,
+        photos: Vec<PhotoId>,
+        use_file: Vec<(PhotoId, ExternalField)>,
+    ) -> Result<Outcome> {
+        struct Plan {
+            photo: PhotoId,
+            stat: ExternalStat,
+            file: Fields,
+            merge: Merge,
+        }
+        let vocabulary = self.read_vocabulary()?;
+        let key_paths = auroraw_catalogue::keyword_paths(&vocabulary.keywords);
+        let mut plans: Vec<Plan> = Vec::new();
+        for photo in photos {
+            if plans.iter().any(|p| p.photo == photo) {
+                continue;
+            }
+            let Some(row) = self.catalogue.external_of(&photo)? else {
+                continue;
+            };
+            let Some(pending) = row.pending.clone() else {
+                continue;
+            };
+            let Ok((sidecar, _)) = self.read_photo(&photo) else {
+                continue;
+            };
+            let Some(diff) = pending_diff(&row, &sidecar.meta, &key_paths) else {
+                continue;
+            };
+            plans.push(Plan {
+                photo,
+                stat: pending.stat,
+                file: pending.file,
+                merge: diff,
+            });
+        }
+
+        // The keywords the files gained that the vocabulary lacks, made on a copy first so that the
+        // change to record is exactly what was made.
+        let mut working = vocabulary.clone();
+        let known: std::collections::HashSet<KeywordId> =
+            vocabulary.keywords.iter().map(|k| k.id).collect();
+        let mut resolved: HashMap<String, KeywordId> = HashMap::new();
+        for path in plans.iter().flat_map(|p| p.merge.keywords.add.iter()) {
+            if let Some(id) = Self::resolve_keyword_path(&mut working, path) {
+                resolved.insert(keyword_key(path), id);
+            }
+        }
+        let created: Vec<KeywordEntry> = working
+            .keywords
+            .iter()
+            .filter(|k| !known.contains(&k.id))
+            .cloned()
+            .collect();
+        let mut changes: Vec<Change> = Vec::new();
+        if !created.is_empty() {
+            let deltas: Vec<KeywordDelta> = created
+                .iter()
+                .map(|entry| KeywordDelta {
+                    id: entry.id,
+                    before: None,
+                    after: Some(entry.clone()),
+                })
+                .collect();
+            self.apply_vocabulary(&deltas, Direction::Redo, false)?;
+            for entry in &created {
+                let _ = self.events.send(Event::KeywordCreated(entry.id));
+            }
+            changes.push(Change::Vocabulary {
+                action: VocabularyAction::Create,
+                keywords: deltas,
+            });
+        }
+        let paths_after = auroraw_catalogue::keyword_paths(&working.keywords);
+
+        let mut touched = 0;
+        for plan in &plans {
+            match self.apply_external_plan(
+                plan.photo,
+                &plan.file,
+                &plan.merge,
+                &use_file,
+                &resolved,
+                &key_paths,
+                &paths_after,
+            ) {
+                Ok(made) => {
+                    touched += usize::from(!made.is_empty());
+                    changes.extend(made);
+                }
+                Err(e) => {
+                    self.take_back(&changes);
+                    return Err(e);
+                }
+            }
+        }
+        let answered: Vec<_> = plans
+            .iter()
+            .map(|p| (p.photo, p.stat, p.file.clone()))
+            .collect();
+        if let Err(e) = self.catalogue.settle_externals(&answered) {
+            self.take_back(&changes);
+            return Err(e.into());
+        }
+        if !changes.is_empty() {
+            self.history.record(Entry::labelled(
+                Label {
+                    kind: LabelKind::ExternalChanges,
+                    count: touched,
+                },
+                changes,
+            ));
+            self.report_history();
+        }
+        self.report_external();
+        Ok(Outcome::ExternalResolved {
+            photos: answered.len(),
+        })
+    }
+
+    /// One photo's share of an accept: the fields only the file changed, the conflicts settled in the
+    /// file's favour, the keywords it gained and lost, written at once. What changed, as history changes.
+    #[allow(clippy::too_many_arguments)]
+    fn apply_external_plan(
+        &mut self,
+        photo_id: PhotoId,
+        file: &Fields,
+        diff: &Merge,
+        use_file: &[(PhotoId, ExternalField)],
+        resolved: &HashMap<String, KeywordId>,
+        key_paths: &HashMap<KeywordId, String>,
+        paths_after: &HashMap<KeywordId, String>,
+    ) -> Result<Vec<Change>> {
+        let (mut photo, _) = self.read_photo(&photo_id)?;
+        let mut changes = Vec::new();
+        let mut fields: Vec<ExternalField> = diff.taken.iter().map(|c| c.field).collect();
+        fields.extend(
+            diff.conflicts
+                .iter()
+                .map(|c| c.field)
+                .filter(|f| use_file.contains(&(photo_id, *f))),
+        );
+        for field in fields {
+            let meta = &mut photo.meta;
+            match field {
+                ExternalField::Rating => {
+                    let (stars, flag) = (meta.rating, meta.flag);
+                    file.apply_field(field, meta);
+                    if stars != meta.rating {
+                        changes.push(Change::Rating {
+                            photo: photo_id,
+                            before: stars,
+                            after: meta.rating,
+                        });
+                    }
+                    if flag != meta.flag {
+                        changes.push(Change::Flag {
+                            photo: photo_id,
+                            before: flag,
+                            after: meta.flag,
+                        });
+                    }
+                }
+                ExternalField::Label => {
+                    let before = meta.label.clone();
+                    file.apply_field(field, meta);
+                    if before != meta.label {
+                        changes.push(Change::Label {
+                            photo: photo_id,
+                            before,
+                            after: meta.label.clone(),
+                        });
+                    }
+                }
+                other => {
+                    if let Some(text_field) = metadata_field(other) {
+                        let before = text_field.get(meta);
+                        file.apply_field(other, meta);
+                        let after = text_field.get(meta);
+                        if before != after {
+                            changes.push(Change::Metadata {
+                                photo: photo_id,
+                                field: text_field,
+                                before,
+                                after,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if !diff.keywords.add.is_empty() || !diff.keywords.remove.is_empty() {
+            let before = keyword_set(&photo.meta);
+            let gone: std::collections::HashSet<String> = diff
+                .keywords
+                .remove
+                .iter()
+                .map(|p| keyword_key(p))
+                .collect();
+            let mut i = 0;
+            while i < photo.meta.keyword_ids.len() {
+                let id = photo.meta.keyword_ids[i];
+                let path = key_paths
+                    .get(&id)
+                    .cloned()
+                    .or_else(|| photo.meta.keyword_paths.get(i).cloned());
+                if path.is_some_and(|p| gone.contains(&keyword_key(&p))) {
+                    photo.meta.keyword_ids.remove(i);
+                    if i < photo.meta.keyword_paths.len() {
+                        photo.meta.keyword_paths.remove(i);
+                    }
+                } else {
+                    i += 1;
+                }
+            }
+            for path in &diff.keywords.add {
+                if let Some(id) = resolved.get(&keyword_key(path))
+                    && !photo.meta.keyword_ids.contains(id)
+                {
+                    let canonical = paths_after.get(id).cloned().unwrap_or_else(|| path.clone());
+                    photo.meta.push_keyword(*id, canonical);
+                }
+            }
+            let after = keyword_set(&photo.meta);
+            if before != after {
+                changes.push(Change::Keywords {
+                    photo: photo_id,
+                    before,
+                    after,
+                });
+            }
+        }
+        if !changes.is_empty() {
+            self.persist_photo(photo)?;
+        }
+        Ok(changes)
     }
 
     #[allow(clippy::too_many_arguments)]

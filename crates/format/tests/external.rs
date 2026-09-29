@@ -4,7 +4,9 @@
 //! digiKam and ExifTool; the rating's single axis; the keyword union; and that nothing here ever needs
 //! a sidecar's own properties.
 
-use auroraw_format::sidecar::external::{ExternalError, Fields, MAX_BYTES, keyword_key, read};
+use auroraw_format::sidecar::external::{
+    ExternalError, Field, Fields, MAX_BYTES, Merge, keyword_key, merge, read,
+};
 use auroraw_format::sidecar::{Flag, Metadata};
 use auroraw_types::KeywordId;
 use proptest::prelude::*;
@@ -314,5 +316,263 @@ proptest! {
         let rating = rating.replace(['<', '>', '&', '"'], "");
         let body = format!("<dc:subject><rdf:Bag><rdf:li>{subject}</rdf:li></rdf:Bag></dc:subject>");
         let _ = read(&file(&format!("xmp:Rating=\"{rating}\""), &body));
+    }
+}
+
+// ---- the three-way comparison (design note 003 §8.1) ----
+
+fn title(t: &str) -> Fields {
+    Fields {
+        title: Some(t.into()),
+        ..Fields::default()
+    }
+}
+
+fn keywords(paths: &[&str]) -> Fields {
+    Fields {
+        keywords: paths.iter().map(|p| p.to_string()).collect(),
+        ..Fields::default()
+    }
+}
+
+fn only(m: &Merge) -> Vec<Field> {
+    let mut fields: Vec<Field> = m.taken.iter().map(|c| c.field).collect();
+    fields.extend(m.conflicts.iter().map(|c| c.field));
+    fields
+}
+
+#[test]
+fn a_field_unchanged_in_the_file_is_left_to_the_photo_whatever_the_photo_says() {
+    let m = merge(Some(&title("a")), &title("a"), &title("mine"));
+    assert!(m.is_empty() && m.converged.is_empty());
+}
+
+#[test]
+fn a_field_changed_only_in_the_file_is_taken() {
+    let m = merge(Some(&title("a")), &title("b"), &title("a"));
+    assert_eq!(m.taken.len(), 1);
+    assert_eq!(
+        (
+            m.taken[0].field,
+            m.taken[0].mine.as_str(),
+            m.taken[0].file.as_str()
+        ),
+        (Field::Title, "a", "b")
+    );
+    assert!(m.conflicts.is_empty());
+}
+
+#[test]
+fn a_field_the_file_changed_to_what_the_photo_already_says_is_converged_and_needs_no_answer() {
+    let m = merge(Some(&title("a")), &title("b"), &title("b"));
+    assert!(m.is_empty(), "nothing to take or ask");
+    assert_eq!(m.converged, [Field::Title]);
+}
+
+#[test]
+fn a_field_changed_on_both_sides_to_different_values_is_a_conflict() {
+    let m = merge(Some(&title("a")), &title("b"), &title("c"));
+    assert!(m.taken.is_empty());
+    assert_eq!(m.conflicts.len(), 1);
+    let c = &m.conflicts[0];
+    assert_eq!(
+        (c.field, c.base.as_deref(), c.mine.as_str(), c.file.as_str()),
+        (Field::Title, Some("a"), "c", "b")
+    );
+}
+
+#[test]
+fn without_a_base_every_difference_is_a_conflict_and_a_match_is_nothing() {
+    let m = merge(None, &title("b"), &title("c"));
+    assert_eq!(m.conflicts.len(), 1);
+    assert_eq!(m.conflicts[0].base, None);
+    assert!(merge(None, &title("b"), &title("b")).is_empty());
+    // A field the file lacks and the photo has is a difference too: nothing is assumed.
+    assert_eq!(
+        merge(None, &Fields::default(), &title("c")).conflicts.len(),
+        1
+    );
+}
+
+#[test]
+fn a_file_that_gains_or_loses_a_field_is_a_change_like_any_other() {
+    let gained = merge(Some(&Fields::default()), &title("new"), &Fields::default());
+    assert_eq!(only(&gained), [Field::Title]);
+    let lost = merge(Some(&title("old")), &Fields::default(), &title("old"));
+    assert_eq!(
+        lost.taken[0].file, "",
+        "cleared in the file, cleared in the photo"
+    );
+}
+
+#[test]
+fn the_rating_axis_changes_as_one_field() {
+    let r = |n: Option<i8>| Fields {
+        rating: n,
+        ..Fields::default()
+    };
+    // Another tool rejects a 3-star photo: one field.
+    let m = merge(Some(&r(Some(3))), &r(Some(-1)), &r(Some(3)));
+    assert_eq!(only(&m), [Field::Rating]);
+    assert_eq!(m.taken[0].file, "-1");
+    // And un-rejects it to 4.
+    let m = merge(Some(&r(Some(-1))), &r(Some(4)), &r(Some(-1)));
+    assert_eq!(m.taken[0].file, "4");
+    // 0 is unset.
+    assert!(merge(Some(&r(None)), &r(None), &r(Some(2))).is_empty());
+}
+
+#[test]
+fn keywords_are_sets_against_the_base_and_never_conflict() {
+    let base = keywords(&["Fauna|Birds|Heron", "Places|Quebec"]);
+    let file = keywords(&["Fauna|Birds|Heron", "Sunrise", "places|quebec"]);
+    let mine = keywords(&["Fauna|Birds|Heron", "Places|Quebec", "Mine"]);
+    let m = merge(Some(&base), &file, &mine);
+    assert_eq!(
+        m.keywords.add,
+        ["Sunrise"],
+        "the file added it, the photo lacks it"
+    );
+    assert!(
+        m.keywords.remove.is_empty(),
+        "spellings of one path are one keyword"
+    );
+    assert!(m.conflicts.is_empty() && m.taken.is_empty());
+
+    // The file drops one that the photo still has: offered; one the photo already dropped: nothing.
+    let dropped = keywords(&["Fauna|Birds|Heron"]);
+    let m = merge(Some(&base), &dropped, &mine);
+    assert_eq!(m.keywords.remove, ["Places|Quebec"]);
+    let m = merge(Some(&base), &dropped, &keywords(&["Fauna|Birds|Heron"]));
+    assert!(m.keywords.remove.is_empty() && m.is_empty());
+
+    // A keyword the photo added and the file never had is not in the base: left alone.
+    assert!(merge(Some(&base), &base, &mine).is_empty());
+    // A keyword the photo renamed no longer matches the base's spelling: left alone, not removed.
+    let renamed = keywords(&["Fauna|Birds|Grey heron", "Places|Quebec"]);
+    let m = merge(Some(&base), &keywords(&["Places|Quebec"]), &renamed);
+    assert!(
+        m.keywords.remove.is_empty(),
+        "the photo no longer has that path"
+    );
+}
+
+#[test]
+fn with_no_base_the_files_keywords_are_offered_and_nothing_is_removed() {
+    let m = merge(None, &keywords(&["A", "B"]), &keywords(&["B", "C"]));
+    assert_eq!(m.keywords.add, ["A"]);
+    assert!(m.keywords.remove.is_empty(), "nothing is lost");
+}
+
+#[test]
+fn applying_a_field_makes_the_photo_agree_with_the_file() {
+    let file = read(&foreign("lightroom.xmp")).unwrap();
+    let mut meta = Metadata::default();
+    for field in Field::ALL {
+        file.apply_field(field, &mut meta);
+    }
+    let mine = Fields::from_metadata(&meta, |_| None);
+    let m = merge(Some(&Fields::default()), &file, &mine);
+    // Everything but the keywords (which need identifiers) now agrees.
+    assert!(m.taken.is_empty() && m.conflicts.is_empty(), "{m:?}");
+    assert_eq!(m.keywords.add, file.keywords);
+
+    // The rating axis, applied.
+    let axis = |rating: Option<i8>, from: Metadata| {
+        let mut meta = from;
+        Fields {
+            rating,
+            ..Fields::default()
+        }
+        .apply_field(Field::Rating, &mut meta);
+        (meta.rating, meta.flag)
+    };
+    let stars = Metadata {
+        rating: Some(3),
+        ..Metadata::default()
+    };
+    assert_eq!(
+        axis(Some(-1), stars.clone()),
+        (Some(3), Some(Flag::Rejected)),
+        "it keeps its stars"
+    );
+    let rejected = Metadata {
+        rating: Some(3),
+        flag: Some(Flag::Rejected),
+        ..Metadata::default()
+    };
+    assert_eq!(axis(Some(4), rejected.clone()), (Some(4), None));
+    assert_eq!(axis(None, rejected), (None, None));
+    let picked = Metadata {
+        flag: Some(Flag::Picked),
+        ..stars
+    };
+    assert_eq!(
+        axis(Some(5), picked),
+        (Some(5), Some(Flag::Picked)),
+        "picked is never touched by a rating"
+    );
+}
+
+#[test]
+fn field_keys_round_trip() {
+    for field in Field::ALL {
+        assert_eq!(Field::parse(field.key()), Some(field));
+    }
+    assert_eq!(Field::parse("nonsense"), None);
+    assert_eq!(Field::ALL.len(), 20);
+}
+
+fn arbitrary_fields() -> impl Strategy<Value = Fields> {
+    (
+        proptest::option::of(-1i8..=5),
+        proptest::option::of("[a-c]{0,3}"),
+        proptest::option::of("[a-c]{1,3}"),
+        proptest::collection::vec("[a-c]{1,2}", 0..3),
+        proptest::collection::vec("[A-Ca-c]{1,2}(\\|[A-Ca-c]{1,2}){0,2}", 0..4),
+    )
+        .prop_map(|(rating, label, title, creator, keywords)| {
+            let meta = Metadata {
+                rating: rating.filter(|r| *r >= 1).map(|r| r as u8),
+                flag: (rating == Some(-1)).then_some(Flag::Rejected),
+                label,
+                title,
+                creator,
+                keyword_paths: keywords,
+                ..Metadata::default()
+            };
+            Fields::from_metadata(&meta, |_| None)
+        })
+}
+
+proptest! {
+    #[test]
+    fn a_file_equal_to_its_base_never_asks_anything(base in arbitrary_fields(), mine in arbitrary_fields()) {
+        prop_assert!(merge(Some(&base), &base, &mine).is_empty());
+    }
+
+    #[test]
+    fn a_photo_equal_to_its_base_takes_exactly_what_the_file_changed(base in arbitrary_fields(), file in arbitrary_fields()) {
+        let m = merge(Some(&base), &file, &base);
+        prop_assert!(m.conflicts.is_empty());
+        let changed: Vec<Field> = Field::ALL
+            .into_iter()
+            .filter(|f| *f != Field::Keywords && file.get(*f) != base.get(*f))
+            .collect();
+        let mut taken: Vec<Field> = m.taken.iter().map(|c| c.field).collect();
+        taken.sort_by_key(|f| f.key());
+        let mut expected = changed;
+        expected.sort_by_key(|f| f.key());
+        prop_assert_eq!(taken, expected);
+    }
+
+    #[test]
+    fn without_a_base_two_equal_sides_agree_and_the_rest_conflict(file in arbitrary_fields(), mine in arbitrary_fields()) {
+        let m = merge(None, &file, &mine);
+        prop_assert!(m.taken.is_empty());
+        for c in &m.conflicts {
+            prop_assert!(file.get(c.field) != mine.get(c.field));
+        }
+        prop_assert_eq!(merge(None, &file, &file).is_empty(), true);
     }
 }

@@ -103,6 +103,13 @@ pub mod qobject {
         #[cxx_name = "jobFinished"]
         fn job_finished(self: Pin<&mut Bus>, job: &QString);
 
+        /// A scan looked at the XMP files other applications keep next to photos, or a change was answered
+        /// (D-047, WP10): how many photos have a change waiting for an answer now, and how many files the
+        /// scan could not read at all (0 after an answer).
+        #[qsignal]
+        #[cxx_name = "externalChanges"]
+        fn external_changes(self: Pin<&mut Bus>, photos: i32, unreadable: i32);
+
         /// A keyword branch was deleted (D-126 volet B): a small one right away, `job` empty; one past
         /// `BACKGROUND_THRESHOLD` photos once its background sweep actually ends, `job` its id.
         /// `finished` is `false` only for a sweep that was cancelled before every carrying photo was
@@ -320,6 +327,9 @@ fn dispatch(event: Event, session: &Session) {
             let job = job.to_string();
             on_gui(move |bus| bus.job_cancelled(&QString::from(job.as_str())));
         }
+        Event::ExternalChanges {
+            photos, unreadable, ..
+        } => on_gui(move |bus| bus.external_changes(photos as i32, unreadable as i32)),
         Event::JobFinished(job) => {
             let job = job.to_string();
             on_gui(move |bus| bus.job_finished(&QString::from(job.as_str())));

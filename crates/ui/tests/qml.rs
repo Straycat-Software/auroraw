@@ -255,6 +255,15 @@ fn exact_duplicates_are_reported_with_every_location() {
     run_suite("duplicates", home.path(), None);
 }
 
+/// Changes other applications make to the XMP files beside originals: the banner, the review window, accepting,
+/// declining and choosing where both sides changed.
+#[test]
+fn external_xmp_changes_are_announced_reviewed_and_answered() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 20);
+    run_suite("external", home.path(), None);
+}
+
 /// Comparing frames: pages, marks, resolving from the comparison, linked zoom, the aids, the thumbnail size.
 #[test]
 fn comparing_frames_and_the_quality_aids() {

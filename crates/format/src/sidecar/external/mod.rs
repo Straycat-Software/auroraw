@@ -8,7 +8,9 @@
 //! what a file holds and to what a photo sidecar holds, so an equality between them means what it says.
 
 mod fields;
+mod merge;
 mod reader;
 
 pub use fields::{Fields, keyword_key, normalise_path};
+pub use merge::{Conflict, Field, FieldChange, KeywordMerge, Merge, merge};
 pub use reader::{ExternalError, MAX_BYTES, read};
