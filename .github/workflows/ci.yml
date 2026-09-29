@@ -106,7 +106,7 @@ jobs:
         shell: bash
         run: tools/build-plugins.sh
       - run: cargo build --workspace --locked
-      - run: cargo nextest run --workspace --locked --no-fail-fast -E 'test(external_xmp_changes)'
+      - run: cargo nextest run --workspace --locked --no-fail-fast --success-output final
         env:
           AUR_REQUIRE_EXIFTOOL: "1"
           AUR_REQUIRE_SAMPLES: "1"

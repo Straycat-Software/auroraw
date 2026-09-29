@@ -60,7 +60,7 @@ AppTestCase {
     function diag(label) {
         const b = app.externalBanner.reviewButton
         const c = b.mapToItem(null, b.width / 2, b.height / 2)
-        console.warn("DIAG " + label + ": review enabled=" + b.enabled + " visible=" + b.visible
+        return ("DIAG " + label + ": review enabled=" + b.enabled + " visible=" + b.visible
             + " size=" + b.width + "x" + b.height + " centre=" + Math.round(c.x) + "," + Math.round(c.y)
             + " window=" + app.width + "x" + app.height + " banner y=" + app.externalBanner.y
             + " h=" + app.externalBanner.height + " dialogOpen=" + app.dialogOpen
@@ -78,18 +78,20 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
         compare(app.externalBanner.count, 1)
 
-        diag("before the click")
-        app.externalBanner.reviewRequested.connect(() => console.warn("DIAG reviewRequested emitted"))
-        app.externalDialog.visibleChanged.connect(() => console.warn("DIAG externalDialog.visible -> " + app.externalDialog.visible))
+        const t0 = Date.now()
+        const lines = []
+        const say = text => lines.push((Date.now() - t0) + " ms: " + text)
+        say(diag("before the click"))
+        app.externalBanner.reviewRequested.connect(() => say("reviewRequested emitted"))
+        app.externalDialog.visibleChanged.connect(() => say("externalDialog.visible -> " + app.externalDialog.visible))
         click(app.externalBanner.reviewButton)
-        wait(1500)
-        diag("1.5 s after the click")
-        if (!app.externalDialog.visible) {
-            app.externalDialog.open()
-            wait(1500)
-            diag("after open() was called directly")
-        }
-        tryVerify(() => app.externalDialog.visible)
+        say("click returned")
+        // Up to 30 s instead of 5: how long does it take, when the machine is busy?
+        tryVerify(() => app.externalDialog.visible, 30000)
+        say("waited: visible=" + app.externalDialog.visible)
+        say(diag("after the wait"))
+        // (The diagnostic is the failure message: a passing suite prints nothing.)
+        fail(lines.join("\n    "))
         tryCompare(app.externalDialog.entries, "length", 1)
         const entry = app.externalDialog.entries[0]
         compare(entry.filename, "IMG_0003.jpg")
