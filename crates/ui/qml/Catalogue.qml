@@ -73,7 +73,7 @@ Item {
                 spacing: 4
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.sources
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
                 delegate: Rectangle {
                     id: row
                     required property int index
@@ -83,7 +83,7 @@ Item {
                     required property int photos
                     property alias rescanButton: rescanButton
                     property alias removeButton: removeButton
-                    width: ListView.view.width - Theme.scrollbarReserve
+                    width: ListView.view.width - vbar.width
                     height: 64
                     color: root.palette.dark
 

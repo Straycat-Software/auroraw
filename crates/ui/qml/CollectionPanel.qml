@@ -206,7 +206,7 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: panel.collections
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
 
                 delegate: Item {
                     id: row
@@ -218,7 +218,7 @@ Item {
                     required property int held
                     required property bool hasChildren
                     required property bool expanded
-                    width: ListView.view.width - Theme.scrollbarReserve
+                    width: ListView.view.width - vbar.width
                     height: 28
 
                     // Dropping a collection here puts it inside this one (when that is possible).

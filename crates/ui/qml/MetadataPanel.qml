@@ -61,13 +61,13 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             spacing: 6
             model: panel.fields
-            ScrollBar.vertical: AppScrollBar {}
+            ScrollBar.vertical: AppScrollBar { id: vbar }
 
             delegate: ColumnLayout {
                 id: row
                 required property var modelData
                 required property int index
-                width: ListView.view.width - Theme.scrollbarReserve
+                width: ListView.view.width - vbar.width
                 spacing: 2
 
                 property bool mixed: false

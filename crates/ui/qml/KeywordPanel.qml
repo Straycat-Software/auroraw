@@ -384,7 +384,7 @@ Rectangle {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: panel.keywords
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
 
                 delegate: Item {
                     id: row
@@ -396,7 +396,7 @@ Rectangle {
                     required property int carried
                     required property bool hasChildren
                     required property bool expanded
-                    width: ListView.view.width - Theme.scrollbarReserve
+                    width: ListView.view.width - vbar.width
                     height: 28
 
                     // Dropping a keyword here makes it a child of this one (when that is possible).
