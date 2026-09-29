@@ -312,7 +312,7 @@ Rectangle {
                 PanelTab { slot: 2 }
                 PanelTab { slot: 3 }
             }
-            ToolButton {
+            AppToolButton {
                 id: collapseButton
                 text: "»"
                 focusPolicy: Qt.NoFocus
@@ -321,7 +321,7 @@ Rectangle {
             }
         }
 
-        TextField {
+        AppTextField {
             id: field
             visible: tabs.currentIndex === 0
             Layout.fillWidth: true
@@ -374,7 +374,7 @@ Rectangle {
                 color: Theme.quiet
                 elide: Text.ElideRight
             }
-            ToolButton {
+            AppToolButton {
                 visible: !panel.canAdd && panel.createUnder !== ""
                 text: "×"
                 focusPolicy: Qt.NoFocus
@@ -440,7 +440,7 @@ Rectangle {
                                 onClicked: panel.keywords.toggleExpanded(row.index)
                             }
                         }
-                        CheckBox {
+                        AppCheckBox {
                             id: check
                             tristate: true
                             padding: 0
@@ -581,7 +581,7 @@ Rectangle {
     }
 
     // Collapsed: a strip with the button that brings the panel back.
-    ToolButton {
+    AppToolButton {
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
         visible: !panel.expanded
@@ -652,7 +652,7 @@ Rectangle {
 
         contentItem: ColumnLayout {
             spacing: 8
-            TextField {
+            AppTextField {
                 id: nameField
                 Layout.fillWidth: true
                 Accessible.name: qsTr("Name")
@@ -714,7 +714,7 @@ Rectangle {
                                                     : qsTr("There is nowhere to move “%1”.").arg(moveDialog.keywordName)
                 wrapMode: Text.Wrap
             }
-            ComboBox {
+            AppComboBox {
                 id: targetBox
                 Layout.fillWidth: true
                 model: moveDialog.targets
@@ -819,7 +819,7 @@ Rectangle {
                       : qsTr("No photo has it. You can undo this.")
                 color: Theme.quiet
             }
-            ProgressBar {
+            AppProgressBar {
                 Layout.fillWidth: true
                 visible: deleteDialog.job !== ""
                 value: deleteDialog.progress
@@ -899,21 +899,14 @@ Rectangle {
             Label {
                 text: qsTr("Synonyms, one a line:")
             }
-            TextArea {
+            AppTextArea {
                 id: synonymsField
                 Layout.fillWidth: true
                 Layout.preferredHeight: 84
                 wrapMode: TextArea.Wrap
                 Accessible.name: qsTr("Synonyms")
-                // Unlike TextField, Fusion gives TextArea no background of its own (D-122).
-                background: Rectangle {
-                    color: palette.base
-                    radius: Theme.radiusControl
-                    border.width: 1
-                    border.color: synonymsField.activeFocus ? Theme.accent : palette.mid
-                }
             }
-            CheckBox {
+            AppCheckBox {
                 id: doNotExportField
                 text: qsTr("Do not export")
             }

@@ -61,6 +61,13 @@ fn opening_and_creating_workspaces() {
     run_suite("launch", home.path(), None);
 }
 
+/// The interface's own controls, each on its own, with no application around them (D-136).
+#[test]
+fn the_controls_of_the_interface() {
+    let home = temp_dir();
+    run_suite("controls", home.path(), None);
+}
+
 #[test]
 fn the_hamburger_menu_and_its_commands() {
     let home = temp_dir();

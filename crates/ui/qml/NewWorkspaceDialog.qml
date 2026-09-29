@@ -53,7 +53,7 @@ AppDialog {
         rowSpacing: 14
 
         Label { text: qsTr("Name") }
-        TextField {
+        AppTextField {
             id: nameField
             objectName: "nameField"
             Layout.fillWidth: true
@@ -61,7 +61,7 @@ AppDialog {
             onAccepted: dialog.tryCreate()
         }
         Label { text: qsTr("Folder") }
-        TextField {
+        AppTextField {
             id: folderField
             objectName: "folderField"
             Layout.fillWidth: true

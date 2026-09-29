@@ -85,7 +85,7 @@ AppWindow {
                                         color: Theme.quiet
                                         text: modelData.sourceName + " — " + modelData.path
                                     }
-                                    ToolButton {
+                                    AppToolButton {
                                         text: qsTr("Show in file manager")
                                         focusPolicy: Qt.NoFocus
                                         onClicked: dialog.duplicates.revealLocation(modelData.sourceId, modelData.path)
