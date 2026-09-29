@@ -175,7 +175,7 @@ The milestone of each feature (M1 to M5) is described in §8.
 - **Existing XMP** files found next to originals at import (from Lightroom or others) are read,
   never modified, and their ratings, labels, keywords, title, caption and IPTC fields are copied into
   the photo sidecar when the photo is first added; a photo the catalogue already knew is only
-  remembered as it stands, so that later changes can be told from it (§5.7) [decided, D-129].
+  remembered as it stands, so that later changes can be told from it (§5.7) [decided, D-133].
 - Because sidecars live in the workspace, metadata edits are written immediately, whatever the
   state of the source: read-only card, unplugged drive, network share down [proposed].
 - The catalogue can be rebuilt from the workspace and the sources [decided, D-026]. For that to
@@ -608,7 +608,7 @@ model:
   import: "12 photos have metadata changed by another application". The photographer accepts
   with one click, or ignores.
 - The merge compares against the last state Auroraw read, so only fields changed outside are
-  applied, and a field changed on both sides is put to the photographer [decided, D-130].
+  applied, and a field changed on both sides is put to the photographer [decided, D-134].
 - Auroraw recognises the XMP files it exported itself (D-024) and never reports them as external
   changes [proposed].
 
