@@ -8,8 +8,9 @@ import org.auroraw.ui
 //
 // D-127 (the visual refresh) moved it to the `raised` tier — lighter than the window behind it, not
 // Fusion's own default (`window`, the same mid-tone as the canvas) — with the larger of the two
-// radius tiers, a hairline border instead of Fusion's flat 2px corner, and more room throughout
-// (Patrick's own review: Fusion's own padding read as cramped).
+// radius tiers, a hairline border instead of Fusion's flat 2px corner, more room throughout
+// (Patrick's own review: Fusion's own padding read as cramped), and a soft shadow (`AppShadow.qml`,
+// his own second review) to sell it actually floating above the window behind it.
 //
 // `resizable` (D-112) is opt-in: a dialog whose content benefits from more room (a list, a report)
 // sets it to true and draws its own drag handle in its own `contentItem` (a generic one here would
@@ -30,11 +31,15 @@ Dialog {
     closePolicy: Popup.CloseOnEscape
     padding: 24
 
-    background: Rectangle {
-        radius: Theme.radiusContainer
-        color: Theme.surface.raised
-        border.width: 1
-        border.color: Theme.surface.border
+    background: AppShadow {
+        shadowRadius: Theme.radiusContainer
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.radiusContainer
+            color: Theme.surface.raised
+            border.width: 1
+            border.color: Theme.surface.border
+        }
     }
     // Fusion's own default header paints an opaque, square, `window`-coloured strip flush with the
     // top edge — it covered the background's rounded corners and border there (Patrick's own
