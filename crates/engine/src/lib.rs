@@ -20,6 +20,7 @@ mod coordinator;
 mod duplicates_api;
 mod error;
 mod event;
+mod external_xmp;
 mod history;
 mod import_flow;
 mod import_job;

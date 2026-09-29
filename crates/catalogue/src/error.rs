@@ -33,6 +33,9 @@ pub enum CatalogueError {
         /// The error.
         source: serde_json::Error,
     },
+    /// A value stored as JSON (an external file's base, D-047) could not be written.
+    #[error("JSON: {0}")]
+    Json(#[from] serde_json::Error),
     /// An incremental update named an entity that is not in the catalogue (a rebuild is needed
     /// first, or the caller has the wrong identifier).
     #[error("{kind} {id} is not in the catalogue")]

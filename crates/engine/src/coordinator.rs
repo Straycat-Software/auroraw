@@ -23,6 +23,7 @@ use crate::batch_job;
 use crate::command::Command;
 use crate::error::{EngineError, Result};
 use crate::event::Event;
+use crate::external_xmp::ExternalSeen;
 use crate::history::{
     Change, Direction, Entry, History, HistoryState, KeywordDelta, KeywordSet, VocabularyAction,
 };
@@ -215,6 +216,26 @@ pub(crate) enum Inbound {
         photo: Option<Box<PhotoSidecar>>,
         stat: Option<SidecarStat>,
         backfill: Option<(PhotoId, ContentHash)>,
+    },
+    /// An index job needs these keyword paths (`"Fauna|Birds"`) resolved against the vocabulary, creating
+    /// what is missing (as the import template does: no history entry), to give a new photo the keywords
+    /// of the XMP file beside it (D-047, WP10). Answers, in order, each path's identifier and its
+    /// canonical spelling in the vocabulary (`None` for a path with nothing in it, or if the vocabulary
+    /// could not be written). The job waits for the answer: it needs the identifiers before it writes the
+    /// photo's sidecar.
+    ResolveKeywords {
+        paths: Vec<String>,
+        reply: mpsc::Sender<Vec<Option<(KeywordId, String)>>>,
+    },
+    /// An index job read the external XMP files (D-047) of these photos: record what was read as their
+    /// base (slice 1: silently; a photo's own sidecar was already given the file's fields by the job when
+    /// it is new).
+    ExternalXmp { seen: Vec<ExternalSeen> },
+    /// An index job is done with the external XMP files of `source_id`: `unreadable` of them could not be
+    /// read at all.
+    ExternalDone {
+        source_id: SourceId,
+        unreadable: usize,
     },
     /// A `batch_job` (a large `Batch` or `DeleteKeyword` sweep, D-126 volet B) applied one item: `edit`
     /// is run through [`Coordinator::apply_edit`], exactly as a small batch's own loop would run it,
@@ -507,6 +528,20 @@ impl Coordinator {
                     let _ = ack.send(());
                 }
                 Inbound::BatchDone { job } => self.finish_batch_job(job),
+                Inbound::ResolveKeywords { paths, reply } => {
+                    let _ = reply.send(self.resolve_keywords(&paths));
+                }
+                Inbound::ExternalXmp { seen } => self.handle_external_seen(seen),
+                Inbound::ExternalDone {
+                    source_id,
+                    unreadable,
+                } => {
+                    let _ = self.events.send(Event::ExternalChanges {
+                        source_id: Some(source_id),
+                        photos: 0,
+                        unreadable,
+                    });
+                }
             }
         }
         let _ = self.events.send(Event::Stopped);
@@ -2013,13 +2048,19 @@ impl Coordinator {
     /// not exist yet, and returns the leaf's identifier. Mutates `vocabulary` in place; the
     /// caller writes it and applies every touched keyword to the catalogue once, after resolving
     /// every path a profile's metadata template names, not once per segment.
-    fn resolve_keyword_path(vocabulary: &mut Vocabulary, path: &str) -> Option<KeywordId> {
+    pub(crate) fn resolve_keyword_path(
+        vocabulary: &mut Vocabulary,
+        path: &str,
+    ) -> Option<KeywordId> {
         let mut parent: Option<KeywordId> = None;
-        for segment in path.split('|').filter(|s| !s.is_empty()) {
+        for segment in path.split('|').map(str::trim).filter(|s| !s.is_empty()) {
+            // Whatever the case, as the vocabulary itself does (`ensure_name_is_free`): "heron" under
+            // "Birds" is the "Heron" already there, not a second one.
+            let wanted = segment.to_lowercase();
             let existing = vocabulary
                 .keywords
                 .iter()
-                .find(|k| k.name == segment && k.parent == parent)
+                .find(|k| k.parent == parent && k.name.to_lowercase() == wanted)
                 .map(|k| k.id);
             parent = Some(existing.unwrap_or_else(|| {
                 let id = KeywordId::random();
@@ -2035,6 +2076,55 @@ impl Coordinator {
             }));
         }
         parent
+    }
+
+    /// Resolves keyword paths for an index job (`Inbound::ResolveKeywords`): the vocabulary is read once,
+    /// written once if anything was created, and the new keywords go into the catalogue, parents first.
+    fn resolve_keywords(&mut self, paths: &[String]) -> Vec<Option<(KeywordId, String)>> {
+        let none = || vec![None; paths.len()];
+        let Ok(mut vocabulary) = self.read_vocabulary() else {
+            return none();
+        };
+        let before: std::collections::HashSet<KeywordId> =
+            vocabulary.keywords.iter().map(|k| k.id).collect();
+        let ids: Vec<Option<KeywordId>> = paths
+            .iter()
+            .map(|path| Self::resolve_keyword_path(&mut vocabulary, path))
+            .collect();
+        let key_paths = auroraw_catalogue::keyword_paths(&vocabulary.keywords);
+        let mut created: Vec<&KeywordEntry> = vocabulary
+            .keywords
+            .iter()
+            .filter(|k| !before.contains(&k.id))
+            .collect();
+        if !created.is_empty() {
+            let mut written = vocabulary.clone();
+            written.updated = Timestamp::now();
+            if self.workspace.write_vocabulary(&written).is_err() {
+                return none();
+            }
+            created.sort_by_key(|k| key_paths.get(&k.id).map_or(0, |p| p.matches('|').count()));
+            for entry in created {
+                if let Some(path) = key_paths.get(&entry.id) {
+                    let _ = self.catalogue.apply_keyword(entry, path);
+                }
+                let _ = self.events.send(Event::KeywordCreated(entry.id));
+            }
+        }
+        ids.into_iter()
+            .map(|id| id.and_then(|id| key_paths.get(&id).map(|path| (id, path.clone()))))
+            .collect()
+    }
+
+    /// The external XMP files an index job read (`Inbound::ExternalXmp`, D-047): each photo's base is
+    /// what was read, whatever it was tracking before. A photo that has left since is not there, and
+    /// its row is refused by the foreign key: nothing to record.
+    fn handle_external_seen(&mut self, seen: Vec<ExternalSeen>) {
+        for one in seen {
+            let _ =
+                self.catalogue
+                    .set_external_base(&one.photo_id, &one.path, one.stat, &one.fields);
+        }
     }
 
     #[allow(clippy::too_many_arguments)]

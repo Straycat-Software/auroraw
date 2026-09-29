@@ -16,17 +16,19 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use auroraw_catalogue::Catalogue;
-use auroraw_format::sidecar::{FileEntry, FileRole, Location, PhotoSidecar};
+use auroraw_format::sidecar::external::{self, Fields, keyword_key};
+use auroraw_format::sidecar::{FileEntry, FileRole, Location, Metadata, PhotoSidecar};
 use auroraw_import::{DiscoveredFile, PairRule, PhotoGroup, pair_files};
 use auroraw_plugin_api::source::{Source, SourceState};
 use auroraw_sources::filesystem::FilesystemSource;
 use auroraw_sources::relink::{self, FoundFile, KnownFile, ScanOutcome};
-use auroraw_types::{ContentHash, Fingerprint, PhotoId, SourceId, Timestamp};
+use auroraw_types::{ContentHash, Fingerprint, KeywordId, PhotoId, SourceId, Timestamp};
 use auroraw_workspace::{RemovedPhoto, Workspace};
 
 use crate::command::Command;
 use crate::coordinator::Inbound;
 use crate::event::Event;
+use crate::external_xmp::{self, ExternalSeen, XmpFile};
 use crate::import_job::{discover_one, stat_of};
 use crate::job::{CancelToken, JobId};
 use crate::reconcile_apply;
@@ -114,6 +116,112 @@ fn wait_for_answer(job: &IndexJob) -> Option<bool> {
     }
 }
 
+/// How many photos' external files go to the coordinator in one message.
+const EXTERNAL_CHUNK: usize = 100;
+
+/// Reads the external XMP files (D-047) of one index run and remembers, between photos, what it has
+/// already asked the coordinator to resolve.
+struct ExternalReader<'a> {
+    job: &'a IndexJob,
+    /// Keyword paths resolved so far in this run, by [`keyword_key`]: a path a hundred photos share is
+    /// asked about once.
+    resolved: HashMap<String, Option<(KeywordId, String)>>,
+    /// Files that could not be read at all (not XMP, too large, gone): counted, never touched, retried
+    /// at the next scan.
+    unreadable: usize,
+    /// Known photos' files read and not yet sent.
+    batch: Vec<ExternalSeen>,
+}
+
+impl<'a> ExternalReader<'a> {
+    fn new(job: &'a IndexJob) -> Self {
+        Self {
+            job,
+            resolved: HashMap::new(),
+            unreadable: 0,
+            batch: Vec::new(),
+        }
+    }
+
+    /// What `xmp` holds, or `None` (counted) when it cannot be read: too large, unreadable or not XMP.
+    fn read(&mut self, xmp: &XmpFile) -> Option<Fields> {
+        let fields = if xmp.stat.size > external::MAX_BYTES as u64 {
+            None
+        } else {
+            self.job
+                .source
+                .read_range(&xmp.path, 0, xmp.stat.size)
+                .ok()
+                .and_then(|bytes| external::read(&bytes).ok())
+        };
+        if fields.is_none() {
+            self.unreadable += 1;
+        }
+        fields
+    }
+
+    /// Gives a new photo's `meta` the file's fields, its keywords by identifier (resolved by the
+    /// coordinator, creating what the vocabulary lacks). `false` when the job was cancelled or the engine
+    /// is gone while waiting.
+    fn fill_new(&mut self, fields: &Fields, meta: &mut Metadata) -> bool {
+        fields.fill(meta);
+        let mut unseen: Vec<String> = Vec::new();
+        for path in &fields.keywords {
+            let key = keyword_key(path);
+            if !self.resolved.contains_key(&key) && !unseen.iter().any(|p| keyword_key(p) == key) {
+                unseen.push(path.clone());
+            }
+        }
+        if !unseen.is_empty() {
+            let (reply, answer) = mpsc::channel();
+            let asked = Inbound::ResolveKeywords {
+                paths: unseen.clone(),
+                reply,
+            };
+            if self.job.inbound.send(asked).is_err() {
+                return false;
+            }
+            let answers = loop {
+                if self.job.cancel.is_cancelled() {
+                    return false;
+                }
+                match answer.recv_timeout(Duration::from_millis(200)) {
+                    Ok(answers) => break answers,
+                    Err(mpsc::RecvTimeoutError::Timeout) => {}
+                    Err(mpsc::RecvTimeoutError::Disconnected) => return false,
+                }
+            };
+            for (path, resolved) in unseen.iter().zip(answers) {
+                self.resolved.insert(keyword_key(path), resolved);
+            }
+        }
+        for path in &fields.keywords {
+            if let Some(Some((id, canonical))) = self.resolved.get(&keyword_key(path))
+                && !meta.keyword_ids.contains(id)
+            {
+                meta.push_keyword(*id, canonical.clone());
+            }
+        }
+        true
+    }
+
+    /// Queues a known photo's file for the coordinator; a full batch goes at once.
+    fn queue(&mut self, seen: ExternalSeen) {
+        self.batch.push(seen);
+        if self.batch.len() >= EXTERNAL_CHUNK {
+            self.flush();
+        }
+    }
+
+    fn flush(&mut self) {
+        if !self.batch.is_empty() {
+            let _ = self.job.inbound.send(Inbound::ExternalXmp {
+                seen: std::mem::take(&mut self.batch),
+            });
+        }
+    }
+}
+
 fn run(job: IndexJob) {
     let abort = |reason: String| {
         let _ = job.events.send(Event::IndexAborted {
@@ -182,6 +290,15 @@ fn run(job: IndexJob) {
     .map(|group| (group.original.path.clone(), group))
     .collect();
 
+    // The XMP files other applications keep beside these photos (D-047), from the listing alone, before
+    // any group leaves `groups_by_path`.
+    let xmp_of = external_xmp::owners(
+        &entries,
+        &job.skip,
+        groups_by_path.keys().map(String::as_str),
+    );
+    let mut external = ExternalReader::new(&job);
+
     let mut failed = 0;
     let mut found = Vec::with_capacity(groups_by_path.len());
     for group in groups_by_path.values() {
@@ -202,6 +319,14 @@ fn run(job: IndexJob) {
     let mut missing = 0;
     let mut known_second_locations = 0;
     let mut new_groups = Vec::new();
+    // The photos already known whose original is (still) found, with the path it is at now: the ones whose
+    // external XMP file is looked at below.
+    let primary_path: HashMap<PhotoId, &str> = known
+        .iter()
+        .filter(|k| is_primary.get(&k.path) == Some(&true))
+        .map(|k| (k.photo_id, k.path.as_str()))
+        .collect();
+    let mut known_photos: Vec<(PhotoId, String)> = Vec::new();
     for outcome in relink::reconcile(&found, &known) {
         if job.cancel.is_cancelled() {
             // Through `inbound`, not `events`, directly: `merge_sources`, just above, may have messages
@@ -215,8 +340,16 @@ fn run(job: IndexJob) {
             // Exactly as before, on this exact path: nothing to do (unlike `scan_source`, index_job carries no
             // earlier "original changed"/"missing" mark to clear, since a photo can only ever be given one by
             // this same reconcile, on this same pass).
-            ScanOutcome::Confirmed { .. } => confirmed += 1,
+            ScanOutcome::Confirmed { photo_id } => {
+                confirmed += 1;
+                if let Some(path) = primary_path.get(&photo_id) {
+                    known_photos.push((photo_id, path.to_string()));
+                }
+            }
             ScanOutcome::OriginalChanged { photo_id, path } => {
+                if is_primary.get(&path) == Some(&true) {
+                    known_photos.push((photo_id, path.clone()));
+                }
                 let _ = job.inbound.send(Inbound::Apply(reconcile_apply::changed(
                     photo_id,
                     job.source_id,
@@ -225,6 +358,9 @@ fn run(job: IndexJob) {
                 )));
             }
             ScanOutcome::Relinked { photo_id, from, to } => {
+                if is_primary.get(&from) == Some(&true) {
+                    known_photos.push((photo_id, to.clone()));
+                }
                 let filename = file_name(&to);
                 let fingerprint = found
                     .iter()
@@ -362,8 +498,22 @@ fn run(job: IndexJob) {
                 .send(Inbound::Report(Event::JobCancelled(job.job)));
             return;
         }
+        let original_path = candidate.group.original.path.clone();
+        let xmp = xmp_of.get(&original_path);
+        // What the photo's external XMP file holds, when it has one that could be read and the photo landed.
+        let mut xmp_fields: Option<Fields> = None;
         let outcome = match candidate.removed.filter(|_| restore) {
-            Some(index) => restore_one(&job, &removed[index], &candidate),
+            Some(index) => {
+                let outcome = restore_one(&job, &removed[index], &candidate);
+                // A restored photo keeps its own sidecar, whatever a file beside it says now: the file is
+                // only baselined, silently.
+                if outcome.is_ok()
+                    && let Some(xmp) = xmp
+                {
+                    xmp_fields = external.read(xmp);
+                }
+                outcome
+            }
             None if try_join_existing_photo(
                 &job,
                 &catalogue,
@@ -376,17 +526,47 @@ fn run(job: IndexJob) {
             None => {
                 let (_, metadata) = discover_one(&root, &candidate.group.original.path);
                 candidate.metadata = metadata;
+                // A new photo takes what the file beside it says (D-047, "read at import"): rating, label,
+                // title, caption, rights, the IPTC fields, and keywords by identifier.
+                if let Some(xmp) = xmp
+                    && let Some(fields) = external.read(xmp)
+                {
+                    let mut meta = candidate.metadata.take().unwrap_or_default();
+                    if !external.fill_new(&fields, &mut meta) {
+                        let _ = job
+                            .inbound
+                            .send(Inbound::Report(Event::JobCancelled(job.job)));
+                        return;
+                    }
+                    candidate.metadata = Some(meta);
+                    xmp_fields = Some(fields);
+                }
                 add_one(&job, candidate)
             }
         };
+        let mut landed = None;
         match outcome {
-            Ok(Landed::Added) => added += 1,
-            Ok(Landed::Restored { versions }) => {
+            Ok(Landed::Added(photo_id)) => {
+                added += 1;
+                landed = Some(photo_id);
+            }
+            Ok(Landed::Restored { versions, photo_id }) => {
                 restored += 1;
                 versions_came_back |= versions > 0;
+                landed = Some(photo_id);
             }
             Ok(Landed::Joined) => second_locations += 1,
             Err(()) => failed += 1,
+        }
+        if let (Some(photo_id), Some(xmp), Some(fields)) = (landed, xmp, xmp_fields) {
+            let _ = job.inbound.send(Inbound::ExternalXmp {
+                seen: vec![ExternalSeen {
+                    photo_id,
+                    path: xmp.path.clone(),
+                    stat: xmp.stat,
+                    fields,
+                }],
+            });
         }
         let _ = job.events.send(Event::JobProgress {
             job: job.job,
@@ -394,6 +574,33 @@ fn run(job: IndexJob) {
             total,
         });
     }
+    // The photos the catalogue already knew: their external XMP file, when it is one nothing is known of yet
+    // (D-047, slice 1: recorded silently as the base; only later changes are ever reported).
+    let tracked = catalogue.external_stats(&job.source_id).unwrap_or_default();
+    for (photo_id, path) in known_photos {
+        let Some(xmp) = xmp_of.get(&path) else {
+            continue;
+        };
+        if !external_xmp::needs_reading(tracked.get(&photo_id), xmp) {
+            continue;
+        }
+        if job.cancel.is_cancelled() {
+            external.flush();
+            let _ = job
+                .inbound
+                .send(Inbound::Report(Event::JobCancelled(job.job)));
+            return;
+        }
+        if let Some(fields) = external.read(xmp) {
+            external.queue(ExternalSeen {
+                photo_id,
+                path: xmp.path.clone(),
+                stat: xmp.stat,
+                fields,
+            });
+        }
+    }
+    external.flush();
     if versions_came_back {
         // Restored version sidecars are new to the catalogue: a reconcile applies them.
         let _ = job.inbound.send(Inbound::Command {
@@ -411,6 +618,10 @@ fn run(job: IndexJob) {
         second_locations,
         missing,
     }));
+    let _ = job.inbound.send(Inbound::ExternalDone {
+        source_id: job.source_id,
+        unreadable: external.unreadable,
+    });
     let _ = job
         .inbound
         .send(Inbound::Report(Event::JobFinished(job.job)));
@@ -482,9 +693,10 @@ fn merge_sources(job: &IndexJob, catalogue: &Catalogue) -> Vec<KnownFile> {
 }
 
 enum Landed {
-    Added,
+    Added(PhotoId),
     Restored {
         versions: usize,
+        photo_id: PhotoId,
     },
     /// The file joined an existing photo from a different source as a second location, instead of becoming a new
     /// photo (D-036, D-108).
@@ -643,6 +855,7 @@ fn register(job: &IndexJob, photo: PhotoSidecar) -> Result<(), ()> {
 
 fn add_one(job: &IndexJob, candidate: Candidate) -> Result<Landed, ()> {
     let mut photo = PhotoSidecar::new(PhotoId::random());
+    let photo_id = photo.photo_id;
     photo.meta = candidate.metadata.unwrap_or_default();
     photo.imported = Some(Timestamp::now());
     photo.files.push(file_entry(
@@ -663,7 +876,7 @@ fn add_one(job: &IndexJob, candidate: Candidate) -> Result<Landed, ()> {
     }
     job.workspace.write_photo(&photo).map_err(|_| ())?;
     register(job, photo)?;
-    Ok(Landed::Added)
+    Ok(Landed::Added(photo_id))
 }
 
 /// Puts a removed photo back: its sidecar (ratings, keywords) with its files' locations pointing at
@@ -703,6 +916,7 @@ fn restore_one(
         .workspace
         .restore_photo(removed, &photo)
         .map_err(|_| ())?;
+    let photo_id = photo.photo_id;
     register(job, photo)?;
-    Ok(Landed::Restored { versions })
+    Ok(Landed::Restored { versions, photo_id })
 }

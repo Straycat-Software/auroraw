@@ -23,6 +23,13 @@ summary such as *Done: 480 added, 0 restored, 0 already known, 0 not readable.* 
 runs. Only still images are read; RAW files and JPEGs are both supported, and a RAW file with its JPEG
 next to it is one photo with two files.
 
+If another application (Lightroom, darktable, digiKam, ExifTool...) left an **XMP file** next to a photo
+(`photo.xmp`, or `photo.ARW.xmp`), a new photo takes what it says: its rating (a rejected photo arrives
+rejected), colour label, title, caption, copyright and other information fields, and its keywords, matched to your
+keyword list by name whatever the capital letters (a keyword it names that you do not have yet is added). Auroraw
+only ever **reads** these files; they are never changed. A file that cannot be read is skipped and does not stop
+the photo from being added.
+
 ![Adding a source](images/add-source.png)
 
 If the folder you add **contains** sources you already have, Auroraw asks whether to **merge** them into the new

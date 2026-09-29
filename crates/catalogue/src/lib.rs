@@ -21,6 +21,7 @@
 mod collections;
 mod effective;
 mod error;
+mod external;
 mod location;
 mod open;
 mod populate;
@@ -37,6 +38,7 @@ pub mod dataset;
 pub use collections::CollectionRow;
 pub use effective::{effective_flag, effective_rating};
 pub use error::CatalogueError;
+pub use external::{ExternalKnown, ExternalPending, ExternalRow, ExternalStat};
 pub use location::{DuplicatePhoto, LocationRef};
 pub use open::{CURRENT_SCHEMA, Catalogue};
 pub use query::{

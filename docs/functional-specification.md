@@ -173,7 +173,9 @@ The milestone of each feature (M1 to M5) is described in §8.
   photographer's choice, `photo.xmp` by default [decided, D-028]. It is on request only:
   automatic mirroring is not planned for v1 [decided, D-066].
 - **Existing XMP** files found next to originals at import (from Lightroom or others) are read,
-  never modified, and their ratings and keywords are copied into the photo sidecar [proposed].
+  never modified, and their ratings, labels, keywords, title, caption and IPTC fields are copied into
+  the photo sidecar when the photo is first added; a photo the catalogue already knew is only
+  remembered as it stands, so that later changes can be told from it (§5.7) [decided, D-129].
 - Because sidecars live in the workspace, metadata edits are written immediately, whatever the
   state of the source: read-only card, unplugged drive, network share down [proposed].
 - The catalogue can be rebuilt from the workspace and the sources [decided, D-026]. For that to

@@ -29,6 +29,9 @@ pub mod ns {
     pub const IPTC_EXT: &str = "http://iptc.org/std/Iptc4xmpExt/2008-02-29/";
     /// `aur`, Auroraw's own properties (note 003 §4.2).
     pub const AUR: &str = "https://auroraw.org/ns/1.0/";
+    /// `digiKam`, read from files digiKam wrote (never written: Auroraw has no property of its own to
+    /// put there).
+    pub const DIGIKAM: &str = "http://www.digikam.org/ns/1.0/";
 }
 
 /// The namespaces written with a fixed prefix, in the order they are declared.

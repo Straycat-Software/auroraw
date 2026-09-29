@@ -145,6 +145,27 @@ CREATE TABLE location(
 ) WITHOUT ROWID;
 CREATE INDEX location_source ON location(source_id);
 
+-- What Auroraw last read from the XMP file another application keeps next to a photo's original
+-- (D-047, WP10): the *base* of the three-way comparison of design note 003 §8.1. One row a photo, keyed by
+-- the photo alone (one tracked file each; a different path re-baselines it silently). `path` is inside the
+-- photo's primary source, '/' separators. `size` and `modified_ns` (nanoseconds since the Unix epoch, so a
+-- sub-second file system does not hide a rewrite) are the file's as listed when it was read; `base` is the
+-- JSON of `format::sidecar::external::Fields` read from it. A change noticed later and not yet answered is
+-- `pending` (the file's newer Fields) with its own stat, so that the same unanswered file is not read again
+-- at every scan. Local to this machine and lost by a rebuild: a photo without a row is baselined silently
+-- at the next scan, never reported.
+CREATE TABLE external_xmp(
+  photo_id TEXT PRIMARY KEY REFERENCES photo(id),
+  path TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  modified_ns INTEGER,
+  base TEXT NOT NULL,
+  pending TEXT,
+  pending_size INTEGER,
+  pending_modified_ns INTEGER
+);
+CREATE INDEX external_pending ON external_xmp(photo_id) WHERE pending IS NOT NULL;
+
 CREATE TABLE version(
   id TEXT PRIMARY KEY,
   photo_id TEXT NOT NULL REFERENCES photo(id),

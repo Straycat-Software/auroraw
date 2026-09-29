@@ -186,6 +186,7 @@ impl Catalogue {
         tx.execute("DELETE FROM photo_keyword WHERE photo_id = ?1", [&id])?;
         tx.execute("DELETE FROM collection_member WHERE photo_id = ?1", [&id])?;
         tx.execute("DELETE FROM location WHERE photo_id = ?1", [&id])?;
+        tx.execute("DELETE FROM external_xmp WHERE photo_id = ?1", [&id])?;
         tx.execute("DELETE FROM photo WHERE id = ?1", [&id])?;
         tx.commit()?;
         Ok(())
@@ -239,6 +240,12 @@ impl Catalogue {
         self.conn.execute(
             "DELETE FROM location WHERE photo_id = ?1 AND source_id = ?2 AND path = ?3",
             params![photo_id.to_string(), source_id.to_string(), path],
+        )?;
+        // The external XMP file it tracked (D-047) was found next to the old path: the next scan looks
+        // again, next to the new one, and baselines it silently.
+        self.conn.execute(
+            "DELETE FROM external_xmp WHERE photo_id = ?1",
+            [photo_id.to_string()],
         )?;
         Ok(())
     }

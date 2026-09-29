@@ -213,6 +213,18 @@ pub enum Event {
         /// Why, for a person.
         reason: String,
     },
+    /// A scan of a source looked at the XMP files other applications keep next to its photos
+    /// (D-047, WP10). `photos` is how many photos have a change of theirs waiting for an answer
+    /// (none yet: slice 1 only reads them at first sight); `unreadable` how many of those files could
+    /// not be read at all (not XMP, or too large): they are retried at the next scan and never touched.
+    ExternalChanges {
+        /// The source that was scanned, `None` when the count changed by an answer instead.
+        source_id: Option<SourceId>,
+        /// Photos with a change waiting for an answer, across the catalogue.
+        photos: usize,
+        /// Files this scan could not read.
+        unreadable: usize,
+    },
     /// An import job finished (every file it found has a settled outcome).
     ImportFinished {
         /// The job.

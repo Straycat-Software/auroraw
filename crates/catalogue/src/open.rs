@@ -10,7 +10,7 @@ const SCHEMA: &str = include_str!("schema.sql");
 const INDEXES: &str = include_str!("indexes.sql");
 
 /// The schema version this crate reads and writes, written to `PRAGMA user_version`.
-pub const CURRENT_SCHEMA: u32 = 4;
+pub const CURRENT_SCHEMA: u32 = 5;
 
 /// An open catalogue.
 pub struct Catalogue {
@@ -87,6 +87,9 @@ impl Catalogue {
         }
         if found < 4 {
             cat.migrate_to_4()?;
+        }
+        if found < 5 {
+            cat.migrate_to_5()?;
         }
         Ok(cat)
     }
@@ -178,6 +181,44 @@ impl Catalogue {
                     "ALTER TABLE keyword ADD COLUMN synonyms TEXT NOT NULL DEFAULT ''",
                 )?;
                 self.conn.pragma_update(None, "user_version", 4)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(self.conn.execute_batch("COMMIT")?),
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
+
+    /// Schema 5 (D-047, WP10): the base of an external XMP file, one row a photo. Made under an immediate
+    /// transaction that looks again at the version, so that two connections opening an older file at once do not
+    /// both create the table (`IF NOT EXISTS` also keeps a file that was made older by hand, in a test, from
+    /// colliding with a table it already has).
+    fn migrate_to_5(&self) -> Result<()> {
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        let result = (|| -> Result<()> {
+            let found: u32 = self
+                .conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            if found < 5 {
+                self.conn.execute_batch(
+                    "CREATE TABLE IF NOT EXISTS external_xmp(
+                       photo_id TEXT PRIMARY KEY REFERENCES photo(id),
+                       path TEXT NOT NULL,
+                       size INTEGER NOT NULL,
+                       modified_ns INTEGER,
+                       base TEXT NOT NULL,
+                       pending TEXT,
+                       pending_size INTEGER,
+                       pending_modified_ns INTEGER
+                     );
+                     CREATE INDEX IF NOT EXISTS external_pending
+                       ON external_xmp(photo_id) WHERE pending IS NOT NULL;",
+                )?;
+                self.conn.pragma_update(None, "user_version", 5)?;
             }
             Ok(())
         })();
@@ -296,5 +337,31 @@ mod tests {
             })
             .unwrap();
         assert_eq!(synonyms, "");
+    }
+
+    #[test]
+    fn a_schema_4_file_gains_the_external_xmp_table_on_open() {
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("c.db");
+        {
+            let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
+            // Made as schema 4 would have it: no such table, an older version stamped.
+            cat.conn.execute_batch("DROP TABLE external_xmp").unwrap();
+            cat.conn.pragma_update(None, "user_version", 4).unwrap();
+        }
+        let cat = Catalogue::open(&path).unwrap();
+        let version: u32 = cat
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(version, CURRENT_SCHEMA);
+        let rows: i64 = cat
+            .conn
+            .query_row("SELECT COUNT(*) FROM external_xmp", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 0, "the table exists, empty");
+        // Opening it again does not try to make it twice.
+        drop(cat);
+        Catalogue::open(&path).unwrap();
     }
 }
