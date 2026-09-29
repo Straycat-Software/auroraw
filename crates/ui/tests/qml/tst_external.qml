@@ -114,6 +114,10 @@ AppTestCase {
         click(app.externalDialog.acceptAllButton)
         tryVerify(() => !app.externalBanner.visible)
         compare(app.photos.ratingAt(rowOfPhoto("IMG_0005")), 5)
+        // (The review is a modal window: put away before the main window is clicked again, or a platform
+        // that enforces modality — Windows — never delivers the click that rescans.)
+        app.externalDialog.close()
+        tryVerify(() => !app.externalDialog.visible)
 
         // Another change, and this time the file's value is chosen.
         edit("IMG_0005", "Base", 1)

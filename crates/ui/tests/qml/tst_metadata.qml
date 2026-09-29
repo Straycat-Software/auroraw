@@ -214,7 +214,13 @@ AppTestCase {
         const row = dialog.rowFor("web-statement")
         verify(row, "the row for web-statement exists")
         wait(30)
-        mouseClick(row.checkBox)
+        // The click is repeated until the dialog has taken it: a slow runner (macOS CI) sometimes has not laid
+        // the scrolled row out yet when the first one arrives, and misses the box.
+        for (let attempt = 0; attempt < 5 && dialog.checkedFields["web-statement"] === true; attempt++) {
+            mouseClick(row.checkBox)
+            wait(60)
+        }
+        verify(dialog.checkedFields["web-statement"] !== true, "the checkbox was clicked off")
         dialog.confirm()
         tryVerify(() => JSON.parse(app.photos.metadataOf("sublocation")).value === "Kept on the source", 5000)
         compare(JSON.parse(app.photos.metadataOf("web-statement")).value, "Already here", "left unchecked, left alone")
