@@ -198,8 +198,8 @@ AppDialog {
             id: grid
             width: scroller.availableWidth
             columns: 3
-            columnSpacing: 8
-            rowSpacing: 8
+            columnSpacing: 12
+            rowSpacing: 12
 
             Label {
                 Layout.columnSpan: 3
@@ -208,7 +208,7 @@ AppDialog {
             }
             RowLayout {
                 Layout.columnSpan: 3
-                spacing: 8
+                spacing: 12
                 Repeater {
                     model: dialog.volumes
                     AppButton {
@@ -223,7 +223,7 @@ AppDialog {
                 Label {
                     visible: dialog.volumes.length === 0
                     text: qsTr("No card detected")
-                    color: Theme.grey.placeholder
+                    color: Theme.surface.placeholder
                 }
                 AppButton {
                     id: refreshButton
@@ -295,7 +295,7 @@ AppDialog {
             Label { text: qsTr("Folder layout") }
             RowLayout {
                 Layout.columnSpan: 2
-                spacing: 8
+                spacing: 12
                 AppButton {
                     id: templateButton
                     enabled: !dialog.importing
@@ -358,7 +358,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             id: showPhotosButton
             visible: dialog.finished && dialog.registering

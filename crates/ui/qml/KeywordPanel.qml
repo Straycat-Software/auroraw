@@ -69,14 +69,27 @@ Rectangle {
         required property int slot
         text: tabRow.tabTexts[slot]
         width: Math.ceil(tabRow.tabWidth(slot))
-        horizontalPadding: Math.min(4, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        horizontalPadding: Math.min(8, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        // D-129: the same transparent-tab, accent-underline look as the header's AppTabButton.
+        background: Rectangle {
+            color: "transparent"
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 2
+                color: tab.checked ? Theme.accent : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.motion } }
+            }
+        }
         contentItem: Label {
             text: tab.text
             font: tab.font
-            color: tab.palette.buttonText
+            color: tab.checked ? tab.palette.buttonText : Theme.quiet
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+            Behavior on color { ColorAnimation { duration: Theme.motion } }
         }
     }
 
@@ -271,10 +284,12 @@ Rectangle {
             function tabWidth(slot) {
                 const n = Math.max(measures.count, 1)
                 const label = labelWidth(slot)
-                if (room >= labelsTotal + 8 * n)
-                    return label + 8
-                if (room >= labelsTotal + 2 * n)
-                    return label + 2 + (room - labelsTotal - 2 * n) / n
+                // The generous ceiling was 8 (4px padding a side); Patrick's own review of D-129 found the
+                // inactive tabs, with no fill of their own, read as one run-on string without more room.
+                if (room >= labelsTotal + 16 * n)
+                    return label + 16
+                if (room >= labelsTotal + 4 * n)
+                    return label + 4 + (room - labelsTotal - 4 * n) / n
                 return labelsTotal > 0 ? Math.max(room, 0) * label / labelsTotal : label
             }
             TabBar {
@@ -513,7 +528,7 @@ Rectangle {
         anchors.margins: 6
         visible: panel.expanded && panel.note !== ""
         height: noteLabel.implicitHeight + 12
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.window
         border.color: Theme.danger
         Label {
@@ -535,7 +550,7 @@ Rectangle {
         z: 100
         width: 180
         height: 26
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.highlight
         opacity: 0.85
         Drag.keys: ["keyword"]
@@ -639,7 +654,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Rename")
                 highlighted: true
@@ -696,7 +711,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Move")
                 highlighted: true
@@ -805,7 +820,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Delete")
                 highlighted: true
@@ -880,7 +895,7 @@ Rectangle {
                 // Unlike TextField, Fusion gives TextArea no background of its own (D-122).
                 background: Rectangle {
                     color: palette.base
-                    radius: 3
+                    radius: Theme.radiusControl
                     border.width: 1
                     border.color: synonymsField.activeFocus ? palette.highlight : palette.mid
                 }
@@ -898,7 +913,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Save")
                 highlighted: true

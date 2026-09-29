@@ -28,7 +28,7 @@ AppWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: 12
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -56,7 +56,7 @@ AppWindow {
                     id: content
                     anchors.fill: parent
                     anchors.margins: 8
-                    spacing: 10
+                    spacing: 14
                     Image {
                         Layout.preferredWidth: 64
                         Layout.preferredHeight: 48
@@ -97,7 +97,7 @@ AppWindow {
         }
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 12
             Item { Layout.fillWidth: true }
             AppButton {
                 id: exportButton

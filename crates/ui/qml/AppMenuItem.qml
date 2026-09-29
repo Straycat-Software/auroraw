@@ -8,6 +8,16 @@ import org.auroraw.ui
 // written the way the platform writes it (Ctrl+N, ⌘N).
 MenuItem {
     id: item
+    leftPadding: 8
+    rightPadding: 8
+
+    // D-129: a soft rounded fill on hover, the interface's one motion exception — replacing
+    // Fusion's own square, edge-to-edge highlight.
+    background: Rectangle {
+        radius: Theme.radiusControl
+        color: item.highlighted ? Qt.rgba(item.palette.windowText.r, item.palette.windowText.g, item.palette.windowText.b, 0.08) : "transparent"
+        Behavior on color { ColorAnimation { duration: Theme.motion } }
+    }
 
     function underlined(title) {
         const escape = t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;")

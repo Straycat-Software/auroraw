@@ -268,7 +268,7 @@ FocusScope {
 
     Rectangle {
         anchors.fill: parent
-        color: "#141414"
+        color: Theme.viewerGround
     }
     // What a click on the dark between the panes must not do: reach the grid under this view.
     MouseArea {
@@ -286,7 +286,7 @@ FocusScope {
             id: toolbar
             Layout.fillWidth: true
             Layout.preferredHeight: 40
-            color: "#202020"
+            color: "#17181c"
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 8
@@ -324,7 +324,7 @@ FocusScope {
                 Label {
                     text: qsTr("%1 to %2 of %3").arg(comparison.page * comparison.pageSize + 1)
                           .arg(Math.min(comparison.ids.length, (comparison.page + 1) * comparison.pageSize)).arg(comparison.ids.length)
-                    color: "#e0e0e0"
+                    color: "#eaeaeb"
                 }
                 ToolButton {
                     text: "▶"

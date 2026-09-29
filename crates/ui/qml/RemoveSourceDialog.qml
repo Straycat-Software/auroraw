@@ -16,7 +16,7 @@ AppDialog {
     title: qsTr("Remove the source \"%1\"?").arg(sourceName)
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: 16
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -37,7 +37,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             id: removeButton
             text: qsTr("Remove")

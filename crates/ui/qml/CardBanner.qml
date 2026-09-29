@@ -22,8 +22,9 @@ Rectangle {
 
     visible: cardPath !== ""
     implicitHeight: visible ? 44 : 0
-    color: "#1e3f4a"
-    border.color: "#307a8a"
+    // D-129: retuned to the `accentSecondary` teal family, in the same cool-neutral world as the surfaces.
+    color: "#183936"
+    border.color: "#2a6f68"
     border.width: 1
 
     function volumes() {

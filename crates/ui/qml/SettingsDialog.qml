@@ -18,13 +18,13 @@ AppDialog {
     property alias startupButtons: startup
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: 16
         Label {
             text: qsTr("Startup")
             font.bold: true
         }
         RowLayout {
-            spacing: 8
+            spacing: 12
             Repeater {
                 id: startup
                 model: ["reopen", "list"]
@@ -43,7 +43,7 @@ AppDialog {
             font.bold: true
         }
         RowLayout {
-            spacing: 8
+            spacing: 12
             Repeater {
                 id: languages
                 // The model holds no text: it would be rebuilt (and its buttons with it) by every
@@ -66,13 +66,13 @@ AppDialog {
             Layout.topMargin: 6
         }
         RowLayout {
-            spacing: 8
+            spacing: 12
             Label {
                 text: qsTr("Photos of one camera at most this many seconds apart form a series:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            SpinBox {
+            AppSpinBox {
                 id: gapBox
                 from: 0
                 to: 600
@@ -96,13 +96,13 @@ AppDialog {
             Layout.topMargin: 6
         }
         RowLayout {
-            spacing: 8
+            spacing: 12
             Label {
                 text: qsTr("Photos are similar when at most this many of the 64 bits of their pictures' fingerprints differ:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            SpinBox {
+            AppSpinBox {
                 id: similarDistanceBox
                 from: 1
                 to: 24
@@ -113,13 +113,13 @@ AppDialog {
             }
         }
         RowLayout {
-            spacing: 8
+            spacing: 12
             Label {
                 text: qsTr("...and they were taken at most this many minutes apart:")
                 wrapMode: Text.Wrap
                 Layout.fillWidth: true
             }
-            SpinBox {
+            AppSpinBox {
                 id: similarMinutesBox
                 from: 1
                 to: 10080
@@ -131,7 +131,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             text: qsTr("Close")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole

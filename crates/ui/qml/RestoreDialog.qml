@@ -32,7 +32,7 @@ AppDialog {
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             id: newButton
             text: qsTr("Add them as new photos")

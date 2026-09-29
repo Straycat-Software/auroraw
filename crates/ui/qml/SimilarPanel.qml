@@ -103,7 +103,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: Theme.grey.dark
+        color: Theme.surface.sunken
     }
 
     ColumnLayout {
@@ -166,7 +166,7 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 2
-                    color: "#262626"
+                    color: "#1c1d21"
                     border.width: hover.containsMouse ? 2 : 0
                     border.color: Theme.accent
                     Image {
@@ -183,7 +183,7 @@ Rectangle {
                         padding: 2
                         font.pixelSize: 11
                         text: panel.closeness(entry.modelData.distance) + " %"
-                        background: Rectangle { color: "#b0000000"; radius: 2 }
+                        background: Rectangle { color: "#b0000000"; radius: Theme.radiusControl }
                     }
                     MouseArea {
                         id: hover
