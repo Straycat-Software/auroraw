@@ -125,7 +125,7 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             spacing: 6
             model: panel.rows
-            ScrollBar.vertical: AppScrollBar { id: vbar }
+            ScrollBar.vertical: AppScrollBar {}
 
             delegate: ColumnLayout {
                 id: delegateRoot
@@ -133,7 +133,7 @@ Item {
                 readonly property string key: modelData.key
                 readonly property string label: modelData.label
                 readonly property string value: modelData.value
-                width: ListView.view.width - vbar.width
+                width: ListView.view.width - Theme.scrollbarReserve
                 spacing: 2
 
                 Label {

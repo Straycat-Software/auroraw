@@ -54,6 +54,18 @@ QtObject {
     readonly property int radiusControl: 4
     readonly property int radiusContainer: 10
 
+    // D-131 (Patrick's own review: a framed list's rows sometimes never showed at all until
+    // something reset the model, e.g. adding a collection): AppScrollBar's own reserved width
+    // used to be read straight off the live control (`vbar.width`, from inside a delegate created
+    // in the same breath as that control, sometimes before its own geometry had settled — no later
+    // change ever retriggered the binding, so a delegate stuck with a bad first read stayed stuck).
+    // A plain constant on this singleton, already fully initialised before any other component
+    // exists, is what every delegate reserving room for a scrollbar reads now, instead of reaching
+    // into that scrollbar's own live state.
+    readonly property int scrollbarThumb: 6
+    readonly property int scrollbarGap: 4
+    readonly property int scrollbarReserve: scrollbarThumb + scrollbarGap
+
     // The one motion exception (D-127) in an interface that otherwise has none: a colour/opacity
     // fade on hover, press, focus and selection, nowhere else. `Behavior on color` and friends use
     // this duration; nothing is animated in position or size.

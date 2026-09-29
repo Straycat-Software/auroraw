@@ -77,7 +77,7 @@ Item {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.known
-                ScrollBar.vertical: AppScrollBar { id: vbar }
+                ScrollBar.vertical: AppScrollBar {}
                 delegate: ItemDelegate {
                     id: row
                     required property int index
@@ -85,7 +85,7 @@ Item {
                     required property string path
                     required property string opened
                     required property bool found
-                    width: ListView.view.width - vbar.width
+                    width: ListView.view.width - Theme.scrollbarReserve
                     height: 56
                     Accessible.name: name + ", " + path
                     onClicked: root.knownRequested(index)

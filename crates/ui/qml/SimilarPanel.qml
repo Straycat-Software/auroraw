@@ -148,7 +148,7 @@ Rectangle {
         GridView {
             id: thumbList
             Layout.fillWidth: true
-            Layout.rightMargin: vbar.width
+            Layout.rightMargin: Theme.scrollbarReserve
             // Only as tall as its own rows need, so the buttons sit right under the thumbnails instead of at the
             // bottom of the panel (a handful of suggestions rarely fill it).
             Layout.preferredHeight: Math.max(1, Math.ceil(panel.count / 2)) * cellHeight
@@ -158,7 +158,7 @@ Rectangle {
             model: panel.similar
             cellWidth: Math.floor(width / 2)
             cellHeight: cellWidth * 3 / 4 + 4
-            ScrollBar.vertical: AppScrollBar { id: vbar }
+            ScrollBar.vertical: AppScrollBar {}
             delegate: Item {
                 id: entry
                 required property var modelData

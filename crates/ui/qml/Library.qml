@@ -700,7 +700,7 @@ FocusScope {
                 id: grid
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.rightMargin: vbar.width
+                Layout.rightMargin: Theme.scrollbarReserve
                 clip: true
                 focus: true
                 boundsBehavior: Flickable.StopAtBounds
@@ -714,7 +714,7 @@ FocusScope {
                 readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
                 readonly property int visibleRows: Math.max(1, Math.floor(height / cellHeight))
 
-                ScrollBar.vertical: AppScrollBar { id: vbar }
+                ScrollBar.vertical: AppScrollBar {}
 
                 // The window was resized and the rows re-flowed: the cursor stays in view (once the
                 // view has laid its cells out again).

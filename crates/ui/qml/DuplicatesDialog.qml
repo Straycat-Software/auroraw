@@ -48,12 +48,12 @@ AppWindow {
                 boundsBehavior: Flickable.StopAtBounds
                 model: dialog.entries
                 spacing: 6
-                ScrollBar.vertical: AppScrollBar { id: vbar }
+                ScrollBar.vertical: AppScrollBar {}
                 delegate: Rectangle {
                     id: entry
                     required property var modelData
                     required property int index
-                    width: list.width - vbar.width
+                    width: list.width - Theme.scrollbarReserve
                     height: content.implicitHeight + 16
                     color: index % 2 === 0 ? "#00000000" : "#12ffffff"
                     RowLayout {

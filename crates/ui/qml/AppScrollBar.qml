@@ -13,28 +13,33 @@ import org.auroraw.ui
 // by the scrollbar"), then D-130 (Patrick's own review again, screenshot in hand, of that first fix:
 // content no longer sat *under* the thumb, but touched it with nothing between): an overlay
 // `ScrollBar` always paints its thumb flush against its Flickable's own edge — reserving room on the
-// Flickable itself (`anchors.rightMargin`/`Layout.rightMargin` bound to this control's `width`, still
-// needed so the thumb is not clipped) only shrinks the Flickable as a whole, and a delegate's own
-// `width: ListView.view.width` shrinks right along with it, so the two stay flush no matter how much
-// room is reserved. The gap that is actually visible comes from the *other* side of this: every
-// delegate in this interface is `ListView.view.width - <thisScrollBar>.width` wide (a plain
-// `Layout.rightMargin`/`Layout.preferredHeight`-style reservation cannot reach inside a delegate the
-// way it can an ordinary Layout child, so each list's own delegate does it explicitly) — and the
-// thumb itself sits `gap` pixels in from *this* control's own left edge (`x`, not `width`: a style's
-// own ScrollBar always stretches `contentItem.width` to `control.availableWidth` regardless of a
-// child's own size hint, `leftPadding` included — `SpinBox` reads padding for its own contentItem
-// sizing, D-128's own lesson there, but `ScrollBar` does not), so the two ends of that `gap` are what
-// a row's content and the thumb actually touch, both a fixed distance from this control's own edge.
+// Flickable itself (`anchors.rightMargin`/`Layout.rightMargin` bound to this control's `width`) only
+// shrinks the Flickable as a whole, and a delegate's own `width: ListView.view.width` shrinks right
+// along with it, so the two stay flush no matter how much room is reserved. The gap that is actually
+// visible comes from the *other* side of this: every delegate in this interface is
+// `ListView.view.width - Theme.scrollbarReserve` wide, and the thumb itself sits `Theme.scrollbarGap`
+// pixels in from *this* control's own left edge (`x`, not `width`: a style's own ScrollBar always
+// stretches `contentItem.width` to `control.availableWidth` regardless of a child's own size hint,
+// `leftPadding` included — `SpinBox` reads padding for its own contentItem sizing, D-128's own lesson
+// there, but `ScrollBar` does not), so the two ends of that gap are what a row's content and the
+// thumb actually touch, both a fixed distance from this control's own edge.
+//
+// D-131 (Patrick's own review: a framed list's rows sometimes never showed at all until something
+// reset the model): a delegate used to read `<thisScrollBar>.width` directly, off the live sibling
+// control created in the very same breath as itself — sometimes before that control's own geometry
+// had settled, and nothing ever retriggered the binding afterwards, so a delegate stuck with a bad
+// first read of it stayed stuck, invisible, until its model reset recreated it from scratch. Every
+// delegate reads `Theme.scrollbarReserve` now (a plain constant on a singleton that is fully live
+// before any other component exists) instead, and this control's own sizing reads the same constants,
+// so the two can never drift apart.
 ScrollBar {
     id: control
-    readonly property int thumbWidth: 6
-    readonly property int gap: 4
-    implicitWidth: thumbWidth + gap
+    implicitWidth: Theme.scrollbarReserve
     policy: ScrollBar.AsNeeded
     contentItem: Rectangle {
-        x: control.width - control.thumbWidth
-        implicitWidth: control.thumbWidth
-        implicitHeight: control.thumbWidth
+        x: control.width - Theme.scrollbarThumb
+        implicitWidth: Theme.scrollbarThumb
+        implicitHeight: Theme.scrollbarThumb
         radius: width / 2
         color: control.pressed ? Theme.accent : (control.hovered ? Theme.quiet : Theme.surface.border)
         opacity: control.policy === ScrollBar.AlwaysOn || control.size < 1.0 ? 1 : 0
