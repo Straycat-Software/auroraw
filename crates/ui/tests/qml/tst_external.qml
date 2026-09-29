@@ -56,6 +56,19 @@ AppTestCase {
         rescan()
     }
 
+    // (Diagnostic, Windows CI: what the review button and the window look like around the click.)
+    function diag(label) {
+        const b = app.externalBanner.reviewButton
+        const c = b.mapToItem(null, b.width / 2, b.height / 2)
+        console.warn("DIAG " + label + ": review enabled=" + b.enabled + " visible=" + b.visible
+            + " size=" + b.width + "x" + b.height + " centre=" + Math.round(c.x) + "," + Math.round(c.y)
+            + " window=" + app.width + "x" + app.height + " banner y=" + app.externalBanner.y
+            + " h=" + app.externalBanner.height + " dialogOpen=" + app.dialogOpen
+            + " nativeDialogOpen=" + app.nativeDialogOpen
+            + " externalDialog.visible=" + app.externalDialog.visible + " visibility=" + app.externalDialog.visibility
+            + " appState=" + Qt.application.state + " active=" + app.active)
+    }
+
     function test_a_change_shows_the_banner_then_review_and_accept_all_applies_it_as_one_step() {
         // First sight: remembered, nothing said, nothing applied.
         edit("IMG_0003", "One")
@@ -65,7 +78,17 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
         compare(app.externalBanner.count, 1)
 
+        diag("before the click")
+        app.externalBanner.reviewRequested.connect(() => console.warn("DIAG reviewRequested emitted"))
+        app.externalDialog.visibleChanged.connect(() => console.warn("DIAG externalDialog.visible -> " + app.externalDialog.visible))
         click(app.externalBanner.reviewButton)
+        wait(1500)
+        diag("1.5 s after the click")
+        if (!app.externalDialog.visible) {
+            app.externalDialog.open()
+            wait(1500)
+            diag("after open() was called directly")
+        }
         tryVerify(() => app.externalDialog.visible)
         tryCompare(app.externalDialog.entries, "length", 1)
         const entry = app.externalDialog.entries[0]
