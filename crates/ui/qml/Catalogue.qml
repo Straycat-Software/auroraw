@@ -62,67 +62,73 @@ Item {
             text: root.flow.status
             color: Theme.quiet
         }
-        ListView {
-            id: list
+        AppListFrame {
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(root.sources.count * 68, 560)
-            clip: true
-            spacing: 4
-            model: root.sources
-            delegate: Rectangle {
-                id: row
-                required property int index
-                required property string name
-                required property string path
-                required property bool online
-                required property int photos
-                property alias rescanButton: rescanButton
-                property alias removeButton: removeButton
-                width: ListView.view.width
-                height: 64
-                color: root.palette.dark
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 12
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        RowLayout {
-                            spacing: 8
-                            Label {
-                                text: row.name
-                                font.bold: true
-                                elide: Text.ElideRight
-                            }
-                            Label {
-                                visible: !row.online
-                                text: qsTr("Offline")
-                                color: Theme.danger
-                            }
-                        }
-                        Label {
+            ListView {
+                id: list
+                anchors.fill: parent
+                clip: true
+                spacing: 4
+                boundsBehavior: Flickable.StopAtBounds
+                model: root.sources
+                ScrollBar.vertical: AppScrollBar { id: vbar }
+                delegate: Rectangle {
+                    id: row
+                    required property int index
+                    required property string name
+                    required property string path
+                    required property bool online
+                    required property int photos
+                    property alias rescanButton: rescanButton
+                    property alias removeButton: removeButton
+                    width: ListView.view.width - vbar.width
+                    height: 64
+                    color: root.palette.dark
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 12
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            text: row.path
-                            color: Theme.quiet
-                            elide: Text.ElideMiddle
+                            spacing: 2
+                            RowLayout {
+                                spacing: 8
+                                Label {
+                                    text: row.name
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                }
+                                Label {
+                                    visible: !row.online
+                                    text: qsTr("Offline")
+                                    color: Theme.danger
+                                }
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                text: row.path
+                                color: Theme.quiet
+                                elide: Text.ElideMiddle
+                            }
                         }
-                    }
-                    Label { text: qsTr("%n photo(s)", "", row.photos) }
-                    AppButton {
-                        id: rescanButton
-                        text: qsTr("Rescan")
-                        Accessible.name: qsTr("Rescan: %1").arg(row.name)
-                        enabled: !root.flow.busy && row.online
-                        onClicked: root.flow.rescan(row.index)
-                    }
-                    AppButton {
-                        id: removeButton
-                        text: qsTr("Remove")
-                        Accessible.name: qsTr("Remove: %1").arg(row.name)
-                        enabled: !root.flow.busy
-                        onClicked: root.flow.askRemove(row.index, row.name)
+                        Label { text: qsTr("%n photo(s)", "", row.photos) }
+                        AppButton {
+                            id: rescanButton
+                            text: qsTr("Rescan")
+                            Accessible.name: qsTr("Rescan: %1").arg(row.name)
+                            enabled: !root.flow.busy && row.online
+                            onClicked: root.flow.rescan(row.index)
+                        }
+                        AppButton {
+                            id: removeButton
+                            text: qsTr("Remove")
+                            Accessible.name: qsTr("Remove: %1").arg(row.name)
+                            enabled: !root.flow.busy
+                            onClicked: root.flow.askRemove(row.index, row.name)
+                        }
                     }
                 }
             }

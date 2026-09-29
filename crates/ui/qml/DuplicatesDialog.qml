@@ -37,57 +37,62 @@ AppWindow {
                   ? qsTr("%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.", "", dialog.entries.length)
                   : qsTr("No duplicate photo found.")
         }
-        ListView {
-            id: list
+        AppListFrame {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            model: dialog.entries
-            spacing: 6
-            ScrollBar.vertical: ScrollBar {}
-            delegate: Rectangle {
-                id: entry
-                required property var modelData
-                required property int index
-                width: list.width
-                height: content.implicitHeight + 16
-                color: index % 2 === 0 ? "#00000000" : "#12ffffff"
-                RowLayout {
-                    id: content
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 14
-                    Image {
-                        Layout.preferredWidth: 64
-                        Layout.preferredHeight: 48
-                        source: "image://thumbs/" + entry.modelData.id
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        Label {
-                            Layout.fillWidth: true
-                            font.bold: true
-                            elide: Text.ElideRight
-                            text: entry.modelData.filename
+
+            ListView {
+                id: list
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: dialog.entries
+                spacing: 6
+                ScrollBar.vertical: AppScrollBar { id: vbar }
+                delegate: Rectangle {
+                    id: entry
+                    required property var modelData
+                    required property int index
+                    width: list.width - vbar.width
+                    height: content.implicitHeight + 16
+                    color: index % 2 === 0 ? "#00000000" : "#12ffffff"
+                    RowLayout {
+                        id: content
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 14
+                        Image {
+                            Layout.preferredWidth: 64
+                            Layout.preferredHeight: 48
+                            source: "image://thumbs/" + entry.modelData.id
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
                         }
-                        Repeater {
-                            model: [entry.modelData.primary].concat(entry.modelData.extra)
-                            RowLayout {
-                                required property var modelData
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            Label {
                                 Layout.fillWidth: true
-                                Label {
+                                font.bold: true
+                                elide: Text.ElideRight
+                                text: entry.modelData.filename
+                            }
+                            Repeater {
+                                model: [entry.modelData.primary].concat(entry.modelData.extra)
+                                RowLayout {
+                                    required property var modelData
                                     Layout.fillWidth: true
-                                    elide: Text.ElideMiddle
-                                    color: Theme.quiet
-                                    text: modelData.sourceName + " — " + modelData.path
-                                }
-                                ToolButton {
-                                    text: qsTr("Show in file manager")
-                                    focusPolicy: Qt.NoFocus
-                                    onClicked: dialog.duplicates.revealLocation(modelData.sourceId, modelData.path)
+                                    Label {
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideMiddle
+                                        color: Theme.quiet
+                                        text: modelData.sourceName + " — " + modelData.path
+                                    }
+                                    ToolButton {
+                                        text: qsTr("Show in file manager")
+                                        focusPolicy: Qt.NoFocus
+                                        onClicked: dialog.duplicates.revealLocation(modelData.sourceId, modelData.path)
+                                    }
                                 }
                             }
                         }

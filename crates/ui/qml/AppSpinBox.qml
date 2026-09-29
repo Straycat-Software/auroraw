@@ -11,6 +11,17 @@ SpinBox {
     id: control
     readonly property int arrowWidth: 20
 
+    // D-130 (Patrick's own review, "a single digit is stuck to the right"): the gap from the
+    // digit to the arrow column used to be a `rightPadding` set on the `TextInput` itself, which
+    // this control's own base style does not reliably reserve room for — the number rendered all
+    // but flush against the arrows. `leftPadding`/`rightPadding` here, on the control, are the one
+    // sizing contract every style positions `contentItem` from, arrows included: reliable regardless
+    // of style. A floor on `implicitWidth` keeps a one-digit value from making the whole control
+    // needlessly narrow, too (Settings' three boxes stay a consistent width as their values change).
+    leftPadding: 8
+    rightPadding: arrowWidth + 8
+    implicitWidth: Math.max(76, contentItem.implicitWidth + leftPadding + rightPadding)
+
     background: Rectangle {
         color: Theme.surface.sunken
         border.width: 1
@@ -23,8 +34,6 @@ SpinBox {
         color: Theme.surface.text
         horizontalAlignment: Qt.AlignRight
         verticalAlignment: Qt.AlignVCenter
-        leftPadding: 8
-        rightPadding: control.arrowWidth + 8
         selectByMouse: true
         readOnly: !control.editable
         validator: control.validator

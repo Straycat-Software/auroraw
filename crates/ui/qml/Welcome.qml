@@ -67,57 +67,63 @@ Item {
             text: root.known.count > 0 ? qsTr("Recent workspaces") : qsTr("No workspace yet.")
             font.bold: true
         }
-        ListView {
-            id: list
+        AppListFrame {
             Layout.fillWidth: true
             Layout.preferredHeight: Math.min(root.known.count * 60, 380)
-            clip: true
-            model: root.known
-            delegate: ItemDelegate {
-                id: row
-                required property int index
-                required property string name
-                required property string path
-                required property string opened
-                required property bool found
-                width: ListView.view.width
-                height: 56
-                Accessible.name: name + ", " + path
-                onClicked: root.knownRequested(index)
 
-                contentItem: RowLayout {
-                    spacing: 8
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-                        Label {
-                            text: row.name
-                            font.bold: true
-                            elide: Text.ElideRight
+            ListView {
+                id: list
+                anchors.fill: parent
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                model: root.known
+                ScrollBar.vertical: AppScrollBar { id: vbar }
+                delegate: ItemDelegate {
+                    id: row
+                    required property int index
+                    required property string name
+                    required property string path
+                    required property string opened
+                    required property bool found
+                    width: ListView.view.width - vbar.width
+                    height: 56
+                    Accessible.name: name + ", " + path
+                    onClicked: root.knownRequested(index)
+
+                    contentItem: RowLayout {
+                        spacing: 8
+                        ColumnLayout {
                             Layout.fillWidth: true
+                            spacing: 0
+                            Label {
+                                text: row.name
+                                font.bold: true
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: row.path
+                                color: Theme.quiet
+                                elide: Text.ElideMiddle
+                                Layout.fillWidth: true
+                            }
                         }
                         Label {
-                            text: row.path
+                            visible: !row.found
+                            text: qsTr("Not found")
+                            color: Theme.danger
+                        }
+                        AppButton {
+                            visible: !row.found
+                            text: qsTr("Remove from the list")
+                            Accessible.name: qsTr("Remove from the list: %1").arg(row.name)
+                            onClicked: root.known.forget(row.index)
+                        }
+                        Label {
+                            visible: row.found
+                            text: row.opened
                             color: Theme.quiet
-                            elide: Text.ElideMiddle
-                            Layout.fillWidth: true
                         }
-                    }
-                    Label {
-                        visible: !row.found
-                        text: qsTr("Not found")
-                        color: Theme.danger
-                    }
-                    AppButton {
-                        visible: !row.found
-                        text: qsTr("Remove from the list")
-                        Accessible.name: qsTr("Remove from the list: %1").arg(row.name)
-                        onClicked: root.known.forget(row.index)
-                    }
-                    Label {
-                        visible: row.found
-                        text: row.opened
-                        color: Theme.quiet
                     }
                 }
             }
