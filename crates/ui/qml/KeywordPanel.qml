@@ -381,10 +381,11 @@ Rectangle {
             ListView {
                 id: tree
                 anchors.fill: parent
+                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: panel.keywords
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
 
                 delegate: Item {
                     id: row

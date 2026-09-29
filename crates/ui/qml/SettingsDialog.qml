@@ -23,13 +23,20 @@ AppDialog {
             text: qsTr("Startup")
             font.bold: true
         }
-        RowLayout {
-            spacing: 12
+        // D-128 (Patrick's own review, "the Startup buttons are too wide for the view in French"):
+        // a row could not hold both — "Show the list of workspaces" alone runs well past half the
+        // dialog once French makes it longer still, with no word to wrap and shrink the way a
+        // sentence Label can. Stacked instead, full width apiece (Patrick's own suggestion): every
+        // language fits, still the same checkable, auto-exclusive AppButton as before, not a new
+        // control this app draws nowhere else.
+        ColumnLayout {
+            spacing: 8
             Repeater {
                 id: startup
                 model: ["reopen", "list"]
                 delegate: AppButton {
                     required property string modelData
+                    Layout.fillWidth: true
                     text: modelData === "reopen" ? qsTr("Reopen the last workspace") : qsTr("Show the list of workspaces")
                     checkable: true
                     autoExclusive: true
@@ -44,6 +51,8 @@ AppDialog {
         }
         RowLayout {
             spacing: 12
+            Layout.fillWidth: true
+            Layout.maximumWidth: parent.width
             Repeater {
                 id: languages
                 // The model holds no text: it would be rebuilt (and its buttons with it) by every

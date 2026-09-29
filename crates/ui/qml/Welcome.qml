@@ -74,10 +74,11 @@ Item {
             ListView {
                 id: list
                 anchors.fill: parent
+                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.known
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
                 delegate: ItemDelegate {
                     id: row
                     required property int index

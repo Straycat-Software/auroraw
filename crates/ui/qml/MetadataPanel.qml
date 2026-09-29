@@ -57,11 +57,12 @@ Item {
         ListView {
             id: list
             anchors.fill: parent
+            anchors.rightMargin: vbar.width
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             spacing: 6
             model: panel.fields
-            ScrollBar.vertical: AppScrollBar {}
+            ScrollBar.vertical: AppScrollBar { id: vbar }
 
             delegate: ColumnLayout {
                 id: row

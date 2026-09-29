@@ -44,11 +44,12 @@ AppWindow {
             ListView {
                 id: list
                 anchors.fill: parent
+                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: dialog.entries
                 spacing: 6
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
                 delegate: Rectangle {
                     id: entry
                     required property var modelData

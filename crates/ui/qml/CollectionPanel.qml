@@ -203,10 +203,11 @@ Item {
             ListView {
                 id: tree
                 anchors.fill: parent
+                anchors.rightMargin: vbar.width
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: panel.collections
-                ScrollBar.vertical: AppScrollBar {}
+                ScrollBar.vertical: AppScrollBar { id: vbar }
 
                 delegate: Item {
                     id: row
