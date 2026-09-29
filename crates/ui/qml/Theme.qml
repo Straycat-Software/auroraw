@@ -16,11 +16,15 @@ QtObject {
         hover: "#4d515b",
         border: "#606471",
         text: "#eaeaeb",
-        placeholder: "#787b87"
+        placeholder: "#8a8d99"
     })
 
     // The colours that mean something.
     readonly property color accent: "#5e99d4"
+    // The accent as a fill under text (a default or checked button, a selected row, selected text): white on it is
+    // 4.7:1, where white on `accent` is 3.0:1. `accent` itself stays for what is drawn on the surfaces, a focus
+    // outline, an underline, a frame or a wash (4.5:1 on `window`), which a darker blue would not be.
+    readonly property color accentFill: "#3b76bb"
     // A second, sparing accent (D-129): the cover, the About link, a rare highlight — never a
     // second meaning for a status, which stays rating/picked/danger/warning/label.
     readonly property color accentSecondary: "#3ea89d"

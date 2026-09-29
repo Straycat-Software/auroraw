@@ -106,9 +106,16 @@ AppTestCase {
         verify(list.visible)
         const row = list.itemAtIndex(0)
         verify(row !== null, "the known workspace is a row")
-        compare(list.rowWidth, list.width - list.ScrollBar.vertical.width)
-        compare(row.width, list.rowWidth)
-        verify(row.width < list.width, "so the last pixels are the scrollbar's own")
+        // Where the handle really is (its geometry is the same whether or not it shows, and with one workspace it
+        // does not): after the row ends, `gap` pixels on, `thumbWidth` wide, and inside the list. A review of the
+        // pull request measured that a style lays the handle out by padding and not by an `x` of its own.
+        const bar = list.ScrollBar.vertical
+        const thumb = bar.contentItem
+        compare(thumb.width, bar.thumbWidth, "the handle is as wide as asked, not as wide as the padding leaves")
+        const thumbLeft = bar.x + thumb.x
+        verify(thumbLeft >= row.width, "the handle does not overlap a row")
+        compare(thumbLeft - row.width, bar.gap, "and stands a gap clear of it")
+        verify(thumbLeft + thumb.width <= list.width, "inside the list")
         compare(list.boundsBehavior, Flickable.StopAtBounds)
     }
 

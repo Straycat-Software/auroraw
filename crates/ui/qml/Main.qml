@@ -34,7 +34,7 @@ ApplicationWindow {
         mid: Theme.surface.sunken
         dark: Theme.surface.sunken
         shadow: "#000000"
-        highlight: Theme.accent
+        highlight: Theme.accentFill
         highlightedText: "#ffffff"
         placeholderText: Theme.surface.placeholder
         // What cannot be used is dimmed (Fusion draws a disabled control from these).

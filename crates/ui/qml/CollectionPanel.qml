@@ -126,9 +126,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: topLevelDrop.containsDrag && topLevelDrop.allowed
-        color: palette.highlight
+        color: Theme.accent
         opacity: 0.18
-        border.color: palette.highlight
+        border.color: Theme.accent
         border.width: 2
     }
 
@@ -222,9 +222,9 @@ Item {
                     Rectangle {
                         anchors.fill: parent
                         visible: rowDrop.containsDrag && rowDrop.allowed
-                        color: palette.highlight
+                        color: Theme.accent
                         opacity: 0.35
-                        border.color: palette.highlight
+                        border.color: Theme.accent
                     }
                     DropArea {
                         id: rowDrop

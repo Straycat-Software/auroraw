@@ -223,7 +223,7 @@ AppDialog {
                 Label {
                     visible: dialog.volumes.length === 0
                     text: qsTr("No card detected")
-                    color: Theme.surface.placeholder
+                    color: Theme.quiet
                 }
                 AppButton {
                     id: refreshButton

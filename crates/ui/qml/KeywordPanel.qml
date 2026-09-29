@@ -112,7 +112,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: edge.containsMouse || edge.pressed ? palette.highlight : palette.dark
+        color: edge.containsMouse || edge.pressed ? Theme.accent : palette.dark
     }
 
     // Anywhere in the panel where there is no keyword is a place to drop one to make it a top-level keyword
@@ -128,9 +128,9 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         visible: topLevelDrop.containsDrag && topLevelDrop.allowed
-        color: palette.highlight
+        color: Theme.accent
         opacity: 0.18
-        border.color: palette.highlight
+        border.color: Theme.accent
         border.width: 2
     }
 
@@ -411,9 +411,9 @@ Rectangle {
                     Rectangle {
                         anchors.fill: parent
                         visible: rowDrop.containsDrag && rowDrop.allowed
-                        color: palette.highlight
+                        color: Theme.accent
                         opacity: 0.35
-                        border.color: palette.highlight
+                        border.color: Theme.accent
                     }
                     DropArea {
                         id: rowDrop
@@ -910,7 +910,7 @@ Rectangle {
                     color: palette.base
                     radius: Theme.radiusControl
                     border.width: 1
-                    border.color: synonymsField.activeFocus ? palette.highlight : palette.mid
+                    border.color: synonymsField.activeFocus ? Theme.accent : palette.mid
                 }
             }
             CheckBox {

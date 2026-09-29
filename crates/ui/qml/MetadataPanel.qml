@@ -325,7 +325,7 @@ Item {
                         color: palette.base
                         radius: Theme.radiusControl
                         border.width: 1
-                        border.color: multiLine.activeFocus ? palette.highlight : palette.mid
+                        border.color: multiLine.activeFocus ? Theme.accent : palette.mid
                     }
                 }
             }

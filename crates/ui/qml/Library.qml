@@ -1027,7 +1027,7 @@ FocusScope {
                         Rectangle {
                             anchors.fill: parent
                             visible: cell.selected
-                            color: root.palette.highlight
+                            color: Theme.accent
                             opacity: 0.38
                         }
                         // The rating, on a dark chip so that it reads over any picture.
@@ -1135,7 +1135,7 @@ FocusScope {
                             anchors.fill: parent
                             color: "transparent"
                             border.width: cell.selected ? 3 : 0
-                            border.color: root.palette.highlight
+                            border.color: Theme.accent
                         }
                         // The cursor, when it is not the only thing selected: where the keyboard is.
                         Rectangle {
