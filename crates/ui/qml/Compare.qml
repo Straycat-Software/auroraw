@@ -299,7 +299,7 @@ FocusScope {
                 Repeater {
                     id: sizeButtons
                     model: [2, 3, 4]
-                    ToolButton {
+                    AppToolButton {
                         id: sizeButton
                         required property int modelData
                         text: sizeButton.modelData
@@ -313,7 +313,7 @@ FocusScope {
                         onClicked: comparison.setPageSize(sizeButton.modelData)
                     }
                 }
-                ToolButton {
+                AppToolButton {
                     text: "◀"
                     enabled: comparison.page > 0
                     opacity: enabled ? 1 : 0.35
@@ -326,7 +326,7 @@ FocusScope {
                           .arg(Math.min(comparison.ids.length, (comparison.page + 1) * comparison.pageSize)).arg(comparison.ids.length)
                     color: Theme.surface.text
                 }
-                ToolButton {
+                AppToolButton {
                     text: "▶"
                     enabled: comparison.page < comparison.pages - 1
                     opacity: enabled ? 1 : 0.35
@@ -335,7 +335,7 @@ FocusScope {
                     onClicked: comparison.turnPage(1)
                 }
                 Item { Layout.fillWidth: true }
-                ToolButton {
+                AppToolButton {
                     text: qsTr("Peaking")
                     checkable: true
                     checked: comparison.showPeaking
@@ -347,7 +347,7 @@ FocusScope {
                         comparison.setOption("peaking", checked)
                     }
                 }
-                ToolButton {
+                AppToolButton {
                     text: qsTr("Clipping")
                     checkable: true
                     checked: comparison.showClipping
@@ -359,7 +359,7 @@ FocusScope {
                         comparison.setOption("clipping", checked)
                     }
                 }
-                ToolButton {
+                AppToolButton {
                     text: qsTr("Histogram")
                     checkable: true
                     checked: comparison.showHistogram
@@ -371,14 +371,14 @@ FocusScope {
                         comparison.setOption("histogram", checked)
                     }
                 }
-                ToolButton {
+                AppToolButton {
                     text: comparison.fit ? qsTr("100 %") : qsTr("Fit")
                     focusPolicy: Qt.NoFocus
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Fit or 100 % in every frame (Z)")
                     onClicked: comparison.toggleActual()
                 }
-                ToolButton {
+                AppToolButton {
                     id: resolveButton
                     text: comparison.resolved ? qsTr("Reopen") : qsTr("Resolve")
                     enabled: comparison.resolved ? library.canReopen : library.canResolve
@@ -389,12 +389,12 @@ FocusScope {
                                                       : qsTr("Resolve the series: keep the marked frames, reject the others (R)")
                     onClicked: comparison.resolved ? comparison.reopen() : comparison.resolve()
                 }
-                ToolButton {
+                AppToolButton {
                     text: qsTr("Full screen")
                     focusPolicy: Qt.NoFocus
                     onClicked: comparison.library.fullScreenToggled()
                 }
-                ToolButton {
+                AppToolButton {
                     text: "✕"
                     focusPolicy: Qt.NoFocus
                     Accessible.name: qsTr("Back to the grid")

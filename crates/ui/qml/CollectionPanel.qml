@@ -136,7 +136,7 @@ Item {
         anchors.fill: parent
         spacing: 6
 
-        TextField {
+        AppTextField {
             id: field
             Layout.fillWidth: true
             placeholderText: qsTr("Find or add a collection…")
@@ -186,7 +186,7 @@ Item {
                 color: Theme.quiet
                 elide: Text.ElideRight
             }
-            ToolButton {
+            AppToolButton {
                 visible: !panel.canAdd && panel.createUnder !== ""
                 text: "×"
                 focusPolicy: Qt.NoFocus
@@ -251,7 +251,7 @@ Item {
                                 onClicked: panel.collections.toggleExpanded(row.index)
                             }
                         }
-                        CheckBox {
+                        AppCheckBox {
                             id: check
                             tristate: true
                             padding: 0
@@ -419,7 +419,7 @@ Item {
 
         contentItem: ColumnLayout {
             spacing: 8
-            TextField {
+            AppTextField {
                 id: nameField
                 Layout.fillWidth: true
                 Accessible.name: qsTr("Name")
@@ -481,7 +481,7 @@ Item {
                                                     : qsTr("There is nowhere to move “%1”.").arg(moveDialog.collectionName)
                 wrapMode: Text.Wrap
             }
-            ComboBox {
+            AppComboBox {
                 id: targetBox
                 Layout.fillWidth: true
                 model: moveDialog.targets

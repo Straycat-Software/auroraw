@@ -190,6 +190,10 @@ AppDialog {
     contentItem: ScrollView {
         id: scroller
         clip: true
+        // The flat scrollbar (D-136, which left the two scroll views' Fusion ones behind in D-132): an overlay at the
+        // right edge, so the form stops short of it by its own width.
+        ScrollBar.vertical: AppScrollBar { id: importBar }
+        rightPadding: importBar.width
         contentWidth: availableWidth
         implicitHeight: Math.min(grid.implicitHeight,
                                  (Overlay.overlay ? Overlay.overlay.height : 700) - 220)
@@ -234,7 +238,7 @@ AppDialog {
             }
 
             Label { text: qsTr("Import from (card or folder)") }
-            TextField {
+            AppTextField {
                 id: sourceField
                 Layout.fillWidth: true
                 enabled: !dialog.importing
@@ -257,7 +261,7 @@ AppDialog {
             }
 
             Label { text: qsTr("Destination folder") }
-            TextField {
+            AppTextField {
                 id: destinationField
                 Layout.fillWidth: true
                 enabled: !dialog.importing
@@ -279,7 +283,7 @@ AppDialog {
                 color: dialog.kind === "covered" ? Theme.quiet : Theme.warning
                 text: dialog.destinationNote
             }
-            CheckBox {
+            AppCheckBox {
                 id: addDestinationBox
                 Layout.columnSpan: 3
                 visible: dialog.kind === "not-covered"
@@ -317,7 +321,7 @@ AppDialog {
                 visible: dialog.layoutChoice === "template"
                 text: qsTr("Folders and file names")
             }
-            TextField {
+            AppTextField {
                 id: templateField
                 visible: dialog.layoutChoice === "template"
                 Layout.fillWidth: true
@@ -328,7 +332,7 @@ AppDialog {
             }
 
             Label { text: qsTr("Backup folder (optional)") }
-            TextField {
+            AppTextField {
                 id: backupField
                 Layout.fillWidth: true
                 enabled: !dialog.importing
@@ -341,7 +345,7 @@ AppDialog {
                 onClicked: backupPicker.pick()
             }
 
-            ProgressBar {
+            AppProgressBar {
                 Layout.columnSpan: 3
                 Layout.fillWidth: true
                 visible: dialog.importing

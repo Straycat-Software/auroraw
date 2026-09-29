@@ -255,7 +255,7 @@ Item {
             color: pane.rank >= 100 ? Theme.rating : Theme.quiet
         }
         Item { Layout.fillWidth: true }
-        ToolButton {
+        AppToolButton {
             id: keepButton
             text: qsTr("Keep")
             // Only a frame of an unresolved series is marked to keep (its series' state is the selection's, the focus).

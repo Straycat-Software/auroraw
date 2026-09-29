@@ -363,7 +363,7 @@ FocusScope {
             spacing: 2
             // The photo's state, in its colours, each a button that goes round its states: the stars from 0 to
             // 5, the flag (none, picked, rejected) and the colour label (none, then the five colours).
-            ToolButton {
+            AppToolButton {
                 id: ratingButton
                 focusPolicy: Qt.NoFocus
                 text: "★".repeat(view.rating) + "☆".repeat(5 - view.rating)
@@ -374,7 +374,7 @@ FocusScope {
                 ToolTip.text: qsTr("Rating: click to change it (0 to 5)")
                 onClicked: view.library.rate((view.rating + 1) % 6)
             }
-            ToolButton {
+            AppToolButton {
                 id: flagButton
                 focusPolicy: Qt.NoFocus
                 enabled: view.library.canFlag
@@ -387,7 +387,7 @@ FocusScope {
                 ToolTip.text: qsTr("Flag: click for picked, rejected, none (P, X, U)")
                 onClicked: view.library.flag(view.flag === 0 ? "pick" : view.flag === 1 ? "reject" : "clear")
             }
-            ToolButton {
+            AppToolButton {
                 id: colourButton
                 focusPolicy: Qt.NoFocus
                 Accessible.name: qsTr("Colour label")
@@ -413,7 +413,7 @@ FocusScope {
                 color: Theme.quiet
                 opacity: 0.5
             }
-            ToolButton {
+            AppToolButton {
                 id: keepButton
                 text: qsTr("Keep")
                 visible: view.library.inSeries
@@ -426,7 +426,7 @@ FocusScope {
                 ToolTip.text: qsTr("Mark this photo to keep, for resolving its series (K)")
                 onClicked: view.library.toggleMark(view.photoId)
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Peaking")
                 checkable: true
                 checked: view.showPeaking
@@ -438,7 +438,7 @@ FocusScope {
                     view.setOption("peaking", checked)
                 }
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Clipping")
                 checkable: true
                 checked: view.showClipping
@@ -450,7 +450,7 @@ FocusScope {
                     view.setOption("clipping", checked)
                 }
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Histogram")
                 checkable: true
                 checked: view.showHistogram
@@ -462,7 +462,7 @@ FocusScope {
                     view.setOption("histogram", checked)
                 }
             }
-            ToolButton {
+            AppToolButton {
                 id: compareButton
                 text: qsTr("Compare")
                 visible: view.library.inSeries
@@ -473,14 +473,14 @@ FocusScope {
                 ToolTip.text: qsTr("Compare with the other frames of the series (C)")
                 onClicked: view.library.openCompare()
             }
-            ToolButton {
+            AppToolButton {
                 text: view.fit ? qsTr("100 %") : qsTr("Fit")
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Fit or 100 % (Z)")
                 onClicked: view.toggleActual()
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Info")
                 checkable: true
                 checked: view.showInfo
@@ -492,7 +492,7 @@ FocusScope {
                     view.setOption("info", checked)
                 }
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Filmstrip")
                 checkable: true
                 checked: view.showFilmstrip
@@ -504,7 +504,7 @@ FocusScope {
                     view.setOption("filmstrip", checked)
                 }
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Auto-advance")
                 checkable: true
                 checked: view.autoAdvance
@@ -516,14 +516,14 @@ FocusScope {
                     view.setOption("autoAdvance", checked)
                 }
             }
-            ToolButton {
+            AppToolButton {
                 text: qsTr("Full screen")
                 focusPolicy: Qt.NoFocus
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Full screen (F)")
                 onClicked: view.library.fullScreenToggled()
             }
-            ToolButton {
+            AppToolButton {
                 text: "✕"
                 focusPolicy: Qt.NoFocus
                 Accessible.name: qsTr("Back to the grid")

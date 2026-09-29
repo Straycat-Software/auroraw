@@ -118,7 +118,7 @@ Rectangle {
                 font.bold: true
                 Layout.fillWidth: true
             }
-            ToolButton {
+            AppToolButton {
                 id: closeButton
                 text: "✕"
                 focusPolicy: Qt.NoFocus
