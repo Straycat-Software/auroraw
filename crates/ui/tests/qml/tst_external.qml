@@ -50,6 +50,17 @@ AppTestCase {
         return -1
     }
 
+    // Clicks "Review…" on the banner once the button has a size. The first test of this suite is the first to show
+    // the banner, and on the Windows runner its click has been seen to get lost (the window never opened, even
+    // after 30 s) while the same click in the later tests never was. A layout gives its children their size when it
+    // is first shown, at its first frame, and a control has none before: a click at the middle of a button that is
+    // 0 by 0 lands on the banner behind it. That is our best explanation; the wait costs nothing when it is wrong.
+    function clickReview() {
+        const button = app.externalBanner.reviewButton
+        tryVerify(() => button.width > 0 && button.height > 0)
+        click(button)
+    }
+
     // Writes `name`.xmp beside its original and lets a rescan see it, as another application's edit.
     function edit(name, title, rating) {
         files.write(home + "/Card/" + name + ".xmp", xmp(title, rating))
@@ -65,7 +76,7 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
         compare(app.externalBanner.count, 1)
 
-        click(app.externalBanner.reviewButton)
+        clickReview()
         tryVerify(() => app.externalDialog.visible)
         tryCompare(app.externalDialog.entries, "length", 1)
         const entry = app.externalDialog.entries[0]
@@ -106,7 +117,7 @@ AppTestCase {
         edit("IMG_0005", "Base", 3)
         tryVerify(() => app.externalBanner.visible)
 
-        click(app.externalBanner.reviewButton)
+        clickReview()
         tryVerify(() => app.externalDialog.visible)
         tryCompare(app.externalDialog.entries, "length", 1)
         compare(app.externalDialog.entries[0].changes[0].conflict, true)
@@ -122,7 +133,7 @@ AppTestCase {
         // Another change, and this time the file's value is chosen.
         edit("IMG_0005", "Base", 1)
         tryVerify(() => app.externalBanner.visible)
-        click(app.externalBanner.reviewButton)
+        clickReview()
         tryVerify(() => app.externalDialog.visible)
         tryCompare(app.externalDialog.entries, "length", 1)
         app.externalDialog.choose(app.externalDialog.entries[0].id, "rating", true)
@@ -158,7 +169,7 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
         app.launcher.chooseLanguage("fr")
         wait(250)
-        click(app.externalBanner.reviewButton)
+        clickReview()
         tryVerify(() => app.externalDialog.visible)
         tryCompare(app.externalDialog.entries, "length", 1)
         compare(app.externalDialog.title, "Métadonnées modifiées par une autre application")
