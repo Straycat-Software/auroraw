@@ -3,7 +3,7 @@
 
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 /// How long a rename is retried when another program holds the target open (Windows: antivirus
@@ -45,6 +45,17 @@ pub(crate) fn rename_with_retry(from: &Path, to: &Path) -> io::Result<()> {
     }
 }
 
+/// What a write may do beyond writing: the state files of the workspace make their folders and never meet a
+/// temporary file of another run; a file in someone's source folder does neither.
+#[derive(Clone, Copy)]
+struct Policy {
+    /// Create the parent folder when the rename finds it missing.
+    create_parent: bool,
+    /// Refuse a temporary file that exists. A source folder may hold the `.part` of an export that was
+    /// killed, which the next export simply writes over.
+    exclusive_tmp: bool,
+}
+
 /// Writes `bytes` to `target` through `tmp`. The parent folder of `target` is created if it does
 /// not exist (the common case costs no extra call: on Windows a folder check is 0.15 ms, a sixth
 /// of the whole write). A crash leaves the old file or the new one, never a mixture; a leftover
@@ -56,8 +67,30 @@ pub(crate) fn write_atomic(
     sync: bool,
     interrupt: Interrupt,
 ) -> io::Result<()> {
+    let policy = Policy {
+        create_parent: true,
+        exclusive_tmp: true,
+    };
+    write_with(target, tmp, bytes, sync, interrupt, policy)
+}
+
+fn write_with(
+    target: &Path,
+    tmp: &Path,
+    bytes: &[u8],
+    sync: bool,
+    interrupt: Interrupt,
+    policy: Policy,
+) -> io::Result<()> {
     let result = (|| {
-        let mut file = OpenOptions::new().write(true).create_new(true).open(tmp)?;
+        let mut options = OpenOptions::new();
+        options.write(true);
+        if policy.exclusive_tmp {
+            options.create_new(true);
+        } else {
+            options.create(true).truncate(true);
+        }
+        let mut file = options.open(tmp)?;
         file.write_all(bytes)?;
         if sync {
             file.sync_all()?;
@@ -67,7 +100,7 @@ pub(crate) fn write_atomic(
             return Err(io::Error::other("interrupted before the rename"));
         }
         match rename_with_retry(tmp, target) {
-            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            Err(e) if e.kind() == io::ErrorKind::NotFound && policy.create_parent => {
                 // The shard folder does not exist yet: create it, and rename again.
                 if let Some(parent) = target.parent() {
                     fs::create_dir_all(parent)?;
@@ -83,12 +116,11 @@ pub(crate) fn write_atomic(
     result
 }
 
-/// Writes `bytes` to `target` atomically with the temporary file **beside** it (`<name>.part`), for a
-/// file that is not in the workspace: the XMP export writes into a source folder, which may be on
-/// another volume than the workspace's `.auroraw/tmp/`, where a rename would not be atomic (design
-/// note 003 §8.1 item 9). A crash leaves the old file or the new one. The folder must exist: an
-/// export never creates folders in someone's source.
-pub fn write_beside(target: &Path, bytes: &[u8]) -> io::Result<()> {
+/// The temporary file beside `target` (`<name>.part`), for a file that is not in the workspace: the XMP
+/// export writes into a source folder, which may be on another volume than the workspace's
+/// `.auroraw/tmp/`, where a rename would not be atomic (design note 003 §8.1 item 9). The folder must
+/// exist: an export never creates folders in someone's source.
+fn beside(target: &Path) -> io::Result<PathBuf> {
     if let Some(parent) = target.parent()
         && !parent.as_os_str().is_empty()
         && !parent.is_dir()
@@ -103,6 +135,49 @@ pub fn write_beside(target: &Path, bytes: &[u8]) -> io::Result<()> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "no file name"))?;
     let mut tmp_name = name.to_os_string();
     tmp_name.push(".part");
-    let tmp = target.with_file_name(tmp_name);
-    write_atomic(target, &tmp, bytes, true, Interrupt::Never)
+    Ok(target.with_file_name(tmp_name))
+}
+
+/// Writes `bytes` to `target` atomically with the temporary file **beside** it, **replacing** the file
+/// if there is one: what a merge into a file the caller has just read needs. A crash leaves the old file
+/// or the new one, never a mixture. The folder must exist, and is not created (not even if it goes away
+/// between the check and the rename).
+pub fn write_beside(target: &Path, bytes: &[u8]) -> io::Result<()> {
+    let tmp = beside(target)?;
+    let policy = Policy {
+        create_parent: false,
+        exclusive_tmp: false,
+    };
+    write_with(target, &tmp, bytes, true, Interrupt::Never, policy)
+}
+
+/// Writes `bytes` to `target` atomically, the temporary file **beside** it, **only if nothing is at
+/// `target`**: the error is [`io::ErrorKind::AlreadyExists`] otherwise, and the file there is not touched.
+/// The check is made at the last moment, by the file system where it can (a hard link, which fails when
+/// the name is taken, then the temporary name is dropped), and by looking just before the rename where it
+/// cannot (FAT and exFAT cards, some network shares have no hard links). A listing taken minutes ago is
+/// not a reason to replace a file another application has made since.
+pub fn write_new_beside(target: &Path, bytes: &[u8]) -> io::Result<()> {
+    let tmp = beside(target)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&tmp)?;
+    let written = file.write_all(bytes).and_then(|()| file.sync_all());
+    drop(file);
+    let result = written.and_then(|()| match fs::hard_link(&tmp, target) {
+        Ok(()) => Ok(()),
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => Err(e),
+        Err(_) => {
+            // No hard links here: look, then rename (a window of microseconds, not of minutes).
+            if target.try_exists()? {
+                return Err(io::Error::from(io::ErrorKind::AlreadyExists));
+            }
+            rename_with_retry(&tmp, target)
+        }
+    });
+    // (After a successful rename the name is already gone; after a link it is the second name.)
+    let _ = fs::remove_file(&tmp);
+    result
 }

@@ -302,7 +302,7 @@ AppDialog {
                 Layout.fillWidth: true
                 wrapMode: Text.Wrap
                 visible: dialog.phase === "confirm"
-                text: qsTr("Replace the files that already exist? Each old file is first kept in the workspace's removed folder; nothing is deleted.")
+                text: qsTr("Replace the files that already exist? Each old file is first kept in the workspace's removed folder; nothing is deleted. A change that another application made to one of them and that you have not reviewed yet goes with it: it is not offered for review afterwards.")
             }
 
             // ---- the progress

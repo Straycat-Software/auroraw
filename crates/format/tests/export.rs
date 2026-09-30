@@ -454,6 +454,55 @@ fn a_merge_touches_the_capture_data_only_where_the_overlay_corrected_it() {
 }
 
 #[test]
+fn a_corrected_position_does_not_inherit_the_files_altitude_reference() {
+    let mut file = Xmp::from_bytes(&foreign("lightroom.xmp")).unwrap();
+    file.properties
+        .push(Property::text(ns::EXIF, "GPSAltitude", "120/1"));
+    file.properties
+        .push(Property::text(ns::EXIF, "GPSAltitudeRef", "1"));
+    let meta = Metadata {
+        overlay: Some(Overlay {
+            gps: Some(OverlayGps {
+                latitude: "45,30.0N".into(),
+                longitude: "73,34.0W".into(),
+                altitude: None,
+                extra: Vec::new(),
+            }),
+            ..Overlay::default()
+        }),
+        ..photo()
+    };
+    merge_into(&mut file, &view(&meta, &[], true));
+    assert!(file.get(ns::EXIF, "GPSAltitude").is_none());
+    assert!(
+        file.get(ns::EXIF, "GPSAltitudeRef").is_none(),
+        "the reference went with the altitude it qualified"
+    );
+}
+
+#[test]
+fn the_metadata_date_is_stamped_once_and_replaced_not_repeated() {
+    use auroraw_format::sidecar::export::stamp_metadata_date;
+    let mut file = Xmp::from_bytes(&foreign("lightroom.xmp")).unwrap();
+    stamp_metadata_date(&mut file, "2026-09-30T18:00:00Z");
+    stamp_metadata_date(&mut file, "2026-10-01T09:30:00Z");
+    let dates: Vec<_> = file
+        .properties
+        .iter()
+        .filter(|p| p.is(ns::XMP, "MetadataDate"))
+        .collect();
+    assert_eq!(dates.len(), 1);
+    assert_eq!(dates[0].as_text(), Some("2026-10-01T09:30:00Z"));
+    // A merge leaves the date alone: it is not one of the properties an export owns.
+    merge_into(&mut file, &view(&photo(), &[], true));
+    assert_eq!(
+        file.get(ns::XMP, "MetadataDate")
+            .and_then(Property::as_text),
+        Some("2026-10-01T09:30:00Z")
+    );
+}
+
+#[test]
 fn merging_twice_changes_nothing_more() {
     for name in ["lightroom.xmp", "darktable.xmp", "digikam.xmp"] {
         let mut once = Xmp::from_bytes(&foreign(name)).unwrap();

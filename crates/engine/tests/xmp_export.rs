@@ -257,10 +257,32 @@ fn names(folder: &Path) -> Vec<String> {
     listing(folder).into_iter().map(|(n, _)| n).collect()
 }
 
+/// A property the export owns or stamps: what a merge is allowed to change (`xmp:MetadataDate` is said anew
+/// whenever the metadata of a file changes).
 fn owned_or_not(p: &auroraw_format::xmp::Property) -> bool {
-    auroraw_format::sidecar::export::OWNED
-        .iter()
-        .any(|(n, name)| p.is(n, name))
+    p.is(ns::XMP, "MetadataDate")
+        || auroraw_format::sidecar::export::OWNED
+            .iter()
+            .any(|(n, name)| p.is(n, name))
+}
+
+fn has_date(file: &Path) -> bool {
+    Xmp::from_bytes(&std::fs::read(file).unwrap())
+        .unwrap()
+        .get(ns::XMP, "MetadataDate")
+        .is_some()
+}
+
+/// The copies of other applications' files under the workspace's `removed/external-xmp/`.
+fn kept_copies(s: &Setup) -> Vec<(String, Vec<u8>)> {
+    let removed = s.dir.path().join("Main").join("removed");
+    if !removed.exists() {
+        return Vec::new();
+    }
+    listing(&removed)
+        .into_iter()
+        .filter(|(name, _)| name.contains("external-xmp") && name.ends_with(".xmp"))
+        .collect()
 }
 
 fn mtime(path: &Path) -> std::time::SystemTime {
@@ -878,4 +900,117 @@ fn a_cancelled_export_keeps_what_it_wrote_and_records_a_base_for_each() {
     let catalogue = s.engine.read_catalogue().unwrap();
     let with_base = catalogue.external_stats(&source).unwrap().len();
     assert_eq!(with_base, done.report.written);
+}
+
+#[test]
+fn a_file_another_application_wrote_is_kept_once_before_it_is_first_rewritten() {
+    let s = setup();
+    let folder = s.dir.path().join("Card");
+    jpeg(&folder.join("a.jpg"), 3);
+    let original = foreign("darktable.xmp");
+    other_app_writes(&folder.join("a.xmp"), &original);
+    add(&s, &folder);
+    let photo = photo_named(&s, "a.jpg");
+    set_title(&s, photo, "First");
+    assert_eq!(export(&s, &[photo]).report.written, 1);
+    let kept = kept_copies(&s);
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(
+        kept[0].1, original,
+        "the other application's file, byte for byte"
+    );
+    // The file is now one Auroraw wrote (it carries the marker): later changes cost no copy.
+    set_title(&s, photo, "Second");
+    assert_eq!(export(&s, &[photo]).report.written, 1);
+    assert_eq!(kept_copies(&s).len(), 1, "still the one copy");
+}
+
+#[test]
+fn a_merge_that_changes_nothing_of_ours_leaves_another_applications_file_as_it_is() {
+    let s = setup();
+    let folder = s.dir.path().join("Card");
+    jpeg(&folder.join("a.jpg"), 4);
+    add(&s, &folder);
+    let photo = photo_named(&s, "a.jpg");
+    assert_eq!(export(&s, &[photo]).report.written, 1);
+    let file = folder.join("a.xmp");
+    // Another application rewrites it in its own layout (same content, padded), and Auroraw has seen it.
+    let ours = std::fs::read_to_string(&file).unwrap();
+    let theirs =
+        format!("<?xpacket begin='' id='W5M0MpCehiHzreSzNTczkc9d'?>\n{ours}\n<?xpacket end='w'?>");
+    other_app_writes(&file, theirs.as_bytes());
+    rescan(&s, photo_source(&s, photo));
+    assert_eq!(s.engine.external_pending(), 0);
+    let done = export(&s, &[photo]);
+    assert_eq!(
+        (done.report.written, done.report.up_to_date),
+        (0, 1),
+        "{:?}",
+        done.report
+    );
+    assert_eq!(
+        std::fs::read_to_string(&file).unwrap(),
+        theirs,
+        "not rewritten in our layout"
+    );
+}
+
+#[test]
+fn the_metadata_date_is_said_when_a_file_is_made_and_when_it_changes() {
+    let s = setup();
+    let folder = s.dir.path().join("Card");
+    jpeg(&folder.join("a.jpg"), 5);
+    add(&s, &folder);
+    let photo = photo_named(&s, "a.jpg");
+    assert_eq!(export(&s, &[photo]).report.written, 1);
+    assert!(
+        has_date(&folder.join("a.xmp")),
+        "a new file says when its metadata was made"
+    );
+    set_title(&s, photo, "Changed");
+    assert_eq!(export(&s, &[photo]).report.written, 1);
+    assert!(has_date(&folder.join("a.xmp")));
+    let at = mtime(&folder.join("a.xmp"));
+    let again = export(&s, &[photo]);
+    assert_eq!((again.report.written, again.report.up_to_date), (0, 1));
+    assert_eq!(
+        mtime(&folder.join("a.xmp")),
+        at,
+        "nothing changed, nothing touched"
+    );
+}
+
+#[test]
+fn a_folder_that_cannot_be_listed_fails_its_photos_and_writes_nothing_there() {
+    let s = setup();
+    let folder = s.dir.path().join("Card");
+    jpeg(&folder.join("sub/a.jpg"), 6);
+    jpeg(&folder.join("b.jpg"), 6);
+    other_app_writes(&folder.join("sub/a.xmp"), &foreign("lightroom.xmp"));
+    add(&s, &folder);
+    let (a, b) = (photo_named(&s, "a.jpg"), photo_named(&s, "b.jpg"));
+    // The folder goes away between the scan and the export (a mount that drops, a permission): it is not
+    // a folder with no files in it.
+    let lightroom = std::fs::read(folder.join("sub/a.xmp")).unwrap();
+    std::fs::remove_dir_all(folder.join("sub")).unwrap();
+    let done = export(&s, &[a, b]);
+    assert_eq!(done.report.failed, 1, "{:?}", done.report);
+    assert_eq!(
+        done.report.written, 1,
+        "the other folder is fine: {:?}",
+        done.report
+    );
+    assert!(
+        done.report
+            .first_error
+            .as_deref()
+            .is_some_and(|e| e.contains("cannot be listed")),
+        "{:?}",
+        done.report
+    );
+    assert!(
+        !folder.join("sub").exists(),
+        "the folder was not made again"
+    );
+    assert!(!lightroom.is_empty());
 }

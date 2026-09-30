@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::time::SystemTime;
 
 use auroraw_catalogue::{Catalogue, ExternalPending, ExternalStat, SidecarStat};
-use auroraw_format::sidecar::export::{ExportView, build, merge_into};
+use auroraw_format::sidecar::export::{ExportView, build, merge_into, stamp_metadata_date};
 use auroraw_format::sidecar::external::{
     Field as ExternalField, Fields, Merge, keyword_key, merge, read as read_external,
 };
@@ -326,6 +326,15 @@ mod collection_ops;
 #[path = "series_ops.rs"]
 mod series_ops;
 
+/// The vocabulary and the path of each of its keywords, worked out once for as long as the vocabulary file
+/// is what it was (an export asks for them for every photo, on the thread that also serves every edit).
+struct ExportVocabulary {
+    /// Size and time of the file they were read from; `None` when there was no file.
+    stat: Option<(u64, Option<SystemTime>)>,
+    keywords: Vec<KeywordEntry>,
+    paths: HashMap<KeywordId, String>,
+}
+
 pub(crate) struct Coordinator {
     workspace: Arc<Workspace>,
     catalogue: Catalogue,
@@ -339,6 +348,8 @@ pub(crate) struct Coordinator {
     next_job: u64,
     /// What the person did to their photos, for Undo and Redo (D-096).
     history: History,
+    /// The vocabulary as an XMP export uses it, kept while its file is as it was read.
+    export_vocabulary: Option<Arc<ExportVocabulary>>,
     /// The path refreshes of the sidecars (after a keyword is renamed, moved, or one of those is undone)
     /// run one at a time, in the order asked, so that the last vocabulary wins.
     refresh_queue: VecDeque<RefreshRequest>,
@@ -400,6 +411,7 @@ impl Coordinator {
             batch_jobs: HashMap::new(),
             next_job: 0,
             history: History::default(),
+            export_vocabulary: None,
             refresh_queue: VecDeque::new(),
             refresh_running: false,
             series_gap: crate::series_detect::DEFAULT_GAP,
@@ -2759,6 +2771,31 @@ impl Coordinator {
         Ok(Outcome::XmpExportStarted { job, photos: count })
     }
 
+    /// The vocabulary and its keyword paths for an export, read again only when the vocabulary file is not
+    /// the one they were read from.
+    fn export_vocabulary(&mut self) -> Arc<ExportVocabulary> {
+        let stat = std::fs::metadata(self.workspace.vocabulary_path())
+            .ok()
+            .map(|m| (m.len(), m.modified().ok()));
+        if let Some(kept) = &self.export_vocabulary
+            && kept.stat == stat
+        {
+            return Arc::clone(kept);
+        }
+        let keywords = self
+            .read_vocabulary()
+            .map(|v| v.keywords)
+            .unwrap_or_default();
+        let paths = auroraw_catalogue::keyword_paths(&keywords);
+        let fresh = Arc::new(ExportVocabulary {
+            stat,
+            keywords,
+            paths,
+        });
+        self.export_vocabulary = Some(Arc::clone(&fresh));
+        fresh
+    }
+
     /// What to do with one photo's export file (`Inbound::ExportPrepare`, design note 003 §8.1): the
     /// three-way comparison of what the file holds, what Auroraw last saw in it (the base) and what the
     /// photo says now; a file another application changed is held back for the review of external
@@ -2774,19 +2811,18 @@ impl Coordinator {
         let Ok((photo, _)) = self.read_photo(photo_id) else {
             return ExportDecision::Failed("the photo is no longer in the workspace".into());
         };
-        let vocabulary = self
-            .read_vocabulary()
-            .map(|v| v.keywords)
-            .unwrap_or_default();
-        let key_paths = auroraw_catalogue::keyword_paths(&vocabulary);
-        let keywords = exported_keywords(&photo.meta, &vocabulary, &key_paths);
+        let vocabulary = self.export_vocabulary();
+        let (vocabulary, key_paths) = (&vocabulary.keywords, &vocabulary.paths);
+        let keywords = exported_keywords(&photo.meta, vocabulary, key_paths);
         let view = ExportView {
             meta: &photo.meta,
             keywords: &keywords,
             rejected_as_minus_one: options.rejected_as_minus_one,
         };
         let Some(existing) = existing else {
-            return ExportDecision::Write(build(&view).to_bytes());
+            let mut xmp = build(&view);
+            stamp_metadata_date(&mut xmp, &Timestamp::now().to_string());
+            return ExportDecision::Write(xmp.to_bytes());
         };
         let parsed = match (&existing.parsed, options.existing) {
             (Some(parsed), XmpExisting::Merge) => parsed,
@@ -2797,7 +2833,11 @@ impl Coordinator {
                     .join(source_id.to_string())
                     .join(path);
                 return match self.workspace.keep_recoverably(&kept, &existing.bytes) {
-                    Ok(_) => ExportDecision::Write(build(&view).to_bytes()),
+                    Ok(_) => {
+                        let mut xmp = build(&view);
+                        stamp_metadata_date(&mut xmp, &Timestamp::now().to_string());
+                        ExportDecision::Write(xmp.to_bytes())
+                    }
                     Err(e) => ExportDecision::Failed(format!(
                         "the existing file could not be kept before replacing it: {e}"
                     )),
@@ -2822,7 +2862,7 @@ impl Coordinator {
             .as_ref()
             .map(|row| row.base.clone())
             .unwrap_or_default();
-        if !merge(Some(&base), file, &mine_of(&photo.meta, &key_paths)).is_empty() {
+        if !merge(Some(&base), file, &mine_of(&photo.meta, key_paths)).is_empty() {
             if tracked.is_none() {
                 let _ = self.catalogue.set_external_base(
                     photo_id,
@@ -2842,15 +2882,30 @@ impl Coordinator {
         }
         let mut merged = xmp.clone();
         merge_into(&mut merged, &view);
-        let bytes = merged.to_bytes();
-        if bytes == existing.bytes {
-            // Already what would be written: the file is what Auroraw has seen, whatever the base said.
+        // Already what would be written, to the letter or in substance (a file another application wrote
+        // in its own layout, with nothing of ours to change, is not rewritten in ours): the file is what
+        // Auroraw has seen, whatever the base said.
+        if merged == *xmp || merged.to_bytes() == existing.bytes {
             let _ = self
                 .catalogue
                 .set_external_base(photo_id, path, existing.stat, file);
             return ExportDecision::UpToDate;
         }
-        ExportDecision::Write(bytes)
+        // A file Auroraw did not write is rewritten in its canonical form (comments, padding and layout go):
+        // the first time, the bytes are kept under `removed/`, as Replace keeps them, so that nothing of
+        // another application's file is lost if that form turns out to drop something.
+        if xmp.get(auroraw_format::xmp::ns::AUR, "Export").is_none() {
+            let kept = std::path::Path::new("external-xmp")
+                .join(source_id.to_string())
+                .join(path);
+            if let Err(e) = self.workspace.keep_recoverably(&kept, &existing.bytes) {
+                return ExportDecision::Failed(format!(
+                    "the existing file could not be kept before it was rewritten: {e}"
+                ));
+            }
+        }
+        stamp_metadata_date(&mut merged, &Timestamp::now().to_string());
+        ExportDecision::Write(merged.to_bytes())
     }
 
     /// Starts taking a source out (`Command::RemoveSource`).

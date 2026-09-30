@@ -340,6 +340,16 @@ since Auroraw last looked.
 9. **Writes are atomic.** The temporary file is created **beside the destination** and renamed, since the
    workspace's `.auroraw/tmp/` (note 001) may be on another volume than the source. A read-only or
    unreachable source is reported per file, without stopping the batch.
+   In practice (D-138): the listing the destinations are worked out from is taken once per folder, so
+   the write is checked at the last moment: a **new** file is created only if nothing is at its name (a
+   hard link, or a look just before the rename where links do not exist), an **existing** file is replaced
+   only if it is still what was read; otherwise the photo goes round again from the reading, three times
+   at most. A folder that cannot be listed fails its photos. A merge never creates a folder, and a stale
+   `.part` is written over.
+10. **A file Auroraw did not write is kept once** under `removed/external-xmp/` before its first rewrite
+   (no `aur:Export` marker), since the merge re-serialises it canonically and real XMP is an open world.
+   A merge that changes nothing Auroraw owns leaves the file as it is. When the metadata changes,
+   `xmp:MetadataDate` is said anew.
 
 ## 9. Consequences for WP1
 

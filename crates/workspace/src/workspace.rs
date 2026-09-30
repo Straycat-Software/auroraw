@@ -418,7 +418,18 @@ impl Workspace {
         bytes: &[u8],
     ) -> Result<PathBuf, WorkspaceError> {
         let destination = self.recoverable_path(relative, relative)?;
-        fs::write(&destination, bytes).map_err(io_err(&destination))?;
+        // Atomic and synced, like every other file the workspace writes: the copy is the only one of a file
+        // that is about to be replaced.
+        let mut tmp = destination.clone().into_os_string();
+        tmp.push(".part");
+        crate::write::write_atomic(
+            &destination,
+            Path::new(&tmp),
+            bytes,
+            true,
+            crate::write::Interrupt::Never,
+        )
+        .map_err(io_err(&destination))?;
         Ok(destination)
     }
 

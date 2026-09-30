@@ -60,9 +60,11 @@ keywords, the copyright and other information fields, and the capture data. Noth
 - **When a file already exists** (Lightroom's, darktable's, digiKam's, or an earlier export of yours), the file that
   belongs to the photo is the one written, whatever the naming:
   - **Merge into it** (the default): only what Auroraw owns (the fields above) is rewritten. The other
-    application's develop settings and everything else in the file stay.
+    application's develop settings and everything else in the file stay. The first time Auroraw rewrites a file
+    that another application wrote, it keeps a copy of that file in the workspace's `removed/` folder.
   - **Replace it**: after a confirmation, the old file is first kept in the workspace's `removed/` folder (nothing
-    is deleted), and a new one is written.
+    is deleted), and a new one is written. A change another application made to it that you have not reviewed yet
+    goes with it: it is not offered for review afterwards.
   - **Leave it alone**: only the missing files are written.
 - **Keywords marked "Do not export"** (and the keywords below one) stay out of the files.
 

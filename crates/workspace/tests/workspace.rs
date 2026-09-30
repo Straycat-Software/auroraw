@@ -554,3 +554,49 @@ fn a_file_written_beside_its_target_replaces_it_whole_and_leaves_no_temporary_fi
     assert!(auroraw_workspace::write_beside(&missing, b"x").is_err());
     assert!(!dir.path().join("nope").exists());
 }
+
+#[test]
+fn a_new_file_never_replaces_one_that_is_there_however_late_it_appeared() {
+    let dir = auroraw_testkit::temp_dir();
+    let target = dir.path().join("IMG_0042.xmp");
+    // Nothing there: written whole, no temporary file left.
+    auroraw_workspace::write_new_beside(&target, b"ours").unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"ours");
+    // Another application's file, made after whatever listing the caller went by: untouched.
+    let theirs = dir.path().join("IMG_0043.xmp");
+    fs::write(&theirs, "LIGHTROOM'S FILE").unwrap();
+    let e = auroraw_workspace::write_new_beside(&theirs, b"ours").unwrap_err();
+    assert_eq!(e.kind(), std::io::ErrorKind::AlreadyExists);
+    assert_eq!(fs::read(&theirs).unwrap(), b"LIGHTROOM'S FILE");
+    let mut names: Vec<String> = fs::read_dir(dir.path())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    assert_eq!(
+        names,
+        ["IMG_0042.xmp", "IMG_0043.xmp"],
+        "and no temporary file"
+    );
+    // A folder that does not exist is an error, not created.
+    assert!(auroraw_workspace::write_new_beside(&dir.path().join("nope/c.xmp"), b"x").is_err());
+    assert!(!dir.path().join("nope").exists());
+}
+
+#[test]
+fn a_temporary_file_left_by_a_killed_export_does_not_stop_the_next_one() {
+    let dir = auroraw_testkit::temp_dir();
+    let target = dir.path().join("a.xmp");
+    fs::write(dir.path().join("a.xmp.part"), "half a file").unwrap();
+    auroraw_workspace::write_beside(&target, b"whole").unwrap();
+    assert_eq!(fs::read(&target).unwrap(), b"whole");
+    fs::write(dir.path().join("a.xmp.part"), "half a file").unwrap();
+    let other = dir.path().join("b.xmp");
+    auroraw_workspace::write_new_beside(&other, b"whole").unwrap();
+    assert_eq!(fs::read(&other).unwrap(), b"whole");
+    assert!(
+        !dir.path().join("b.xmp.part").exists(),
+        "the stale name went with the write"
+    );
+}

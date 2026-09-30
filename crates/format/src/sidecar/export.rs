@@ -218,6 +218,18 @@ fn replace_owned(props: &mut Vec<Property>, keys: &[(&str, &str)], mut fresh: Ve
     *props = out;
 }
 
+/// Says, in `xmp:MetadataDate`, when the metadata of the file last changed (XMP specification, part 1): what
+/// Adobe's applications compare to know that a sidecar is newer than their catalogue. Set by whoever
+/// changes the metadata, and only then: a merge that changes nothing leaves the file, date included,
+/// as it is.
+pub fn stamp_metadata_date(xmp: &mut Xmp, date: &str) {
+    replace_owned(
+        &mut xmp.properties,
+        &[(ns::XMP, "MetadataDate")],
+        vec![Property::text(ns::XMP, "MetadataDate", date)],
+    );
+}
+
 /// The capture properties a photographer's overlay changes, and only those.
 fn overlay_keys(overlay: &Overlay) -> Vec<(&'static str, &'static str)> {
     let mut keys = Vec::new();
@@ -229,6 +241,10 @@ fn overlay_keys(overlay: &Overlay) -> Vec<(&'static str, &'static str)> {
             (ns::EXIF, "GPSLatitude"),
             (ns::EXIF, "GPSLongitude"),
             (ns::EXIF, "GPSAltitude"),
+            // The file's own reference (above or below sea level) went with the altitude it qualified: a
+            // corrected position that gives none must not inherit it. (Auroraw's own data keeps no
+            // reference for an original's altitude yet, so a file it builds has none either.)
+            (ns::EXIF, "GPSAltitudeRef"),
         ]);
     }
     if nonblank(&overlay.camera).is_some() {

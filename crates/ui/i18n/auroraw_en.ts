@@ -3127,7 +3127,7 @@
         </translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+24"/>
         <source>Writes an XMP file beside the original of each photo, for other applications to read. Your photos and Auroraw&apos;s own files are not changed.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3180,37 +3180,42 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-216"/>
+        <location line="+31"/>
+        <source>Replace the files that already exist? Each old file is first kept in the workspace&apos;s removed folder; nothing is deleted. A change that another application made to one of them and that you have not reviewed yet goes with it: it is not offered for review afterwards.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-245"/>
         <source>Only what Auroraw owns is rewritten; develop settings and the rest stay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+222"/>
+        <location line="+220"/>
         <source>Replace it</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-221"/>
+        <location line="-219"/>
         <source>The old file is kept in the workspace&apos;s removed folder.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+227"/>
+        <location line="+225"/>
         <source>Leave it alone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-226"/>
+        <location line="-224"/>
         <source>Only the missing files are written.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+234"/>
+        <location line="+232"/>
         <source>Write a rejected photo with a rating of −1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-233"/>
+        <location line="-231"/>
         <source>Other applications understand −1 as rejected; the stars stay in the file for Auroraw.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3231,17 +3236,12 @@
         </translation>
     </message>
     <message>
-        <location line="+88"/>
+        <location line="+86"/>
         <source>When a file already exists</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+36"/>
-        <source>Replace the files that already exist? Each old file is first kept in the workspace&apos;s removed folder; nothing is deleted.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+11"/>
+        <location line="+47"/>
         <source>Exporting photo %1 of %2…</source>
         <translation type="unfinished"></translation>
     </message>
