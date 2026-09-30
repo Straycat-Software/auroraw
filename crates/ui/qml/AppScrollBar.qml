@@ -21,7 +21,14 @@ import org.auroraw.ui
 // for. So the padding is set here, `gap` on the left and `margin` on the right, and the handle is
 // `thumbWidth` wide by construction; this control is `thumbWidth + gap + margin` wide.
 //
-// Vertical only: the padding and `implicitWidth` assume a vertical bar.
+// In a `ScrollView` (the Import dialog's form, the paste dialog's list, the XMP export's form) the bar is placed by the
+// style: Fusion's `ScrollView` gives the bar it creates `x`, `y` and `height` (the right edge, the view's own room), and a
+// bar given to `ScrollBar.vertical` in its place has none, so it stayed at 0, 0 at its implicit size, a 6px dot at the top
+// left of the form (a review of #22 saw it in a snapshot and measured it: x 0, y 0, 12 by 6). A `Flickable` (a `ListView`, a
+// `GridView`) lays its attached bar out itself, so it is only when the parent is a `ScrollView`, which has an
+// `availableHeight` where a Flickable has none, that this bar places itself, as Fusion's does.
+//
+// Vertical only: the padding and `implicitWidth` assume a vertical bar, on the right.
 ScrollBar {
     id: control
     readonly property int thumbWidth: 6
@@ -33,6 +40,14 @@ ScrollBar {
     leftPadding: gap
     rightPadding: margin
     policy: ScrollBar.AsNeeded
+
+    readonly property bool inScrollView: parent !== null && typeof parent.availableHeight === "number"
+    Binding { target: control; property: "x"; when: control.inScrollView
+              value: control.parent ? control.parent.width - control.width : 0 }
+    Binding { target: control; property: "y"; when: control.inScrollView
+              value: control.parent ? control.parent.topPadding : 0 }
+    Binding { target: control; property: "height"; when: control.inScrollView
+              value: control.parent ? control.parent.availableHeight : 0 }
     contentItem: Rectangle {
         implicitWidth: control.thumbWidth
         implicitHeight: control.thumbWidth
