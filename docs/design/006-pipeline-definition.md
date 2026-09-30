@@ -10,9 +10,11 @@
 > Everything is tagged **[measured]** (a number, from spike 1 or from a run on the reference machine, said
 > which), **[read]** (a fact in the code or a document) or **[proposed]**. Nothing here is built.
 >
-> **One result changes what the spike reported** (§2.2): the spike said that white balance applied before
-> or after the denoiser gives the same image. It does not, as soon as the denoiser is on. The order of the
-> definition is therefore not a free choice that the cost of a slider can settle alone.
+> **Two results** (§2.2, §4). The spike said that white balance applied before or after the denoiser gives
+> the same image; it does not, as soon as the denoiser is on, so the order is part of what a definition
+> promises. And the quality experiment that note asked for shows the two orders **within a few tenths of a
+> decibel of each other** (on average; single cases between -0.44 and +0.35 dB) at the best strength of each, while the cost of a slider differs by a factor of
+> fifty: **v1 therefore places white balance after the denoiser**, which adds a stage (§3.3).
 
 ## 1. The question
 
@@ -75,9 +77,10 @@ What it says, and what it does not:
    to 10 % of the channels more than one level apart (Nikon D850), with single pixels up to 76 levels
    apart. With `h` = 0.01 the Nikon goes to 42 % of its channels (117 levels at most); with 0.06 it falls to
    1.2 %. The same strength does not remove the same amount of noise in both orders.
-3. **It does not say which is better.** One region per file, at unknown ISO, one strength per row, the same
-   `h` in both orders (and `h` means something different per channel once the channels are scaled): this
-   is a measure of *difference*, not of quality. The quality comparison is the experiment of §4.
+3. **It does not say which is better.** One region per file, one strength per row, the same `h` in both
+   orders (and `h` means something different per channel once the channels are scaled): this is a measure
+   of *difference*, not of quality. The quality comparison is the experiment of §4, which also shows that
+   the best strength in the "after" order is about 0.6 times the best strength in the "before" order.
 4. **It changes what the order means for a saved edit.** A recipe stores a denoise strength; the image it
    gives depends on where the white balance sits. So **the position of white balance in a definition is part
    of what a version promises**, exactly as the plan's determinism criterion requires, and cannot be changed
@@ -119,7 +122,7 @@ one a refinement of D-142's three:
 | --- | --- | --- |
 | `sensor-raw` | The decoder's samples, as counts, one per photosite (or per component for a linear input), with the black and white levels not yet applied | raw |
 | `mosaic-linear` | One linear value per photosite, levels applied, normalised so that the sensor's white is 1.0, the colour filter pattern still present | raw |
-| `camera-linear` | Linear RGB per pixel, **in the camera's primaries**, white balance applied or not as the definition says, no upper bound | scene-linear |
+| `camera-linear` | Linear RGB per pixel, **in the camera's primaries**, white balance **not yet applied** (§4), no upper bound | scene-linear |
 | `working-linear` | Linear RGB per pixel in the **working space's primaries** (§5), scene-referred, no upper bound | scene-linear |
 | `display-referred` | Values in the output space's encoding, bounded to 0..1 | display-referred |
 
@@ -129,19 +132,28 @@ input space is what lets the pipeline **refuse to place it there** instead of re
 
 ### 3.3 The stages of v1
 
-Seven stages, in this order. "Spine" is what the definition owns; "operations" are what a recipe may
+Eight stages, in this order. "Spine" is what the definition owns; "operations" are what a recipe may
 list, with the built-in ones in their **canonical order** (§3.4). The operation names are the plan's slices
 (WP15) and are provisional until that package fixes the identifiers.
 
 | # | Stage | In → out | Spine | Operations (canonical order) |
 | --- | --- | --- | --- | --- |
-| 1 | `raw-linear` | `sensor-raw` → `mosaic-linear` | black and white levels (a repeating pattern, D-141) | hot pixels, **white balance** |
+| 1 | `raw-linear` | `sensor-raw` → `mosaic-linear` | black and white levels (a repeating pattern, D-141) | hot pixels |
 | 2 | `demosaic` | `mosaic-linear` → `camera-linear` | demosaic by layout (Bayer, X-Trans, a linear input passes through) | none in M2 |
 | 3 | `camera-linear` | `camera-linear` → `camera-linear` | none | noise reduction, highlight reconstruction |
-| 4 | `scene-linear` | `camera-linear` → `working-linear` | **camera to working space** (first) | exposure and black point, tone (contrast, highlights, shadows, whites, blacks), curve, saturation and vibrance, hue-saturation-luminance, colour grading |
-| 5 | `detail` | `working-linear` → `working-linear` | none | sharpening |
-| 6 | `geometry` | `working-linear` → `working-linear` | orientation and the recommended crop (from `RawImage`) | crop, straighten |
-| 7 | `display` | `working-linear` → `display-referred` | the output transform (display or export profile, note 005 §2.4) | **tone map** (the base look's curve, §6) |
+| 4 | `camera-colour` | `camera-linear` → `working-linear` | **camera to working space** (after the operations) | **white balance** |
+| 5 | `scene-linear` | `working-linear` → `working-linear` | none | exposure and black point, tone (contrast, highlights, shadows, whites, blacks), curve, saturation and vibrance, hue-saturation-luminance, colour grading |
+| 6 | `detail` | `working-linear` → `working-linear` | none | sharpening |
+| 7 | `geometry` | `working-linear` → `working-linear` | orientation and the recommended crop (from `RawImage`) | crop, straighten |
+| 8 | `display` | `working-linear` → `display-referred` | the output transform (display or export profile, note 005 §2.4) | **tone map** (the base look's curve, §6) |
+
+**Why `camera-colour` is a stage of its own.** A stage boundary is a cache boundary (§2.3) and an
+operation inside a stage has no cache of its own. For white balance to cost 0.6 ms instead of the
+denoiser's 120 ms (§2.1) it must sit **after** the boundary that follows the denoiser. White balance is a
+per-channel multiplication that folds into the camera-to-working matrix (§2.2, the control column), so the
+stage does one 3x3 multiplication per pixel whatever the recipe says. The operation keeps its own entry
+in the recipe (a person moves its sliders; the sidecar stores its values) and the implementation folds
+it into the spine's matrix.
 
 Differences from the plan's proposed list, each with its reason:
 
@@ -150,8 +162,8 @@ Differences from the plan's proposed list, each with its reason:
 - **`decode` and `encode` are the boundaries**, as above.
 - **`display` holds the tone map**, so that the flat linear look of D-042 is the same definition with
   that operation absent: raw linear data under the output transform, and nothing else.
-- **`raw-linear` holds white balance**, as the plan proposes, but see §4: this is the one placement that
-  is not yet decided by evidence.
+- **White balance is not in `raw-linear`** (the plan's proposal) **but in `camera-colour`, after the
+  denoiser**: the quality experiment of §4 found no quality reason to keep it before.
 
 ### 3.4 How an operation is placed: the ordering constraints
 
@@ -208,8 +220,9 @@ hand-written recipes, which is the reason the pipeline does not place.
   same recipe on the same definition gives the same image within one 8-bit level on 99.9 % of the pixels,
   on every adapter.
 - **When v1 freezes.** The plan's increment A does not save edits, so nothing written with v1 outlives it;
-  **v1 freezes at the start of increment B** ("I edit and keep"), once the two open points below (§4, §5)
-  are closed. Until then it may change, and each change is a commit to a file, not a version.
+  **v1 freezes at the start of increment B** ("I edit and keep"), once the working space (§5) and the
+  re-check of white balance with the real denoiser (§4) are closed. Until then it may change, and each
+  change is a commit to a file, not a version.
 
 ### 3.7 Where it lives
 
@@ -219,34 +232,93 @@ to keep, a fixture and a fuzz target (M2 plan §4). The spec's "advanced users c
 definition, a documented, shareable file" (§5.6) is for later and uses this structure as its schema; that
 is the moment to choose its syntax. I note it so that it is a choice made on purpose.
 
-## 4. The white balance question [open, and what decides it]
+## 4. White balance and the denoiser: the quality experiment [measured, 2026-09-30]
 
-The plan places white balance in `raw-linear`, before demosaicing and denoising; spike 1's rule places it
+The plan placed white balance in `raw-linear`, before demosaicing and denoising; spike 1's rule places it
 after the denoiser, where a slider costs 0.6 ms instead of 120. §2.2 shows the two are **different
-images**, so the choice is about quality first and cost second. What is known:
+images**, so the choice had to be made on quality first and cost second. The experiment §4 of the first
+version of this note described has been run.
 
-| | White balance **before** the denoiser (plan) | **After** (spike rule) |
-| --- | --- | --- |
-| A drag of the white balance | 120 ms at final quality; **about 33 ms with the denoiser's draft variant** (32 ms for the denoiser at a search radius of 2, plus about 1 ms for the demosaic) [measured, spike 1] | 0.6 ms |
-| What the denoiser sees | Balanced data: the channels the multipliers amplified (R and B) are as noisy as they look | Raw camera values |
-| Clipping | The clip point of each channel is scaled by its multiplier; highlight reconstruction needs to know it | Unscaled |
-| Usual in RAW converters | Not established here | Not established here |
+### 4.1 Method
 
-I did **not** measure which gives the better denoising and I do not recommend one from the table. The
-experiment that decides it is the one the plan already needs to choose the denoiser (M2 plan §6, item 8,
-"noise removed against detail kept, on the real samples"), run **for both orders**:
+- **A clean reference from real data.** For each real file and region, a **2x2 binning of the mosaic**:
+  each output photosite is the mean of the four same-colour photosites of the matching 4x4 block, so the
+  result is again a mosaic of the same pattern, at half the resolution and with the file's own noise
+  roughly halved. **Primary set**: the low-ISO files, where the reference is cleanest: Sony A7R IV (ISO 50),
+  Nikon D850 (ISO 64), Olympus E-M5 III (ISO 200). **Sensitivity set**: Canon R5 II, Panasonic S5 and Leica
+  M9, all at ISO 640, whose reference is noisier. Three regions per file (a 640x640 binned mosaic each, the
+  central 512x512 compared).
+- **Synthetic noise, added in the raw domain** at three levels, Gaussian with the variance of a
+  Poisson-Gauss sensor, `var = A·v + B` on the normalised signal `v`: as counts of a 14-bit sensor, `A`
+  of 0.5, 4 and 16 counts per count and a read noise of 3, 8 and 24 counts (**L1, L2, L3**: stand-ins for
+  roughly ISO 400, 1600 and 6400, an order of magnitude and not a measured camera model). The same noisy
+  mosaic goes through both orders.
+- **The chain** is spike 1's: demosaic (gradient-corrected), non-local means (search radius 5, patches
+  of 3x3, **one strength `h` for the three channels**), tone; sharpening, local contrast and the mask are
+  off. **Both orders**: white balance in the demosaic (before), and the demosaic left in camera values
+  with the multipliers folded into the matrix (after).
+- **A sweep of `h`**: 18 values from 0.0001 (the denoiser off) to 0.45, **each order at its own best**.
+  Comparing at the same `h` would be unfair (§2.2, point 3), and so would comparing at "equal noise" by eye.
+- **The measure** is in the 8-bit sRGB output, against the clean mosaic rendered with the denoiser off:
+  **PSNR** on RGB, on luma (Y) and on chroma (Cb and Cr together), and **SSIM** on luma (8x8 windows).
+  The scratch tool and its CSV are not committed; the method above is what reproduces it.
 
-- take a low-ISO frame as the clean reference; add noise of the camera's own kind (shot and read noise) in
-  the raw domain at several levels; render through the chain with the denoiser at several strengths in
-  **both orders**; compare each output with the clean reference in the output space (PSNR and a
-  structural measure), and compare **at equal residual noise**, since the same `h` does not remove the same
-  amount (§2.2, point 2);
-- also on the real noisy samples, by eye, for the colour noise the multipliers amplify.
+### 4.2 Result: the orders are within a few tenths of a decibel
 
-**Until then the plan's placement stands** (white balance in `raw-linear`, the draft variant keeping a drag
-inside the budget), **because it is the one that can be reversed**: moving white balance after the denoiser
-later is a definition change made before v1 freezes, and costs nothing in saved edits. The decision
-criterion and its numbers go in this note before increment B.
+Primary set, nine cases per level (three files, three regions). "Late" is white balance after the
+denoiser; a positive difference favours it. "Better in / worse in / tie" counts cases at ±0.05 dB of RGB
+PSNR.
+
+| Noise | Late minus early, RGB PSNR | Better / worse / tie | Luma | Chroma | SSIM (luma) | Best `h`, late ÷ early (median) | What the denoiser gains |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| L1 (light) | **-0.08 dB** | 1 / 5 / 3 | +0.01 | -0.12 | +0.0001 | 0.50 | +0.95 dB |
+| L2 | **+0.14 dB** | 6 / 1 / 2 | +0.48 | -0.06 | +0.0105 | 0.60 | +3.85 dB |
+| L3 (heavy) | **+0.23 dB** | 9 / 0 / 0 | +0.70 | -0.16 | +0.0310 | 0.62 | +6.82 dB |
+
+Per file at L3 (mean of three regions, range): Sony +0.23 dB [+0.18, +0.26], Nikon +0.22 [+0.18, +0.25],
+Olympus +0.24 [+0.18, +0.28]. At L2: Sony +0.28, Nikon +0.01, Olympus +0.12.
+Sensitivity set (ISO 640 references): RGB -0.03, +0.03, +0.05 dB at L1, L2, L3; chroma -0.04, +0.01, +0.02;
+denoiser gain +1.65, +6.34, +9.57 dB. Looked at by eye on the Sony and Nikon L3 crops (reference, noisy,
+before at its best `h`, after at its best `h`): the two denoised pictures are very close, the "after" one
+keeping slightly more texture.
+
+### 4.3 What it supports, and what it does not
+
+1. **Quality does not separate the orders**: at the best strength of each, they differ by less than
+   0.3 dB of RGB PSNR on average, and by between -0.44 and +0.35 dB in single cases (25 of the 27 within
+   ±0.3 dB), while the denoiser itself gains 1 to 10 dB. **There is no evidence here that
+   balancing before the denoiser is better**, and a small one that after is better on luma and structure
+   at moderate and heavy noise (+0.5 to +0.7 dB luma, +0.01 to +0.03 SSIM), with a slightly worse
+   chroma (-0.06 to -0.16 dB) that is the one place a multiplied noise would show.
+2. **The strength means something different in each order**: the best `h` after is about 0.6 times the
+   best `h` before (0.5 to 0.62 by level; 0.38 to 1.0 in single cases). The same stored denoise strength
+   gives a different image, which is why the order is part of the definition (§2.2, point 4), and why a
+   style or a preset written for one order cannot be applied in the other.
+3. **The cost is not close**: a white balance slider costs 0.6 ms after the denoiser and about 33 ms
+   before it even with the draft variant (§2.1), 120 ms at final quality.
+4. **The limits**:
+   - the noise is **synthetic, independent and Gaussian**; a real sensor has correlated noise, banding and
+     a signal-dependent structure this does not;
+   - it is **one denoiser**, non-local means with one strength for all channels; a denoiser with a
+     strength per channel, or one working in a variance-stabilised space, could change the answer, and
+     the denoiser is not yet chosen (M2 plan §6, item 8);
+   - **PSNR and SSIM are not perception**, and the best PSNR over-smooths: the pictures at those
+     strengths are softer than anyone would choose;
+   - **three files** in the primary set, three regions each, which are not independent: the evidence is
+     the direction (nine cases of nine at L3, the same order of size in each file), not a confidence
+     interval;
+   - the **references are not perfectly clean**: binning halves the file's own noise, it does not remove it
+     (the Leica M9 at L1 gets almost nothing from the denoiser in either order, its best strength being the
+     "off" value or the next one: its reference is noisier than the light noise added).
+
+### 4.4 Decision proposed
+
+**White balance goes after the denoiser in v1**, in the `camera-colour` stage of §3.3, folded into the
+camera-to-working matrix. The quality evidence is neutral to slightly favourable and the cost evidence is
+decisive. It stays **reversible until v1 freezes** (§3.6): when the denoiser is chosen (plan item 8) the
+same experiment is run again with it, and **the chroma result is the one to watch**. The experiment is
+worth keeping as a script of the verification package (WP24), with its scene generator, so that a
+denoiser candidate is compared by the same table.
 
 ## 5. The working space [measurement planned, M2 plan §6 item 2]
 
@@ -312,16 +384,16 @@ they need the first stages and a look at real images. The criteria, to write dow
 
 ## 8. Open points and what is needed
 
-- **Decided by evidence, not yet taken**: where white balance sits (§4), and the working space (§5). The
-  plan's placement stands until the noise experiment; v1 does not freeze before both.
+- **Proposed by evidence, to re-check**: white balance after the denoiser (§4), to be re-run with the
+  real denoiser. **Not yet measured**: the working space (§5). v1 does not freeze before both.
 - **Decided by looking, not yet taken**: the base look's curve and constants (§6).
 - **For Alice**: the five data spaces against D-142's three (§3.2); the meaning of `after` and `before`
   (§3.4); whether `decode` and `encode` leave the stage list (§3.1); the name `camera-linear` for the
-  stage the plan calls `denoise` (§3.3).
+  stage the plan calls `denoise`, and the new stage `camera-colour` (§3.3).
 - **Not covered**: the file syntax of a configurable definition (§3.7), and how a definition version
   interacts with a **style** that stores operation instances (styles and a definition are both in the
   sidecar's vocabulary; note 007).
 - **What I would do next**, each its own pull request: the definition as data with the validation and
-  the fingerprint test (WP14, no shader needed); the first shaders with their references; the noise
-  experiment of §4; the working-space measurement of §5 once there is a camera-to-working stage to
+  the fingerprint test (WP14, no shader needed); the first shaders with their references; the
+  working-space measurement of §5 once there is a camera-to-working stage to
   measure.
