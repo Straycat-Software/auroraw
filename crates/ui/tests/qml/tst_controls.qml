@@ -35,6 +35,20 @@ TestCase {
     Component { id: listModelComboComponent; AppComboBox { width: 200; textRole: "name"
         model: ListModel { ListElement { name: "Alpha" } ListElement { name: "Beta" } } } }
     Component { id: busyProgressComponent; AppProgressBar { width: 200; indeterminate: true } }
+    Component { id: scrollViewComponent; ScrollView {
+        id: view
+        property alias scrollBar: bar
+        width: 200; height: 100; clip: true
+        ScrollBar.vertical: AppScrollBar { id: bar }
+        rightPadding: bar.width
+        contentWidth: availableWidth
+        Column { width: view.availableWidth; Repeater { model: 20; Label { text: "row " + index } } } } }
+    Component { id: scrolledListComponent; ListView {
+        id: list
+        property alias scrollBar: bar
+        width: 200; height: 100; clip: true; model: 20
+        ScrollBar.vertical: AppScrollBar { id: bar }
+        delegate: Label { required property int index; text: "row " + index } } }
     Component { id: recordComboComponent; AppComboBox { width: 200; model: [{ path: "Animals" }, { path: "Animals / Birds" }]; textRole: "path" } }
 
     function make(component, properties) {
@@ -354,6 +368,34 @@ TestCase {
         compare(col.second.indicator.border.width, 2)
         tryVerify(() => Qt.colorEqual(col.second.indicator.border.color, Theme.accent))
         verify(insideItsIndicator(col.second.indicator), "a radio's focus is not outside its circle")
+    }
+
+    function test_a_scroll_bar_in_a_scroll_view_sits_at_the_right_edge_for_the_height_of_its_room() {
+        const v = make(scrollViewComponent)
+        const bar = v.scrollBar
+        tryVerify(() => bar.size > 0 && bar.size < 1, 5000, "the content is taller than the view")
+        verify(bar.inScrollView)
+        // Not at 0, 0 at its implicit size (a dot at the top left), as it was when the ScrollView did not place it.
+        compare(bar.x, v.width - bar.width)
+        compare(bar.y, v.topPadding)
+        compare(bar.height, v.availableHeight)
+        // Its handle shows the share of the content the view shows, and is inside the view, at the right.
+        tryCompare(bar.contentItem, "opacity", 1)
+        fuzzyCompare(bar.contentItem.height, bar.size * bar.height, 1)
+        const handle = bar.contentItem.mapToItem(v, 0, 0)
+        verify(handle.x + bar.contentItem.width <= v.width, "the handle is inside the view: " + handle.x)
+        verify(handle.x > v.width - bar.width, "and in its own strip: " + handle.x)
+        // The form stops short of it, as `rightPadding` says.
+        compare(v.availableWidth, v.width - bar.width)
+    }
+
+    function test_a_scroll_bar_of_a_list_is_left_to_the_list_to_place() {
+        const l = make(scrolledListComponent)
+        const bar = l.scrollBar
+        tryVerify(() => bar.size > 0 && bar.size < 1)
+        verify(!bar.inScrollView)
+        compare(bar.x, l.width - bar.width)
+        compare(bar.height, l.height)
     }
 
     function test_a_progress_bar_that_is_indeterminate_says_so_and_is_not_an_empty_groove() {
