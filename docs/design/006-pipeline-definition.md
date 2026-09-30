@@ -1,0 +1,327 @@
+# Design note 006: the pipeline definition v1 and the base look
+
+> **Status: proposal, not a decision.** Written by Charlie (an AI assistant, Claude Code; image
+> processing and the GPU) with Alice, as [milestone M2's plan](../m2-plan.md) (§6, items 1 to 3; §11,
+> item 3) asks. It answers specification question 17 (what a pipeline definition is, which stages, which
+> data spaces, which ordering constraints) and gives the structure of the base look (question 23). It
+> builds on [note 005](005-image-engine-interfaces.md) (the recipe and the declaration, D-140 and D-142).
+> Alice turns what she accepts into a decision.
+>
+> Everything is tagged **[measured]** (a number, from spike 1 or from a run on the reference machine, said
+> which), **[read]** (a fact in the code or a document) or **[proposed]**. Nothing here is built.
+>
+> **One result changes what the spike reported** (§2.2): the spike said that white balance applied before
+> or after the denoiser gives the same image. It does not, as soon as the denoiser is on. The order of the
+> definition is therefore not a free choice that the cost of a slider can settle alone.
+
+## 1. The question
+
+A **pipeline definition** (specification §5.6) is "a documented, versioned list of stages, each working
+in a defined data space". The recipe (note 005 §2.2) carries its version and the operations in order; the
+version sidecar records it (architecture §7.2) so that an old edit renders the same after an update.
+Four things have to be fixed before `develop` can place an operation and the pipeline can validate one:
+
+1. **Which stages**, in which order, and what data each one receives and returns.
+2. **What the definition owns** and what the recipe owns: the parts of the chain that are always there
+   (applying the black level, demosaicing, the camera-to-working step, the display transform) against the
+   operations a person can change.
+3. **How an operation is placed** inside its stage: the ordering-constraint language, and what happens when
+   it cannot be satisfied.
+4. **What makes a new version**, and what a released version promises.
+
+## 2. What is known
+
+### 2.1 The order rule [measured, spike 1, GTX 1650 SUPER]
+
+Heavy, rarely changed operations go early; controls dragged often go late, because a change reruns its
+stage and every later one from the cache of the one before.
+
+| A change of... | Time at a 2560x1440 view | Stages rerun |
+| --- | --- | --- |
+| exposure, tone curve | 0.7 ms | tone |
+| sharpening or local contrast amount | 2.6 ms | combine, tone |
+| denoise strength | 118 ms | denoise and later |
+| white balance, **before** the denoiser (in the demosaic) | 120 ms | everything |
+| white balance, **after** the denoiser (folded into the camera matrix) | 0.6 ms | tone |
+
+A **draft quality** (a denoiser search radius of 2 instead of 5) costs 32 ms instead of 120 ms and keeps a
+drag under the 50 ms budget.
+
+### 2.2 Are white balance before and after the denoiser the same image? [measured, 2026-09-30]
+
+Spike 1's report says of the cheap variant: "the result is the same, since the multipliers fold into the
+camera matrix". That is true of linear operations and was never checked through the denoiser, which is
+not linear: it compares patches, and a patch does not look the same before and after a per-channel
+multiplication. I measured it, with spike 1's own chain (demosaic, non-local means with a search radius
+of 5 and patches of 3x3, blurs, combine, tone) on the GTX 1650 SUPER: for each file, the centre 512x512
+region rendered twice, once with the white balance applied in the demosaic (the denoiser sees balanced
+data) and once with the demosaic left in camera values and the multipliers folded into the matrix of the
+tone pass, then compared in 8 bits (the smoke test's own comparison).
+
+| File | As-shot multipliers (R, B) | Denoiser off (control): max level / channels over one level | Denoiser on, `h` = 0.03 (spike 1's value): mean level / channels over one level / max level |
+| --- | --- | --- | --- |
+| Nikon D850 | 1.90, 1.38 | 3 / 0.002 % | 0.59 / 10.4 % / 54 |
+| Olympus E-M5 III | 2.19, 1.64 | 1 / 0.000 % | 0.52 / 9.2 % / 41 |
+| Panasonic S5 | 2.00, 1.92 | 1 / 0.000 % | 0.30 / 3.6 % / 76 |
+| Leica M9 | 1.38, 2.00 | 1 / 0.000 % | 0.08 / 1.1 % / 32 |
+| Sony A7R IV | 3.07, 1.50 | 1 / 0.000 % | 0.09 / 0.8 % / 12 |
+| Canon R5 II | 1.83, 1.76 | 1 / 0.000 % | 0.01 / 0.006 % / 7 |
+
+What it says, and what it does not:
+
+1. **The fold is exact without the denoiser** (the control column: at most three levels, on 0.002 % of the
+   channels): the matrix arithmetic is right, and the difference below is the denoiser's.
+2. **With the denoiser on, the two orders are two different images**: from almost identical (Canon R5 II)
+   to 10 % of the channels more than one level apart (Nikon D850), with single pixels up to 76 levels
+   apart. With `h` = 0.01 the Nikon goes to 42 % of its channels (117 levels at most); with 0.06 it falls to
+   1.2 %. The same strength does not remove the same amount of noise in both orders.
+3. **It does not say which is better.** One region per file, at unknown ISO, one strength per row, the same
+   `h` in both orders (and `h` means something different per channel once the channels are scaled): this
+   is a measure of *difference*, not of quality. The quality comparison is the experiment of §4.
+4. **It changes what the order means for a saved edit.** A recipe stores a denoise strength; the image it
+   gives depends on where the white balance sits. So **the position of white balance in a definition is part
+   of what a version promises**, exactly as the plan's determinism criterion requires, and cannot be changed
+   inside version 1 after edits exist.
+
+### 2.3 What the stage boundaries are for [read, architecture §6.2]
+
+The output of each stage is cached for the region and quality on screen; a change reruns its stage and
+every later one. **A stage boundary is therefore a cache boundary**: where the definition puts a
+boundary decides what a slider costs, and an operation inside a stage has no cache of its own.
+
+## 3. The definition v1 [proposed]
+
+### 3.1 What it is and what it holds
+
+A definition is an **immutable, versioned value**: a number, the ordered list of stages, the data space
+at each boundary, the working space, the **fixed spine** (the steps that are always there, below) and
+the **canonical order of the built-in operations** in each stage. It holds no parameters, no plugin and no
+mask (note 005 §2.2: the definition version is the extension point).
+
+- **The definition owns the spine; the recipe owns the operations.** The spine is what every render
+  does and a person cannot remove or reorder: applying the levels, demosaicing (chosen by the input's
+  layout), the camera-to-working step, the orientation, the display transform. Its inputs come from the
+  image (`RawImage`) and the output (`OutputTransform`), not from the recipe. The recipe lists only what a
+  person can change, which is what `develop` stores and the sidecar keeps. A second reason: a spine step
+  written into every recipe would be duplicated data to keep equal in every sidecar.
+- **Both ends of the chain are outside it.** Decoding is the decoder plugin's (D-141): the first stage
+  receives a `RawImage`. Encoding is `export`'s: the definition ends at display-referred pixels, which
+  note 005 §2.3 hands to a sink. M2's plan lists `decode` and `encode` among the stages; I treat them as the
+  boundaries of the definition, not stages in it, because neither runs on the pipeline's GPU thread.
+
+### 3.2 Data spaces
+
+D-142 names three spaces (raw, scene-linear, display-referred) for an operation's input and output. The
+chain passes through five states that matter for whether an operation is correct, so I propose five, each
+one a refinement of D-142's three:
+
+| Data space | What it is | D-142's space |
+| --- | --- | --- |
+| `sensor-raw` | The decoder's samples, as counts, one per photosite (or per component for a linear input), with the black and white levels not yet applied | raw |
+| `mosaic-linear` | One linear value per photosite, levels applied, normalised so that the sensor's white is 1.0, the colour filter pattern still present | raw |
+| `camera-linear` | Linear RGB per pixel, **in the camera's primaries**, white balance applied or not as the definition says, no upper bound | scene-linear |
+| `working-linear` | Linear RGB per pixel in the **working space's primaries** (§5), scene-referred, no upper bound | scene-linear |
+| `display-referred` | Values in the output space's encoding, bounded to 0..1 | display-referred |
+
+The split of scene-linear into two matters because an operation written for the working primaries
+(saturation, hue-saturation-luminance, colour grading) is wrong on camera primaries, and the declaration's
+input space is what lets the pipeline **refuse to place it there** instead of rendering it wrongly.
+
+### 3.3 The stages of v1
+
+Seven stages, in this order. "Spine" is what the definition owns; "operations" are what a recipe may
+list, with the built-in ones in their **canonical order** (§3.4). The operation names are the plan's slices
+(WP15) and are provisional until that package fixes the identifiers.
+
+| # | Stage | In → out | Spine | Operations (canonical order) |
+| --- | --- | --- | --- | --- |
+| 1 | `raw-linear` | `sensor-raw` → `mosaic-linear` | black and white levels (a repeating pattern, D-141) | hot pixels, **white balance** |
+| 2 | `demosaic` | `mosaic-linear` → `camera-linear` | demosaic by layout (Bayer, X-Trans, a linear input passes through) | none in M2 |
+| 3 | `camera-linear` | `camera-linear` → `camera-linear` | none | noise reduction, highlight reconstruction |
+| 4 | `scene-linear` | `camera-linear` → `working-linear` | **camera to working space** (first) | exposure and black point, tone (contrast, highlights, shadows, whites, blacks), curve, saturation and vibrance, hue-saturation-luminance, colour grading |
+| 5 | `detail` | `working-linear` → `working-linear` | none | sharpening |
+| 6 | `geometry` | `working-linear` → `working-linear` | orientation and the recommended crop (from `RawImage`) | crop, straighten |
+| 7 | `display` | `working-linear` → `display-referred` | the output transform (display or export profile, note 005 §2.4) | **tone map** (the base look's curve, §6) |
+
+Differences from the plan's proposed list, each with its reason:
+
+- **`denoise` becomes `camera-linear`.** Noise reduction and highlight reconstruction both act on camera
+  RGB before the matrix; a stage named for one operation reads as if the stage were the operation.
+- **`decode` and `encode` are the boundaries**, as above.
+- **`display` holds the tone map**, so that the flat linear look of D-042 is the same definition with
+  that operation absent: raw linear data under the output transform, and nothing else.
+- **`raw-linear` holds white balance**, as the plan proposes, but see §4: this is the one placement that
+  is not yet decided by evidence.
+
+### 3.4 How an operation is placed: the ordering constraints
+
+- **An operation declares its stage** (`Placement.stage`, which D-142 turns into a stage identifier) and
+  may declare `after` and `before`. **They name operations (by identifier), not stages**, and **apply
+  within the operation's stage only**: between stages the order is the definition's. Today
+  `Placement::after` and `before` are documented as naming stages; D-142 is the place to say they name
+  operations (§7).
+- **They are optional and relative**: "after `auroraw.exposure`" is satisfied whether or not that operation
+  is in the recipe, which is why the constraint is written against an identifier and not a position.
+- **The built-in operations need no constraint**: the definition lists them in canonical order, per stage.
+  An operation that declares nothing goes **at the end of its stage**, among several of them in identifier
+  order, so that the placement is the same on every machine and in every version of Auroraw (specification
+  §5.6: "a plugin with no constraint goes at the end of its stage").
+- **Conflicts are errors at load time, never silently resolved**: a cycle among the constraints, two
+  constraints that cannot both hold with the canonical order, or an `after` and a `before` that exclude
+  each other. The error names the operations and the stage; the operation is refused and the rest of the
+  recipe stays valid.
+- **Nothing relates operations of different stages**, so no constraint can move an operation out of its
+  stage (the spec's "an operation cannot leave its stage").
+
+### 3.5 What is checked, and by whom
+
+`develop` **places** (D-140); the pipeline **validates** what it is given and refuses, with a typed error,
+a recipe in which:
+
+1. an operation's stage is not in the definition the recipe names;
+2. the stages are not in the definition's order, or an operation is inside a stage other than its own;
+3. within a stage, the order breaks the canonical order or a constraint;
+4. an operation's declared input space is not what the stage delivers at that point (a working-space
+   operation in `camera-linear`);
+5. the same operation appears twice where its declaration allows one;
+6. an `op_version` names no implementation the registry holds (the operation is skipped as
+   *disabled and marked*, architecture §7.2, not an error).
+
+The first five make a recipe invalid; the sixth makes one operation inert. Both are tested with
+hand-written recipes, which is the reason the pipeline does not place.
+
+### 3.6 Versions: what makes a new one, and what a released one promises
+
+- **A new definition version** is needed for any change that can alter the image a saved recipe gives:
+  a stage added, removed or reordered; a stage's data space; the working space; the **position of a
+  built-in operation** (§2.2); the spine's content or its maths; the canonical order. A change to an
+  operation's own behaviour is **not** a definition change: it is the operation's `op_version`
+  (architecture §7.2), and both are recorded in the sidecar.
+- **A released version is never edited.** The engine keeps every released definition, which are a few
+  dozen lines each, and renders a recipe with the definition it names. A test holds a **fingerprint** (a
+  `blake3` of the definition's canonical encoding, the same encoding rule as the recipe's, note 005 §2.2)
+  for each released version: any change to a released definition fails it, which is the mechanism that
+  keeps "no edit of version 1 after release" from depending on a person's memory.
+- **It enters the recipe's hash** through the version number, so a cache entry for one definition is never
+  served for another.
+- **The promise is the bound of testing strategy §4.2**, not identical pixels (M2 plan §9, risk 3): the
+  same recipe on the same definition gives the same image within one 8-bit level on 99.9 % of the pixels,
+  on every adapter.
+- **When v1 freezes.** The plan's increment A does not save edits, so nothing written with v1 outlives it;
+  **v1 freezes at the start of increment B** ("I edit and keep"), once the two open points below (§4, §5)
+  are closed. Until then it may change, and each change is a commit to a file, not a version.
+
+### 3.7 Where it lives
+
+In `crates/pipeline`, as Rust data (a `const` table) with a documented text rendering in `docs/`, **not** as
+a file read at start-up: v1 does not need a parser, and a parser of a configurable file brings a format
+to keep, a fixture and a fuzz target (M2 plan §4). The spec's "advanced users configure the pipeline
+definition, a documented, shareable file" (§5.6) is for later and uses this structure as its schema; that
+is the moment to choose its syntax. I note it so that it is a choice made on purpose.
+
+## 4. The white balance question [open, and what decides it]
+
+The plan places white balance in `raw-linear`, before demosaicing and denoising; spike 1's rule places it
+after the denoiser, where a slider costs 0.6 ms instead of 120. §2.2 shows the two are **different
+images**, so the choice is about quality first and cost second. What is known:
+
+| | White balance **before** the denoiser (plan) | **After** (spike rule) |
+| --- | --- | --- |
+| A drag of the white balance | 120 ms at final quality; **about 33 ms with the denoiser's draft variant** (32 ms for the denoiser at a search radius of 2, plus about 1 ms for the demosaic) [measured, spike 1] | 0.6 ms |
+| What the denoiser sees | Balanced data: the channels the multipliers amplified (R and B) are as noisy as they look | Raw camera values |
+| Clipping | The clip point of each channel is scaled by its multiplier; highlight reconstruction needs to know it | Unscaled |
+| Usual in RAW converters | Not established here | Not established here |
+
+I did **not** measure which gives the better denoising and I do not recommend one from the table. The
+experiment that decides it is the one the plan already needs to choose the denoiser (M2 plan §6, item 8,
+"noise removed against detail kept, on the real samples"), run **for both orders**:
+
+- take a low-ISO frame as the clean reference; add noise of the camera's own kind (shot and read noise) in
+  the raw domain at several levels; render through the chain with the denoiser at several strengths in
+  **both orders**; compare each output with the clean reference in the output space (PSNR and a
+  structural measure), and compare **at equal residual noise**, since the same `h` does not remove the same
+  amount (§2.2, point 2);
+- also on the real noisy samples, by eye, for the colour noise the multipliers amplify.
+
+**Until then the plan's placement stands** (white balance in `raw-linear`, the draft variant keeping a drag
+inside the budget), **because it is the one that can be reversed**: moving white balance after the denoiser
+later is a definition change made before v1 freezes, and costs nothing in saved edits. The decision
+criterion and its numbers go in this note before increment B.
+
+## 5. The working space [measurement planned, M2 plan §6 item 2]
+
+The working space is **part of the definition**: changing it is a new version. v1 proposes **linear
+Rec.2020 primaries with the D65 white**, as architecture §6.5 and the plan do, **provisionally**: the plan
+asks that it be confirmed against linear ProPhoto RGB by measurement in increment A, **before the
+scene-linear operations (15b, 15c) are written against it**. The measurement is the plan's (a) to (d):
+the share of values negative or clipped after the camera-to-working step, per file (the plan says seventeen files; fourteen decode), and on saturated blues
+and greens; the hue shifts of saturation, vibrance, hue-saturation-luminance and colour grading on those
+colours; the cost and the error of the D50-to-D65 adaptation on the way to sRGB and Display P3; and
+Patrick's judgement of the borderline photos on his screens. Charlie measures, Patrick judges. If
+ProPhoto wins, only this table and the spine's matrix change, because nothing is written against the
+space until then. **The measurement needs the colour engine's matrices and so waits for the first stages**;
+it is not done here.
+
+## 6. The base look [structure proposed; constants not chosen]
+
+D-042: an unedited photo is shown with a **base look**, a style (D-040) applied to the default version,
+neutral by default, with a **flat linear** one among the choices; no version is written until the first
+edit. Specification question 23: the tone-mapping method, and how the flat linear look is presented.
+
+**Structure** [proposed]:
+
+- The base look's tone curve is **one operation, `tone map`, in the `display` stage**, between the
+  scene-linear image and the output transform. It maps the scene-linear, unbounded values of
+  `working-linear` to `display-referred`, and is the only place where the scene's dynamic range is
+  compressed (D-041: a single display transform). A style sets its parameters; a version's recipe carries
+  them like any other operation's.
+- **The curve is a parametric toe and shoulder** with a pivot at middle grey (0.18 in scene-linear maps to a
+  chosen display value), documented by its formula and its parameters so that it is a *documented method*
+  (the plan's wording), with its stated limits: a toe that keeps the blacks from clipping, a shoulder
+  that rolls off the highlights, **monotonic**, with a slope at the pivot that the contrast parameter sets.
+- **Neutral** is one set of parameters: the faithful, unsurprising rendering. **Flat linear** is **the
+  `tone map` operation absent**: the working-space data under the output transform, which clips
+  above 1.0 and shows the raw linear look, and that is how it is presented, with a warning that it is
+  deliberately flat. Because it is the same definition with one operation missing, it needs no special
+  case in the pipeline or the sidecar.
+- The look a camera's embedded JPEG gives is out of scope (D-042: planned, more likely a plugin).
+
+**Not chosen here**: the curve's formula and its constants. They cannot be picked honestly from a table;
+they need the first stages and a look at real images. The criteria, to write down before the choice:
+
+1. **Middle grey** maps where sRGB puts a photographed 18 % grey card (about 0.46 of the display range),
+   so that the neutral look does not shift the brightness of an exposed frame.
+2. **No clipping at either end for an unclipped scene**: the share of pixels that reach 0 or 1 after the
+   tone map, measured on the fourteen samples that decode (note 005 §3.3, §3.3b) at their as-shot exposure, against the same share for the linear
+   look, which is the baseline.
+3. **Monotonic and smooth**: a test on the formula (the derivative does not change sign, and does not
+   jump at the toe and shoulder joins), not on images.
+4. **Reference images** on the samples, reviewed by Patrick on his Linux and Windows screens (the plan's
+   check), each stored as a golden render of the neutral look.
+
+## 7. What this changes elsewhere
+
+| Where | What | Who |
+| --- | --- | --- |
+| `plugin-api`, `Placement` | `after` and `before` name **operations**, and apply within the stage (§3.4); the doc comment says they name stages today. The field types do not change, the meaning does | Alice, in D-142's layer 1 |
+| D-142's data spaces | Three become five (§3.2), each a refinement of one of D-142's | Alice |
+| The recipe | Carries the definition version; the spine is not in it (§3.1) | already D-140; this note says what the version names |
+| `develop` and the sidecar | Records the definition version with each version, next to each operation's version | WP17, note 007 |
+| `pipeline` | The definition as data, the validation of §3.5, the fingerprint test of §3.6 | WP14, Charlie |
+| Spike 1's report | Its sentence "the result is the same" holds for the linear steps only (§2.2); the report could say so | Alice, if she wishes |
+
+## 8. Open points and what is needed
+
+- **Decided by evidence, not yet taken**: where white balance sits (§4), and the working space (§5). The
+  plan's placement stands until the noise experiment; v1 does not freeze before both.
+- **Decided by looking, not yet taken**: the base look's curve and constants (§6).
+- **For Alice**: the five data spaces against D-142's three (§3.2); the meaning of `after` and `before`
+  (§3.4); whether `decode` and `encode` leave the stage list (§3.1); the name `camera-linear` for the
+  stage the plan calls `denoise` (§3.3).
+- **Not covered**: the file syntax of a configurable definition (§3.7), and how a definition version
+  interacts with a **style** that stores operation instances (styles and a definition are both in the
+  sidecar's vocabulary; note 007).
+- **What I would do next**, each its own pull request: the definition as data with the validation and
+  the fingerprint test (WP14, no shader needed); the first shaders with their references; the noise
+  experiment of §4; the working-space measurement of §5 once there is a camera-to-working stage to
+  measure.
