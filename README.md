@@ -15,7 +15,7 @@ negative scans, non-destructively), convert, edit metadata and deliver galleries
 - [Testing strategy](docs/testing-strategy.md)
 - [Continuous integration and releases](docs/continuous-integration.md)
 - [Governance and contributions](docs/governance.md)
-- [Milestone M1 plan](docs/m1-plan.md) and the [interface port's parity checklist](docs/ui-parity-checklist.md)
+- [Milestone M1 plan](docs/m1-plan.md), [milestone M2 plan](docs/m2-plan.md) (proposal) and the [interface port's parity checklist](docs/ui-parity-checklist.md)
 - [Technical spikes](docs/technical-spikes.md)
 - Design notes: [001 workspace layout](docs/design/001-workspace-layout.md), [002 state files](docs/design/002-state-files.md), [003 sidecars](docs/design/003-sidecars.md), [004 fingerprint](docs/design/004-fingerprint.md), [005 image engine interfaces](docs/design/005-image-engine-interfaces.md)
 
