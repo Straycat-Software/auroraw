@@ -57,6 +57,15 @@ AppTestCase {
     }
 
     // (Diagnostic, Windows CI: what the review button and the window look like around the click.)
+    function screens() {
+        const found = []
+        for (let i = 0; i < Qt.application.screens.length; i++) {
+            const screen = Qt.application.screens[i]
+            found.push(screen.name + ":" + screen.width + "x" + screen.height + "@" + screen.devicePixelRatio)
+        }
+        return found.join(",")
+    }
+
     function diag(label) {
         const b = app.externalBanner.reviewButton
         const c = b.mapToItem(null, b.width / 2, b.height / 2)
@@ -66,7 +75,9 @@ AppTestCase {
             + " h=" + app.externalBanner.height + " dialogOpen=" + app.dialogOpen
             + " nativeDialogOpen=" + app.nativeDialogOpen
             + " externalDialog.visible=" + app.externalDialog.visible + " visibility=" + app.externalDialog.visibility
-            + " appState=" + Qt.application.state + " active=" + app.active)
+            + " appState=" + Qt.application.state + " active=" + app.active
+            + " hovered=" + b.hovered + " pressed=" + b.pressed + " window at " + app.x + "," + app.y
+            + " visibility=" + app.visibility + " screens=" + screens())
     }
 
     function test_a_change_shows_the_banner_then_review_and_accept_all_applies_it_as_one_step() {
@@ -86,10 +97,20 @@ AppTestCase {
         app.externalDialog.visibleChanged.connect(() => say("externalDialog.visible -> " + app.externalDialog.visible))
         click(app.externalBanner.reviewButton)
         say("click returned")
-        // Up to 30 s instead of 5: how long does it take, when the machine is busy?
-        tryVerify(() => app.externalDialog.visible, 30000)
-        say("waited: visible=" + app.externalDialog.visible)
+        for (let i = 0; i < 40 && !app.externalDialog.visible; i++)
+            wait(250)
+        say("after up to 10 s of waiting: visible=" + app.externalDialog.visible)
         say(diag("after the wait"))
+        if (!app.externalDialog.visible) {
+            app.externalBanner.reviewButton.clicked()
+            wait(1500)
+            say("after clicked() was emitted by hand: visible=" + app.externalDialog.visible)
+        }
+        if (!app.externalDialog.visible) {
+            app.externalDialog.open()
+            wait(1500)
+            say("after open() was called by hand: visible=" + app.externalDialog.visible)
+        }
         // (The diagnostic is the failure message: a passing suite prints nothing.)
         fail(lines.join("\n    "))
         tryCompare(app.externalDialog.entries, "length", 1)
