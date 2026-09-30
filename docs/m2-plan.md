@@ -46,8 +46,8 @@ features (M5). Consequences to state plainly:
 
 | Piece | State |
 | --- | --- |
-| Design of the interfaces | Note 005 is written and accepted; D-140 (recipe, render API, dependency edges, the render service), D-141 (`RawImage`'s ABI) and D-142 (the declaration in two layers, typed parameters) are in [#38](https://github.com/Straycat-Software/auroraw/pull/38). |
-| `pipeline` | The crate exists in #37: adapter choice with a typed error, the GPU thread, device loss recovered, the smoke test, CI with lavapipe, WARP and the macOS runner's adapter (all three pass). No stage yet. |
+| Design of the interfaces | Note 005 is written and accepted; D-140 (recipe, render API, dependency edges, the render service), D-141 (`RawImage`'s ABI) and D-142 (the declaration in two layers, typed parameters) are in `dev` ([#38](https://github.com/Straycat-Software/auroraw/pull/38)), with the architecture changed to match. |
+| `pipeline` | The crate is in `dev` ([#37](https://github.com/Straycat-Software/auroraw/pull/37)): adapter choice with a typed error, the GPU thread, device loss recovered, the smoke test, CI with lavapipe, WARP and the macOS runner's adapter (all three pass). No stage yet. |
 | Decoding | `rawler` as a WebAssembly plugin returns a sensor mosaic with averaged levels (spike 4's shape); D-141 replaces it. `imaging` decodes previews and thumbnails on the CPU. |
 | Versions | The version sidecar exists with its metadata overrides and an `extra` bag for "the development, in M2"; nothing writes operations, history or snapshots. The engine has no version commands. |
 | Interface | The image view shows the camera's embedded preview (RGBA8 through a Qt image provider); there is no Develop view. The controls of D-136 and the icons of D-137 exist. |
@@ -382,7 +382,7 @@ flowchart LR
 **It overlaps the end of M1.** M1's remaining packages (WP10's place names and smart collections, WP11,
 WP12) are Alice's and Bob's; increment A needs Charlie's work, which does not wait for them, and the
 decisions and the `RawImage` change, which do. The proposed order: Charlie continues the pipeline
-foundation and the stages now; Alice writes the decisions (#38), WP13 and the design notes of §6 while she
+foundation and the stages now; Alice wrote the decisions (#38) and does WP13 and the design notes of §6 while she
 finishes M1's last items; Bob starts WP19 when M1 is released or when his part of M1 allows, on the
 render service's interface. The first M2 pre-release comes after `0.1.0`. A package that cannot wait for
 its lead is reassigned by Patrick, not by default.
@@ -426,8 +426,8 @@ the end of A.
 ## 11. Next
 
 1. Review this plan.
-2. **WP13**: merge #38 (D-140 to D-142), then the `RawImage` and declaration change, one pull request per
-   layer (`plugin-api`, the plugin, the host).
+2. **WP13**: the `RawImage` and declaration change of D-141 and D-142, one pull request per layer
+   (`plugin-api`, the plugin, the host).
 3. Design notes 006 (pipeline definition v1 and the base look) and 007 (the development in the version
    sidecar, history and undo), one at a time, for approval.
 4. Charlie: the render API and the first stages on the foundation of #37, with their references.
