@@ -128,10 +128,24 @@ def minus():
 
 
 def series():
-    outer = [(120, 120), (880, 120), (880, 880), (120, 880)]
-    inner = [(225, 225), (775, 225), (775, 775), (225, 775)]
-    dot = [(345, 345), (655, 345), (655, 655), (345, 655)]
-    return [solid(outer), hole(inner), solid(dot)]
+    """A stack of photographs: the front one whole, and two more behind it, each seen as the L of its top and right
+    edges, offset up and to the right. Three frames say "several" at once, and at 13 pixels the edges still read."""
+    front_w, front_h, step, edge = 520, 400, 110, 80
+    x0, y0 = 0, 0
+
+    def rect(a, b, c, d):
+        return [(a, b), (c, b), (c, d), (a, d)]
+
+    contours = [solid(rect(x0, y0, x0 + front_w, y0 + front_h))]
+    for k in (1, 2):
+        x1, y1 = x0 + front_w + k * step, y0 + front_h + k * step
+        contours.append(solid(rect(x0 + k * step, y1 - edge, x1, y1)))  # the top edge
+        contours.append(solid(rect(x1 - edge, y0 + k * step, x1, y1)))  # the right edge
+    # centred on the canvas by the box of what is drawn
+    xs = [x for c in contours for x, _ in c]
+    ys = [y for c in contours for _, y in c]
+    dx, dy = 500 - (min(xs) + max(xs)) / 2, 500 - (min(ys) + max(ys)) / 2
+    return [[(x + dx, y + dy) for x, y in c] for c in contours]
 
 
 ICONS = {
