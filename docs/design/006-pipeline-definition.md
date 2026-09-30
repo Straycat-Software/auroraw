@@ -1,14 +1,16 @@
 # Design note 006: the pipeline definition v1 and the base look
 
-> **Status: proposal, accepted with amendments in
-> [#45](https://github.com/Straycat-Software/auroraw/issues/45).** Not a decision yet: Alice writes
-> **D-146** (the definition v1, the five data spaces, the placement language) once the note is on `dev`.
-> Written by Charlie (an AI assistant, Claude Code; image processing and the GPU) with Alice, as
+> **Status: accepted, with amendments, and decided in D-146.** **D-146**, which Alice enters in the
+> [decision log](../decisions.md) when this note is merged (it adopts the definition v1, the five data
+> spaces, the placement language, the fingerprint rule and the Rust data form, and amends D-142 and D-141),
+> is the authority; this note is the record of the reasoning. It was a proposal, accepted with amendments in
+> [#45](https://github.com/Straycat-Software/auroraw/issues/45) and in the review of the pull request that
+> merged it. Written by Charlie (an AI assistant, Claude Code; image processing and the GPU) with Alice, as
 > [milestone M2's plan](../m2-plan.md) (§6, items 1 to 3; §11, item 3) asks. It answers specification
 > question 17 (what a pipeline definition is, which stages, which data spaces, which ordering constraints)
 > and gives the structure of the base look (question 23). It builds on
 > [note 005](005-image-engine-interfaces.md) (the recipe and the declaration, D-140 and D-142). The
-> amendments of Alice's review are folded in, each marked *(review of this note)*.
+> amendments of Alice's reviews are folded in, each marked *(review of this note)*.
 >
 > Everything is tagged **[measured]** (a number, from spike 1 or from a run on the reference machine, said
 > which), **[read]** (a fact in the code or a document) or **[proposed]**. Nothing here is built.
@@ -154,8 +156,8 @@ list, with the built-in ones in their **canonical order** (§3.4). The operation
 | --- | --- | --- | --- | --- |
 | 1 | `raw-linear` | `sensor-raw` → `mosaic-linear` | black and white levels (a repeating pattern, D-141) | hot pixels |
 | 2 | `demosaic` | `mosaic-linear` → `camera-linear` | demosaic by layout (Bayer, X-Trans, a linear input passes through) | none in M2 |
-| 3 | `camera-rgb` | `camera-linear` → `camera-linear` | none | noise reduction, highlight reconstruction |
-| 4 | `input-colour` | `camera-linear` → `working-linear` | **camera to working space** (after the operations) | **white balance** |
+| 3 | `camera-rgb` | `camera-linear` → `camera-linear` | none | noise reduction |
+| 4 | `input-colour` | `camera-linear` → `working-linear` | **camera to working space** (after the operations) | **white balance**, highlight reconstruction |
 | 5 | `scene-linear` | `working-linear` → `working-linear` | none | exposure and black point, tone (contrast, highlights, shadows, whites, blacks), curve, saturation and vibrance, hue-saturation-luminance, colour grading |
 | 6 | `geometry` | `working-linear` → `working-linear` | orientation and the recommended crop (from `RawImage`) | crop, straighten |
 | 7 | `detail` | `working-linear` → `working-linear` | none | sharpening |
@@ -163,7 +165,10 @@ list, with the built-in ones in their **canonical order** (§3.4). The operation
 
 **Why `input-colour` is a stage of its own.** A stage boundary is a cache boundary (§2.3) and an
 operation inside a stage has no cache of its own. For white balance to cost 0.6 ms instead of the
-denoiser's 120 ms (§2.1) it must sit **after** the boundary that follows the denoiser. White balance is a
+denoiser's 120 ms (§2.1) it must sit **after** the boundary that follows the denoiser, **and nothing
+before that boundary may read it** (the rule at the end of §3.4). That is also why **highlight
+reconstruction** is in this stage, after white balance, and not in `camera-rgb` as the first version of this
+note had it. White balance is a
 per-channel multiplication that folds into the camera-to-working matrix (§2.2, the control column), so the
 stage does one 3x3 multiplication per pixel whatever the recipe says. The operation keeps its own entry
 in the recipe (a person moves its sliders; the sidecar stores its values) and the implementation folds
@@ -171,9 +176,9 @@ it into the spine's matrix.
 
 Differences from the plan's proposed list, each with its reason:
 
-- **`denoise` becomes `camera-rgb`.** Noise reduction and highlight reconstruction both act on camera
-  RGB before the matrix; a stage named for one operation reads as if the stage were the operation. It is
-  not called `camera-linear`, which is the name of the **data space** it reads and returns (review of this
+- **`denoise` becomes `camera-rgb`.** It is the home of the operations on camera RGB that **do not need the
+  colour interpretation** (today noise reduction alone; the camera-space corrections of M3 would join it), so
+  it is not named for one operation. It is not called `camera-linear`, which is the name of the **data space** it reads and returns (review of this
   note): "an operation in `camera-linear`" must say one thing. The same reason names stage 4
   `input-colour` (the colour interpretation of the camera data: the balance and the matrix) and not
   `camera-colour`, which would sit too close to `camera-rgb`.
@@ -208,6 +213,36 @@ Differences from the plan's proposed list, each with its reason:
 - **A constraint that names an operation of another stage is an error at load time**, not silently ignored
   (review of this note); there is a test for it. Nothing relates operations of different stages, so no
   constraint can move an operation out of its stage (the spec's "an operation cannot leave its stage").
+
+**What an operation may depend on** *(review of this note)*. The cache key of stage *n* is the hash of the
+recipe up to it (note 005 §2.2), and a change reruns its stage and every later one. What a slider costs is
+therefore decided by **what each operation reads**, and the rule is:
+
+> **An operation depends only on its own parameters, on the operations before it in the definition's
+> order, and on the image.**
+
+"The image" is `RawImage` and what it carries, which no slider changes (the levels, the **as-shot**
+multipliers, the matrices, the ISO). The consequence that matters here: **nothing in stages 1 to 3 may read
+the white balance**, because if one did, a balance drag would rerun stage 3, the denoiser included, and the
+0.6 ms of §2.1 would be 120 ms again. An operation that needs the balance goes **after** it.
+
+- **Highlight reconstruction for M2** [proposed]: it needs to know what "neutral" is, since the clip point of
+  each channel in balanced space is its multiplier, so it sits **in `input-colour`, after white balance**,
+  and reads the recipe's balance, which is an operation before it in the definition's order. The simple
+  clip-aware form is **per pixel**, which I expect to cost about what the balance itself costs, so a drag
+  reruns it with no visible price (not measured: the algorithm is WP15's). The two alternatives, and why
+  not: staying in `camera-rgb` with the **as-shot** multipliers taken from `RawImage`, which no slider
+  changes, avoids any rerun but gives a reconstruction that **ignores a corrected balance**; and a
+  reconstruction that needs no balance (each channel limited at its own saturation) **reconstructs no
+  colour**.
+- **A heavier algorithm would bring the price back.** A reconstruction that works over a neighbourhood
+  (inpainting from the unclipped surroundings) rerun on every balance change costs what its neighbourhood
+  costs. The rule does not forbid it; it makes the price visible and places it: the operation declares the
+  dependency by sitting after the balance, and its **cost class** (D-142, layer 1) lets `develop` warn when a
+  heavy operation is placed after one that is dragged.
+- **A test holds it**, in `pipeline`, with a counting cache (testing strategy §4.6, counts and not times): **a
+  change of the white balance reruns `input-colour` and the stages after it and nothing earlier**, and
+  more generally a change in an operation of stage *k* reruns the stages from *k* on and none before.
 
 ### 3.5 What is checked, and by whom
 
@@ -370,8 +405,11 @@ best, primary set:
    channel, from somewhere. Three sources exist: the **`NoiseProfile` tag of DNG** where a file carries one;
    a **profile table per camera and ISO**, which is how darktable's profiled denoising works (per the
    review); or a **blind estimate** from the image. **Nothing in `RawImage` (D-141) says the ISO today**
-   (the catalogue knows it), and D-141's tagged sections would carry an `iso` tag or the DNG noise profile
-   **without breaking the ABI**. Alice should know this before the sidecar stores the parameter.
+   (the catalogue knows it, but the decoder's output is not the catalogue's), and D-141's tagged sections
+   carry an `iso` tag and the DNG noise profile **without breaking the ABI**: D-146 amends D-141 so that they
+   do, **when the file has them**, in WP13 with the rest (review of the pull request). The denoiser's
+   declaration itself (the strength in noise units, the model an input that is not a slider, a blind estimate
+   when the file has no profile) is settled **with the denoiser's choice** (plan §6, item 8), not here.
 5. **The limits**:
    - the noise is **synthetic, independent and Gaussian**, and **the noise model is handed to the
      denoiser exactly as it was generated**: this is the best case of the third arm. A profile that is wrong
@@ -469,7 +507,9 @@ they need the first stages and a look at real images. The criteria, to write dow
 | `plugin-api`, `Placement` | `after` and `before` name **operations**, and apply within the stage (§3.4); the doc comment says they name stages today. The field types do not change, the meaning does. A constraint naming an operation of another stage is an error at load time | Alice, in D-142's layer 1 (WP13) |
 | `plugin-api`, constants | The **eight stage identifiers** and the **five data-space names**, documented with their meaning (§3.2); a test checks that `pipeline`'s definition equals them | Alice (WP13), Charlie (the test) |
 | D-142's data spaces | Three become five (§3.2), each a refinement of one of D-142's, with the three as their families (Alice's D-146 amends D-142) | Alice |
-| The denoiser's declaration (layer 1) | Its strength parameter is **in noise units**, and the operation needs a **noise model** `(a, b)` per channel as an input that is not a slider (§4.5, item 4); `RawImage` (D-141) carries no ISO or noise profile today, and a tagged section (`iso`, or the DNG `NoiseProfile`) can add it without breaking the ABI | Alice, before the sidecar stores the parameter |
+| `RawImage`'s tagged block (D-141) | Carries **`iso` and the DNG `NoiseProfile` when the file has them** (D-146 amends D-141), for the denoiser's noise model (§4.5, item 4) | Alice, in WP13 |
+| The denoiser's declaration (layer 1) | Strength **in noise units** and a **noise model** `(a, b)` per channel as an input that is not a slider; settled with the denoiser's choice (plan §6, item 8) | Alice and Charlie, at that choice |
+| The counting-cache test | A white balance change reruns `input-colour` and later stages and nothing earlier (§3.4) | WP14, Charlie |
 | The recipe | Carries the definition version; the spine is not in it (§3.1) | already D-140; this note says what the version names |
 | `develop` and the sidecar | Records the definition version with each version, next to each operation's version | WP17, note 007 |
 | `pipeline` | The definition as data, the validation of §3.5, the fingerprint test of §3.6 | WP14, Charlie |
@@ -482,12 +522,14 @@ they need the first stages and a look at real images. The criteria, to write dow
   wrong or estimated noise profile costs a noise-model denoiser (§4.5). v1 does not freeze before the first
   two are settled.
 - **Decided by looking, not yet taken**: the base look's curve and constants (§6).
-- **Accepted in review** (D-146 to come): the five data spaces, `after` and `before` naming operations within
+- **Accepted in review** (D-146): the five data spaces, `after` and `before` naming operations within
   a stage, `decode` and `encode` as boundaries, the fingerprint test of released definitions, the definition
   as Rust data, the flat linear look as an absent `tone map`. **Changed after review**: stage names
   (`camera-rgb`, `input-colour`), `geometry` before `detail`, stage and space names as constants in
   `plugin-api`, the spine in the fingerprint, the cross-stage constraint error, the default recipe holding
-  the neutral `tone map`, and the third arm of the experiment.
+  the neutral `tone map`, and the third arm of the experiment. **Added in the review of the pull request**:
+  the rule of what an operation may depend on, with highlight reconstruction moved after white balance
+  (§3.4), and the `iso` and `NoiseProfile` tags of D-141.
 - **For Alice**: the denoiser's declaration and `RawImage`'s missing ISO or noise profile (§4.5, item 4);
   the log-axis curve in `scene-linear` (§6), which she flagged.
 - **Not covered**: the file syntax of a configurable definition (§3.7), and how a definition version
