@@ -253,10 +253,9 @@ Item {
             radius: 6
             color: Theme.labelColour(pane.colour)
         }
-        Label {
+        AppIconLabel {
             visible: pane.rank >= 0
-            textFormat: Text.StyledText
-            text: Icons.styled(pane.rank >= 100 ? qsTr("★ Sharpest") : qsTr("Sharpness %1 %").arg(pane.rank))
+            sentence: pane.rank >= 100 ? qsTr("★ Sharpest") : qsTr("Sharpness %1 %").arg(pane.rank)
             color: pane.rank >= 100 ? Theme.rating : Theme.quiet
         }
         Item { Layout.fillWidth: true }

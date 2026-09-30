@@ -1197,15 +1197,13 @@ FocusScope {
                     }
                 }
 
-                Label {
+                AppIconLabel {
                     visible: !statusStrip.running
                     x: 6
                     anchors.verticalCenter: parent.verticalCenter
                     // What the engine wrote holds the star, the tick and the cross for the rating and the flag: shown as icons.
-                    textFormat: Text.StyledText
-                    text: Icons.styled(root.summary)
+                    sentence: root.summary
                     color: Theme.quiet
-                    elide: Text.ElideRight
                     width: parent.width - 12
                 }
 

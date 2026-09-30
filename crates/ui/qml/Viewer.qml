@@ -381,6 +381,8 @@ FocusScope {
                     }
                 }
                 Accessible.name: qsTr("Rating")
+                // The icons say nothing to a screen reader: the state is said here.
+                Accessible.description: qsTr("%n star(s)", "", view.rating)
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Rating: click to change it (0 to 5)")
                 onClicked: view.library.rate((view.rating + 1) % 6)
@@ -394,6 +396,7 @@ FocusScope {
                 iconSize: 15
                 palette.buttonText: view.flag === 1 ? Theme.picked : view.flag === 2 ? Theme.danger : Theme.quiet
                 Accessible.name: qsTr("Flag")
+                Accessible.description: view.flag === 1 ? qsTr("Picked") : view.flag === 2 ? qsTr("Rejected") : ""
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Flag: click for picked, rejected, none (P, X, U)")
                 onClicked: view.library.flag(view.flag === 0 ? "pick" : view.flag === 1 ? "reject" : "clear")
