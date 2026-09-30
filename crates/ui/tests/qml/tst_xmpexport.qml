@@ -46,15 +46,6 @@ AppTestCase {
         compare(app.photos.selectedCount, names.length)
     }
 
-    // Waits for a frame drawn after this call with `item` in it (the update asks for one: a frame drawn before the
-    // call would leave the wait to time out, and an item with nothing of its own to paint asks for none; #30 makes
-    // this `drawn()` of AppTestCase).
-    function frameWith(item) {
-        item.update()
-        item.Window.window.update()
-        verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
-    }
-
     function openDialog() {
         // (A dialog just closed is still on its way out: the command is not enabled until it has gone.)
         tryVerify(() => !app.xmpExportDialog.visible)
@@ -63,7 +54,7 @@ AppTestCase {
         // sent before that (whether the popup has `opened` or not) lands where its buttons are not yet.
         tryVerify(() => app.xmpExportDialog.opened)
         const dialog = app.xmpExportDialog
-        frameWith(dialog.contentItem)
+        drawn(dialog.contentItem)
         return dialog
     }
 
@@ -181,7 +172,7 @@ AppTestCase {
         // The banner is behind this modal dialog: the last step leads to the review itself.
         verify(dialog.reviewButton.visible, "Review changes… is offered")
         snapshot("xmp-export-held-back")
-        frameWith(dialog.contentItem)
+        drawn(dialog.contentItem)
         click(dialog.reviewButton)
         tryVerify(() => app.externalDialog.visible, 5000, "the review of the external changes opened")
         verify(!app.xmpExportDialog.visible, "and this dialog is gone")
