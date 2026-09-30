@@ -214,7 +214,7 @@ Done when: a chart's patches come out within the ΔE bound through each profile 
 wide-gamut display show the same photo with the same colours on Linux and Windows, and the preview's
 "converted to sRGB" of M1 (D-084) is replaced by the engine's transform.
 
-### WP17 `develop`: the version model and its files (L). Needs WP13 (declaration), design notes 006 and 007. Lead: Alice
+### WP17 `develop`: the version model and its files (L). Needs WP13 (declaration), the design notes of §6 items 1 and 4. Lead: Alice
 
 Versions in the engine (create from scratch, another version, a snapshot or a style; duplicate and try;
 name; delete recoverably; **main version**, D-038), the **operation instances** with their typed
@@ -319,10 +319,10 @@ behaviour, a decision after Patrick's approval.
 
 | # | Question | Proposed answer | How it is checked |
 | --- | --- | --- | --- |
-| 1 | **Pipeline definition v1** (spec Q17): the stages, their data spaces, the ordering-constraint language | Stages: decode, raw-linear (levels, hot pixels, white balance), demosaic, denoise, scene-linear (exposure, highlights, tone, colour), detail, geometry, display/output transform, encode; constraints `after`/`before` within a stage only; the definition is a versioned file; note 006 (Charlie, Alice) | Golden renders in definition order; the order rule measured again (white balance after the denoiser: 0.6 ms against 120 ms) |
+| 1 | **Pipeline definition v1** (spec Q17): the stages, their data spaces, the ordering-constraint language | Stages: decode, raw-linear (levels, hot pixels, white balance), demosaic, denoise, scene-linear (exposure, highlights, tone, colour), detail, geometry, display/output transform, encode; constraints `after`/`before` within a stage only; the definition is a versioned file; its own design note (Charlie, Alice) | Golden renders in definition order; the order rule measured again (white balance after the denoiser: 0.6 ms against 120 ms) |
 | 2 | **Colour engine and working space** (Q21) | The working space is **linear Rec.2020-class by default, fixed, and written into the pipeline definition** (item 1), so that changing it later is a new definition version, recorded in the sidecars, and old edits render as before. It is **confirmed against linear ProPhoto RGB by measurement in increment A, before the tone and colour operations (15b, 15c) are written against it**: Rec.2020 has real primaries and the D65 white of sRGB and Display P3, ProPhoto holds more saturated colours but has imaginary primaries and a D50 white. ProPhoto stays available as an **output** profile whatever the working space. The engine is chosen by note 005 §7's criterion, compared before it is chosen | The comparison table and `cargo deny` for the engine; ΔE on a chart. **For the working space**, the 17 sample files (note 005 §3.3, §3.3b) rendered in both spaces with the same camera matrices and the same output: (a) the share of values negative or clipped after the camera-to-working step, per file, and on saturated blues and greens in particular (LED lights, flowers); (b) the hue shifts of saturation, vibrance, hue-saturation-luminance and colour grading on those colours, against a reference; (c) the cost and the error of the D50 to D65 adaptation on the way to sRGB and Display P3; (d) Patrick's judgement of the borderline photos on his Linux and Windows screens. Charlie measures, Patrick judges |
 | 3 | **Base look and the flat linear look** (Q23) | A documented tone-mapping method (scene-linear to display, one curve with a stated toe and shoulder), neutral by default; the flat linear look shown as the raw linear data under the display transform | Reference images on the samples; a review by Patrick on his screens |
-| 4 | **The development in the version sidecar** (Q4, Q20) | Operations and snapshots as typed XMP properties, the history as JSON inside one property, each operation with its identifier, its version and its plugin's; a schema bump with a fixture and a migration; note 007 (Alice) | Round trip and unknown-content tests; the sidecar read by ExifTool; size of a history of 10,000 steps |
+| 4 | **The development in the version sidecar** (Q4, Q20) | Operations and snapshots as typed XMP properties, the history as JSON inside one property, each operation with its identifier, its version and its plugin's; a schema bump with a fixture and a migration; its own design note (Alice) | Round trip and unknown-content tests; the sidecar read by ExifTool; size of a history of 10,000 steps |
 | 5 | **History and undo in Develop** | The version's own persistent linear history *is* Develop's undo (Ctrl+Z walks it, editing after an undo discards the undone steps); the engine's in-memory journal (D-096) keeps serving Cull and organising; the two are not merged, and a keyboard shortcut means the one of the active view | A scripted undo/redo session across views; nothing in the history grows without bound (compaction) |
 | 6 | **Auto-sync** (Q18) | Off by default, per session; applies the *change* (a delta), not the state, to the selection, so photos with different settings keep them; one undo step | A test on a selection of photos with different values |
 | 7 | **CPU fallback** | As D-140: the same shaders on whatever adapter there is, the software one said to be in use; no second Rust path unless Patrick finds a machine where WARP is unusable | WARP timings on the Windows runner; a real test machine without a GPU if one can be had |
@@ -428,6 +428,6 @@ the end of A.
 1. Review this plan.
 2. **WP13**: the `RawImage` and declaration change of D-141 and D-142, one pull request per layer
    (`plugin-api`, the plugin, the host).
-3. Design notes 006 (pipeline definition v1 and the base look) and 007 (the development in the version
-   sidecar, history and undo), one at a time, for approval.
+3. The design notes of §6 items 1 and 4 (the pipeline definition v1 with the base look; the development in
+   the version sidecar, history and undo), one at a time, for approval, under the next free numbers.
 4. Charlie: the render API and the first stages on the foundation of #37, with their references.
