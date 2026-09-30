@@ -54,6 +54,8 @@ that other software reads: the rating (a rejected photo as −1 if you like), co
 keywords, the copyright and other information fields, and the capture data. Nothing is written until you press
 **Export**, and nothing is exported on its own: it is one way, from Auroraw to the file.
 
+![The Export XMP files dialog, with a photo selected](images/xmp-export.png)
+
 - **Which photos.** The selected photos, or every photo of one source.
 - **Name of a new file.** `photo.xmp`, or `photo.ARW.xmp` (the whole file name). When two photos of a folder share
   a name (`A.png` and `A.tif`), both get the whole-file form, since `photo.xmp` would belong to neither.
@@ -73,6 +75,8 @@ banner *N photos have metadata changed by another application* appears, and the 
 (or **Review…** on the banner), which lets you take the change or decline it, as in the previous section. Then export
 again. A file that is not XMP is never touched, unless you chose
 *Replace it*. A source that cannot be reached (a card that is not there) is reported, and the rest goes on.
+
+![The end of an export, with a file held back and the button that opens the review](images/xmp-export-held-back.png)
 
 Exporting again when nothing changed writes nothing. Auroraw does not take its own export for another
 application's change. **An export changes no photo**, so there is nothing to undo; a cancelled export keeps what it
