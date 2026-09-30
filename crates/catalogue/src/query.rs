@@ -553,6 +553,26 @@ impl Catalogue {
         Ok(out)
     }
 
+    /// Every photo whose original is in `source_id`, with the path of that original inside the source
+    /// (a group's original, never a companion): what the XMP export works out file names from.
+    pub fn photo_paths(&self, source_id: &SourceId) -> Result<Vec<(PhotoId, String)>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, path FROM photo WHERE source_id = ?1")?;
+        let rows = stmt.query_map([source_id.to_string()], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (id, path) = row?;
+            let id = id.parse().map_err(|_| {
+                rusqlite::Error::InvalidColumnType(0, "id".into(), rusqlite::types::Type::Text)
+            })?;
+            out.push((id, path));
+        }
+        Ok(out)
+    }
+
     /// What is in `source_id`, for a person deciding whether to remove it.
     pub fn source_counts(&self, source_id: &SourceId) -> Result<SourceCounts> {
         let (photos, worked_on) = self.conn.query_row(

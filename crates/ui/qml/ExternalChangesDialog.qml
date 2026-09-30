@@ -100,7 +100,7 @@ AppWindow {
             wrapMode: Text.Wrap
             color: Theme.quiet
             text: dialog.entries.length > 0
-                  ? qsTr("%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.", "", dialog.entries.length)
+                  ? qsTr("%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.", "", dialog.entries.length)
                   : qsTr("Nothing is waiting.")
         }
         AppListFrame {

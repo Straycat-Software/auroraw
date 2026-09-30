@@ -731,6 +731,11 @@
         <translation>Photos en double&#xa0;…</translation>
     </message>
     <message>
+        <location line="+7"/>
+        <source>Export XMP files…</source>
+        <translation>Exporter les fichiers XMP…</translation>
+    </message>
+    <message>
         <location filename="../qml/AppActions.qml" line="228"/>
         <source>Invert selection</source>
         <translation>Inverser la sélection</translation>
@@ -1405,11 +1410,11 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/ExternalChangesDialog.qml" line="103"/>
-        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.</source>
+        <location line="+12"/>
+        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</source>
         <translation>
-            <numerusform>%n photo a un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie jamais ces fichiers.</numerusform>
-            <numerusform>%n photos ont un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie jamais ces fichiers.</numerusform>
+            <numerusform>%n photo a un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie ces fichiers que lorsque vous lui demandez d’exporter des fichiers XMP.</numerusform>
+            <numerusform>%n photos ont un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie ces fichiers que lorsque vous lui demandez d’exporter des fichiers XMP.</numerusform>
         </translation>
     </message>
     <message>
@@ -3064,6 +3069,241 @@
         <location filename="../qml/Welcome.qml" line="67"/>
         <source>No workspace yet.</source>
         <translation>Aucun workspace pour l&apos;instant.</translation>
+    </message>
+</context>
+<context>
+    <name>XmpExportDialog</name>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="+23"/>
+        <source>Export XMP files</source>
+        <translation>Exporter les fichiers XMP</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+156"/>
+        <source>%n file(s) written</source>
+        <translation>
+            <numerusform>%n fichier écrit</numerusform>
+            <numerusform>%n fichiers écrits</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+6"/>
+        <source>%n existing file(s) left alone</source>
+        <translation>
+            <numerusform>%n fichier existant laissé tel quel</numerusform>
+            <numerusform>%n fichiers existants laissés tels quels</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n existing file(s) that are not XMP, left untouched</source>
+        <translation>
+            <numerusform>%n fichier existant qui n’est pas du XMP, non touché</numerusform>
+            <numerusform>%n fichiers existants qui ne sont pas du XMP, non touchés</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) on a source that cannot be reached</source>
+        <translation>
+            <numerusform>%n photo sur une source inaccessible</numerusform>
+            <numerusform>%n photos sur une source inaccessible</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n file(s) named after the whole file (photo.ARW.xmp), the name photo.xmp being shared by several photos of a folder</source>
+        <translation>
+            <numerusform>%n fichier nommé d’après le fichier entier (photo.ARW.xmp), le nom photo.xmp étant partagé par plusieurs photos d’un dossier</numerusform>
+            <numerusform>%n fichiers nommés d’après le fichier entier (photo.ARW.xmp), le nom photo.xmp étant partagé par plusieurs photos d’un dossier</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) could not be exported: %1</source>
+        <translation>
+            <numerusform>%n photo n’a pas pu être exportée&#xa0;: %1</numerusform>
+            <numerusform>%n photos n’ont pas pu être exportées&#xa0;: %1</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>Writes an XMP file beside the original of each photo, for other applications to read. Your photos and Auroraw&apos;s own files are not changed.</source>
+        <translation>Écrit un fichier XMP à côté de l’original de chaque photo, pour que d’autres applications le lisent. Vos photos et les fichiers d’Auroraw ne sont pas modifiés.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Photos</source>
+        <translation>Photos</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+6"/>
+        <source>The %n selected photo(s)</source>
+        <translation>
+            <numerusform>La photo sélectionnée (%n)</numerusform>
+            <numerusform>Les %n photos sélectionnées</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The selected photos (none is selected)</source>
+        <translation>Les photos sélectionnées (aucune n’est sélectionnée)</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Every photo of the source:</source>
+        <translation>Toutes les photos de la source&#xa0;:</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Source</source>
+        <translation>Source</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Name of a new file</source>
+        <translation>Nom d’un nouveau fichier</translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Named after the photo (photo.xmp)</source>
+        <translation>Nommé d’après la photo (photo.xmp)</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Named after the whole file (photo.ARW.xmp)</source>
+        <translation>Nommé d’après le fichier entier (photo.ARW.xmp)</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Merge into it</source>
+        <translation>Fusionner dans le fichier</translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Replace the files that already exist? Each old file is first kept in the workspace&apos;s removed folder; nothing is deleted. A change that another application made to one of them and that you have not reviewed yet goes with it: it is not offered for review afterwards.</source>
+        <translation>Remplacer les fichiers qui existent déjà&#xa0;? Chaque ancien fichier est d’abord gardé dans le dossier removed de l’espace de travail&#xa0;; rien n’est supprimé. Un changement qu’une autre application y a fait et que vous n’avez pas encore passé en revue part avec lui&#xa0;: il ne sera plus proposé à la revue.</translation>
+    </message>
+    <message>
+        <location line="-245"/>
+        <source>Only what Auroraw owns is rewritten; develop settings and the rest stay.</source>
+        <translation>Seul ce qui relève d’Auroraw est réécrit&#xa0;; les réglages de développement et le reste sont conservés.</translation>
+    </message>
+    <message>
+        <location line="+220"/>
+        <source>Replace it</source>
+        <translation>Remplacer le fichier</translation>
+    </message>
+    <message>
+        <location line="-219"/>
+        <source>The old file is kept in the workspace&apos;s removed folder.</source>
+        <translation>L’ancien fichier est gardé dans le dossier removed de l’espace de travail.</translation>
+    </message>
+    <message>
+        <location line="+225"/>
+        <source>Leave it alone</source>
+        <translation>Ne pas y toucher</translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Only the missing files are written.</source>
+        <translation>Seuls les fichiers manquants sont écrits.</translation>
+    </message>
+    <message>
+        <location line="+232"/>
+        <source>Write a rejected photo with a rating of −1</source>
+        <translation>Écrire une photo rejetée avec une note de −1</translation>
+    </message>
+    <message>
+        <location line="-231"/>
+        <source>Other applications understand −1 as rejected; the stars stay in the file for Auroraw.</source>
+        <translation>Les autres applications comprennent −1 comme «&#xa0;rejetée&#xa0;»&#xa0;; les étoiles restent dans le fichier pour Auroraw.</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+118"/>
+        <source>%n file(s) already up to date, left as they are</source>
+        <translation>
+            <numerusform>%n fichier déjà à jour, laissé tel quel</numerusform>
+            <numerusform>%n fichiers déjà à jour, laissés tels quels</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n file(s) held back: another application changed them since Auroraw last looked. Review the changes, then export again.</source>
+        <translation>
+            <numerusform>%n fichier retenu&#xa0;: une autre application l’a modifié depuis le dernier passage d’Auroraw. Passez en revue les changements, puis exportez à nouveau.</numerusform>
+            <numerusform>%n fichiers retenus&#xa0;: une autre application les a modifiés depuis le dernier passage d’Auroraw. Passez en revue les changements, puis exportez à nouveau.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+86"/>
+        <source>When a file already exists</source>
+        <translation>Quand un fichier existe déjà</translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Exporting photo %1 of %2…</source>
+        <translation>Export de la photo %1 sur %2…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Writing the files…</source>
+        <translation>Écriture des fichiers…</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Export progress</source>
+        <translation>Progression de l’export</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Stopped. What was written stays written.</source>
+        <translation>Arrêté. Ce qui a été écrit reste écrit.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Done.</source>
+        <translation>Terminé.</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Nothing to write.</source>
+        <translation>Rien à écrire.</translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Replace and export</source>
+        <translation>Remplacer et exporter</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Export</source>
+        <translation>Exporter</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Review changes…</source>
+        <translation>Réviser les changements…</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Back</source>
+        <translation>Retour</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Stop</source>
+        <translation>Arrêter</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Close</source>
+        <translation>Fermer</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Cancel</source>
+        <translation>Annuler</translation>
     </message>
 </context>
 </TS>

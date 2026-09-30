@@ -131,6 +131,9 @@ struct ExternalReader<'a> {
     unreadable: usize,
     /// Known photos' files read and not yet sent.
     batch: Vec<ExternalSeen>,
+    /// What the file last read carries beyond its fields when Auroraw wrote it itself (its export
+    /// marker, D-024): the flag and stars a photo added from it gets back.
+    extras: Option<external::OwnExtras>,
 }
 
 impl<'a> ExternalReader<'a> {
@@ -140,11 +143,13 @@ impl<'a> ExternalReader<'a> {
             resolved: HashMap::new(),
             unreadable: 0,
             batch: Vec::new(),
+            extras: None,
         }
     }
 
     /// What `xmp` holds, or `None` (counted) when it cannot be read: too large, unreadable or not XMP.
     fn read(&mut self, xmp: &XmpFile) -> Option<Fields> {
+        self.extras = None;
         let fields = if xmp.stat.size > external::MAX_BYTES as u64 {
             None
         } else {
@@ -152,7 +157,10 @@ impl<'a> ExternalReader<'a> {
                 .source
                 .read_range(&xmp.path, 0, xmp.stat.size)
                 .ok()
-                .and_then(|bytes| external::read(&bytes).ok())
+                .and_then(|bytes| {
+                    self.extras = external::own_extras(&bytes);
+                    external::read(&bytes).ok()
+                })
         };
         if fields.is_none() {
             self.unreadable += 1;
@@ -165,6 +173,16 @@ impl<'a> ExternalReader<'a> {
     /// is gone while waiting.
     fn fill_new(&mut self, fields: &Fields, meta: &mut Metadata) -> bool {
         fields.fill(meta);
+        // A file Auroraw exported itself gives back exactly the flag and the stars it was written from
+        // (the rating axis holds a rejected photo's stars nowhere, design note 003 §4.5).
+        if let Some(extras) = self.extras.take() {
+            if let Some(flag) = extras.flag {
+                meta.flag = Some(flag);
+            }
+            if let Some(stars) = extras.stars {
+                meta.rating = Some(stars);
+            }
+        }
         let mut unseen: Vec<String> = Vec::new();
         for path in &fields.keywords {
             let key = keyword_key(path);

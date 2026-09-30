@@ -59,6 +59,7 @@ ApplicationWindow {
     property alias settingsDialog: settingsDialog
     property alias aboutDialog: aboutDialog
     property alias duplicatesDialog: duplicatesDialog
+    property alias xmpExportDialog: xmpExportDialog
     property alias externalBanner: externalBanner
     property alias externalDialog: externalDialog
     property alias externalChanges: externalChanges
@@ -105,7 +106,7 @@ ApplicationWindow {
     readonly property bool nativeDialogOpen: nativeDialogForced || openDialog.visible || catalogueFlow.browsing || newDialog.browsing
                                             || importDialog.browsing || libraryView.exportDialog.visible || duplicatesDialog.browsing
     readonly property bool dialogOpen: newDialog.visible || settingsDialog.visible || importDialog.visible || libraryView.dialogOpen
-                                       || aboutDialog.visible || duplicatesDialog.visible || externalDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
+                                       || aboutDialog.visible || duplicatesDialog.visible || externalDialog.visible || xmpExportDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
     readonly property bool inWorkspace: launcher.screen === "workspace"
     // The grid is what the person is looking at and can act on: the selection commands mean something.
     readonly property bool gridActive: inWorkspace && currentTask === "cull" && !dialogOpen && photoGrid.count > 0
@@ -127,6 +128,7 @@ ApplicationWindow {
     function showSettings() { settingsDialog.open() }
     function showAbout() { aboutDialog.open() }
     function showDuplicates() { duplicatesDialog.open() }
+    function showXmpExport() { xmpExportDialog.open() }
     // Ctrl+K: the keyboard goes to the keyword field.
     function focusKeywords() { libraryView.focusKeywords() }
     // The grid's selection commands (`all`, `none`, `invert`).
@@ -377,6 +379,14 @@ ApplicationWindow {
     Duplicates { id: duplicates }
     ExternalChangesDialog { id: externalDialog; external: externalChanges; hostWindow: window }
     ExternalChanges { id: externalChanges }
+    XmpExportDialog {
+        id: xmpExportDialog
+        exporter: xmpExport
+        sources: sourceList
+        photoGrid: photoGrid
+        onReviewRequested: externalDialog.open()
+    }
+    XmpExport { id: xmpExport }
 
     Popup {
         id: waiting

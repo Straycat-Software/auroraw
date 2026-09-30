@@ -85,3 +85,41 @@ fn keyword_union(xmp: &Xmp) -> Vec<String> {
     );
     paths
 }
+
+/// What only a file Auroraw wrote itself carries beyond [`Fields`]: the flag and the stars, which the
+/// single foreign rating axis cannot hold (a rejected photo keeps its stars, spec §5.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct OwnExtras {
+    /// `aur:Flag`.
+    pub flag: Option<Flag>,
+    /// The stars: `aur:Stars` (written next to a `-1` rating), else the file's own `xmp:Rating` when it
+    /// is 1 to 5 (a rejected photo exported without the `-1` option).
+    pub stars: Option<u8>,
+}
+
+/// The flag and the stars of a file that carries Auroraw's export marker `aur:Export` (design note
+/// 003 §4.5, §8), or `None` for any other file, including one that cannot be read. Used when a photo
+/// is first added from such a file, so that re-reading an export gives back exactly the same flag and
+/// stars; never for a comparison, which is [`read`]'s and only ever sees the rating axis.
+pub fn own_extras(bytes: &[u8]) -> Option<OwnExtras> {
+    if bytes.len() > MAX_BYTES {
+        return None;
+    }
+    let xmp = Xmp::from_bytes(bytes).ok()?;
+    xmp.get(ns::AUR, "Export")?;
+    let parsed = |namespace: &str, name: &str| -> Option<u8> {
+        xmp.get(namespace, name)?
+            .as_text()?
+            .trim()
+            .parse::<u8>()
+            .ok()
+            .filter(|n| (1..=5).contains(n))
+    };
+    Some(OwnExtras {
+        flag: xmp
+            .get(ns::AUR, "Flag")
+            .and_then(Property::as_text)
+            .and_then(|t| t.trim().parse().ok()),
+        stars: parsed(ns::AUR, "Stars").or_else(|| parsed(ns::XMP, "Rating")),
+    })
+}

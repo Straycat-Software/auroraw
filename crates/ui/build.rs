@@ -68,6 +68,7 @@ fn main() {
         QmlFile::from("qml/DuplicatesDialog.qml"),
         QmlFile::from("qml/ExternalBanner.qml"),
         QmlFile::from("qml/ExternalChangesDialog.qml"),
+        QmlFile::from("qml/XmpExportDialog.qml"),
     ];
     let mut builder = CxxQtBuilder::new_qml_module(QmlModule::new("org.auroraw.ui").qml_files(qml))
         .qt_module("Quick")
@@ -84,6 +85,7 @@ fn main() {
             "src/models.rs",
             "src/shortcuts.rs",
             "src/launcher.rs",
+            "src/xmp_export.rs",
         ])
         .cpp_file("src/glue.cpp");
     if std::env::var_os("CARGO_FEATURE_QUICKTEST").is_some() {

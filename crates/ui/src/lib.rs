@@ -44,6 +44,8 @@ mod session;
 mod shortcuts;
 #[allow(unsafe_code)]
 mod source_list;
+#[allow(unsafe_code)]
+mod xmp_export;
 
 use std::path::PathBuf;
 use std::sync::Mutex;

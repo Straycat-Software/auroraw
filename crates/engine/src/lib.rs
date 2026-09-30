@@ -40,6 +40,8 @@ mod technical_details;
 mod thumbnails;
 mod viewer;
 mod workspaces;
+mod xmp_export;
+mod xmp_export_job;
 
 pub use auroraw_catalogue::SourceCounts;
 pub use auroraw_format::sidecar::{ColourLabel, Flag};
@@ -68,6 +70,7 @@ pub use technical_details::TechnicalDetails;
 pub use thumbnails::ThumbnailService;
 pub use viewer::{DEFAULT_CAPACITY as PREVIEW_CACHE, PreviewService};
 pub use workspaces::{KnownWorkspace, LocalDirs, OpenedWorkspace};
+pub use xmp_export::{XmpExisting, XmpExportOptions, XmpExportReport, XmpNaming, XmpScope};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

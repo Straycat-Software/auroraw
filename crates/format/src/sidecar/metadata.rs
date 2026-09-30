@@ -17,7 +17,7 @@ pub enum Flag {
 }
 
 impl Flag {
-    fn as_text(self) -> &'static str {
+    pub(crate) fn as_text(self) -> &'static str {
         match self {
             Self::Picked => "picked",
             Self::Rejected => "rejected",
@@ -130,6 +130,35 @@ pub struct Original {
     pub gps_longitude: Option<String>,
     /// `exif:GPSAltitude`.
     pub gps_altitude: Option<String>,
+}
+
+impl Original {
+    /// The properties of the capture data, in the canonical order of the schema.
+    pub(crate) fn to_properties(&self) -> Vec<Property> {
+        let o = self;
+        let props: Vec<Option<Property>> = vec![
+            x::opt_text(ns::EXIF, "DateTimeOriginal", &o.capture_time),
+            x::opt_text(ns::TIFF, "Make", &o.make),
+            x::opt_text(ns::TIFF, "Model", &o.model),
+            x::opt_text(ns::AUX, "SerialNumber", &o.serial),
+            x::opt_text(ns::AUX, "Lens", &o.lens),
+            x::opt_text(ns::EXIF, "ExposureTime", &o.exposure_time),
+            x::opt_text(ns::EXIF, "FNumber", &o.f_number),
+            x::opt_array(ns::EXIF, "ISOSpeedRatings", ArrayKind::Seq, &o.iso),
+            x::opt_text(ns::EXIF, "FocalLength", &o.focal_length),
+            x::opt_text(ns::EXIF, "FocalLengthIn35mmFilm", &o.focal_length_35mm),
+            o.pixel_width
+                .map(|v| Property::text(ns::EXIF, "PixelXDimension", v.to_string())),
+            o.pixel_height
+                .map(|v| Property::text(ns::EXIF, "PixelYDimension", v.to_string())),
+            o.orientation
+                .map(|v| Property::text(ns::TIFF, "Orientation", v.to_string())),
+            x::opt_text(ns::EXIF, "GPSLatitude", &o.gps_latitude),
+            x::opt_text(ns::EXIF, "GPSLongitude", &o.gps_longitude),
+            x::opt_text(ns::EXIF, "GPSAltitude", &o.gps_altitude),
+        ];
+        props.into_iter().flatten().collect()
+    }
 }
 
 /// The corrected position of an overlay.
@@ -311,26 +340,8 @@ impl Metadata {
             x::opt_text(ns::IPTC_CORE, "CountryCode", &self.country_code),
             x::opt_array(ns::IPTC_EXT, "PersonInImage", ArrayKind::Bag, &self.persons),
             x::opt_lang(ns::IPTC_EXT, "Event", &self.event),
-            x::opt_text(ns::EXIF, "DateTimeOriginal", &o.capture_time),
-            x::opt_text(ns::TIFF, "Make", &o.make),
-            x::opt_text(ns::TIFF, "Model", &o.model),
-            x::opt_text(ns::AUX, "SerialNumber", &o.serial),
-            x::opt_text(ns::AUX, "Lens", &o.lens),
-            x::opt_text(ns::EXIF, "ExposureTime", &o.exposure_time),
-            x::opt_text(ns::EXIF, "FNumber", &o.f_number),
-            x::opt_array(ns::EXIF, "ISOSpeedRatings", ArrayKind::Seq, &o.iso),
-            x::opt_text(ns::EXIF, "FocalLength", &o.focal_length),
-            x::opt_text(ns::EXIF, "FocalLengthIn35mmFilm", &o.focal_length_35mm),
-            o.pixel_width
-                .map(|v| Property::text(ns::EXIF, "PixelXDimension", v.to_string())),
-            o.pixel_height
-                .map(|v| Property::text(ns::EXIF, "PixelYDimension", v.to_string())),
-            o.orientation
-                .map(|v| Property::text(ns::TIFF, "Orientation", v.to_string())),
-            x::opt_text(ns::EXIF, "GPSLatitude", &o.gps_latitude),
-            x::opt_text(ns::EXIF, "GPSLongitude", &o.gps_longitude),
-            x::opt_text(ns::EXIF, "GPSAltitude", &o.gps_altitude),
         ];
+        props.extend(o.to_properties().into_iter().map(Some));
         props.push(custom_property(&self.custom));
         props.push(self.overlay.as_ref().map(overlay_property));
         props.into_iter().flatten().collect()

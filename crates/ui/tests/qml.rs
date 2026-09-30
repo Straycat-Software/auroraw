@@ -275,6 +275,15 @@ fn external_xmp_changes_are_announced_reviewed_and_answered() {
     run_suite("external", home.path(), None);
 }
 
+/// The XMP export to the source folders: the command, the form, the files written beside the originals, a file another
+/// application changed held back, Replace asking first, the choices remembered.
+#[test]
+fn the_xmp_export_writes_files_beside_the_originals() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 20);
+    run_suite("xmpexport", home.path(), None);
+}
+
 /// Comparing frames: pages, marks, resolving from the comparison, linked zoom, the aids, the thumbnail size.
 #[test]
 fn comparing_frames_and_the_quality_aids() {

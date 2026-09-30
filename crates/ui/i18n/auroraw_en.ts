@@ -731,6 +731,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="+7"/>
+        <source>Export XMP files…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../qml/AppActions.qml" line="228"/>
         <source>Invert selection</source>
         <translation type="unfinished"></translation>
@@ -1405,11 +1410,11 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/ExternalChangesDialog.qml" line="103"/>
-        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.</source>
+        <location line="+12"/>
+        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</source>
         <translation>
-            <numerusform>%n photo has a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.</numerusform>
-            <numerusform>%n photos have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.</numerusform>
+            <numerusform>%n photo has a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</numerusform>
+            <numerusform>%n photos have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</numerusform>
         </translation>
     </message>
     <message>
@@ -3063,6 +3068,241 @@
     <message>
         <location filename="../qml/Welcome.qml" line="114"/>
         <source>Remove from the list: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>XmpExportDialog</name>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="+23"/>
+        <source>Export XMP files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location line="+156"/>
+        <source>%n file(s) written</source>
+        <translation>
+            <numerusform>%n file written</numerusform>
+            <numerusform>%n files written</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+6"/>
+        <source>%n existing file(s) left alone</source>
+        <translation>
+            <numerusform>%n existing file left alone</numerusform>
+            <numerusform>%n existing files left alone</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n existing file(s) that are not XMP, left untouched</source>
+        <translation>
+            <numerusform>%n existing file that is not XMP, left untouched</numerusform>
+            <numerusform>%n existing files that are not XMP, left untouched</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) on a source that cannot be reached</source>
+        <translation>
+            <numerusform>%n photo on a source that cannot be reached</numerusform>
+            <numerusform>%n photos on a source that cannot be reached</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n file(s) named after the whole file (photo.ARW.xmp), the name photo.xmp being shared by several photos of a folder</source>
+        <translation>
+            <numerusform>%n file named after the whole file (photo.ARW.xmp), the name photo.xmp being shared by several photos of a folder</numerusform>
+            <numerusform>%n files named after the whole file (photo.ARW.xmp), the name photo.xmp being shared by several photos of a folder</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) could not be exported: %1</source>
+        <translation>
+            <numerusform>%n photo could not be exported: %1</numerusform>
+            <numerusform>%n photos could not be exported: %1</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>Writes an XMP file beside the original of each photo, for other applications to read. Your photos and Auroraw&apos;s own files are not changed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Photos</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location line="+6"/>
+        <source>The %n selected photo(s)</source>
+        <translation>
+            <numerusform>The %n selected photo</numerusform>
+            <numerusform>The %n selected photos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The selected photos (none is selected)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Every photo of the source:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Source</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Name of a new file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Named after the photo (photo.xmp)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Named after the whole file (photo.ARW.xmp)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Merge into it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Replace the files that already exist? Each old file is first kept in the workspace&apos;s removed folder; nothing is deleted. A change that another application made to one of them and that you have not reviewed yet goes with it: it is not offered for review afterwards.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-245"/>
+        <source>Only what Auroraw owns is rewritten; develop settings and the rest stay.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+220"/>
+        <source>Replace it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-219"/>
+        <source>The old file is kept in the workspace&apos;s removed folder.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+225"/>
+        <source>Leave it alone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-224"/>
+        <source>Only the missing files are written.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+232"/>
+        <source>Write a rejected photo with a rating of −1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-231"/>
+        <source>Other applications understand −1 as rejected; the stars stay in the file for Auroraw.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location line="+118"/>
+        <source>%n file(s) already up to date, left as they are</source>
+        <translation>
+            <numerusform>%n file already up to date, left as it is</numerusform>
+            <numerusform>%n files already up to date, left as they are</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n file(s) held back: another application changed them since Auroraw last looked. Review the changes, then export again.</source>
+        <translation>
+            <numerusform>%n file held back: another application changed it since Auroraw last looked. Review the changes, then export again.</numerusform>
+            <numerusform>%n files held back: another application changed them since Auroraw last looked. Review the changes, then export again.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+86"/>
+        <source>When a file already exists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Exporting photo %1 of %2…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Writing the files…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Export progress</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Stopped. What was written stays written.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Done.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Nothing to write.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Replace and export</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Export</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Review changes…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Stop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

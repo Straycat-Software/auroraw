@@ -37,7 +37,7 @@ pub(crate) struct ExternalSeen {
     pub fields: Fields,
 }
 
-fn stat_of(entry: &Entry) -> ExternalStat {
+pub(crate) fn stat_of(entry: &Entry) -> ExternalStat {
     ExternalStat {
         size: entry.size,
         modified_ns: entry
@@ -54,7 +54,7 @@ fn inside_skipped(path: &str, skip: &[String]) -> bool {
 
 /// The path with its last extension taken off (`dir/Name.ext` → `dir/Name`); a name with no extension
 /// is its own stem.
-fn without_extension(path: &str) -> &str {
+pub(crate) fn without_extension(path: &str) -> &str {
     let name_start = path.rfind('/').map_or(0, |i| i + 1);
     match path[name_start..].rfind('.') {
         Some(dot) if dot > 0 => &path[..name_start + dot],

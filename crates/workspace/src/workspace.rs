@@ -402,18 +402,50 @@ impl Workspace {
     /// Moves a file of the workspace to `removed/`, keeping its place in the tree and adding the
     /// time to its name. Nothing is ever deleted (architecture §5.3). Returns the new path.
     pub fn remove_recoverably(&self, path: &Path) -> Result<PathBuf, WorkspaceError> {
+        let relative = path.strip_prefix(&self.root).unwrap_or(path);
+        let destination = self.recoverable_path(path, relative)?;
+        let source = self.root.join(relative);
+        write::rename_with_retry(&source, &destination).map_err(io_err(&source))?;
+        Ok(destination)
+    }
+
+    /// Keeps a copy of a file that is not in the workspace and is about to be replaced (the XMP export's
+    /// Replace option, design note 003 §8.1 item 5) under `removed/`, at `relative` with the time added
+    /// to its name. Nothing is ever deleted (architecture §5.3). Returns the path it was kept at.
+    pub fn keep_recoverably(
+        &self,
+        relative: &Path,
+        bytes: &[u8],
+    ) -> Result<PathBuf, WorkspaceError> {
+        let destination = self.recoverable_path(relative, relative)?;
+        // Atomic and synced, like every other file the workspace writes: the copy is the only one of a file
+        // that is about to be replaced.
+        let mut tmp = destination.clone().into_os_string();
+        tmp.push(".part");
+        crate::write::write_atomic(
+            &destination,
+            Path::new(&tmp),
+            bytes,
+            true,
+            crate::write::Interrupt::Never,
+        )
+        .map_err(io_err(&destination))?;
+        Ok(destination)
+    }
+
+    /// A place under `removed/` for `relative`, free, in a folder that exists; `shown` is the path to
+    /// name in an error.
+    fn recoverable_path(&self, shown: &Path, relative: &Path) -> Result<PathBuf, WorkspaceError> {
         if self.access == Access::ReadOnly {
             return Err(WorkspaceError::ReadOnly);
         }
-        let relative = path.strip_prefix(&self.root).unwrap_or(path);
         let escapes = relative.is_absolute()
             || relative
                 .components()
                 .any(|c| matches!(c, Component::ParentDir | Component::Prefix(_)));
         if escapes || relative.as_os_str().is_empty() {
-            return Err(WorkspaceError::Outside(path.to_path_buf()));
+            return Err(WorkspaceError::Outside(shown.to_path_buf()));
         }
-        let source = self.root.join(relative);
         let stamp = Timestamp::now().to_string().replace(['-', ':'], "");
         let stem = relative
             .file_stem()
@@ -437,7 +469,6 @@ impl Workspace {
             };
             let destination = folder.join(name);
             if !destination.exists() {
-                write::rename_with_retry(&source, &destination).map_err(io_err(&source))?;
                 return Ok(destination);
             }
         }

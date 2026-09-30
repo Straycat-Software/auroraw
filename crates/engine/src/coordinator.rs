@@ -10,8 +10,9 @@ use std::sync::mpsc;
 use std::time::SystemTime;
 
 use auroraw_catalogue::{Catalogue, ExternalPending, ExternalStat, SidecarStat};
+use auroraw_format::sidecar::export::{ExportView, build, merge_into, stamp_metadata_date};
 use auroraw_format::sidecar::external::{
-    Field as ExternalField, Fields, Merge, keyword_key, merge,
+    Field as ExternalField, Fields, Merge, keyword_key, merge, read as read_external,
 };
 use auroraw_format::sidecar::{FileEntry, FileRole, Location, PhotoSidecar, VersionSidecar};
 use auroraw_format::state::{KeywordEntry, SourceEntry, Vocabulary};
@@ -37,6 +38,11 @@ use crate::index_job::{self, IndexJob};
 use crate::job::{CancelToken, JobId};
 use crate::reconcile_apply::{self, CatalogueAction};
 use crate::remove_job::{self, RemoveJob};
+use crate::xmp_export::{
+    ExportDecision, ExportExisting, ExportPhoto, XmpExisting, XmpExportOptions, XmpExportReport,
+    XmpScope, exported_keywords,
+};
+use crate::xmp_export_job::{self, ExportJob};
 
 /// What a command that waits for its result (`Engine::submit_and_wait`) gets back.
 #[derive(Debug, Clone, PartialEq)]
@@ -127,6 +133,13 @@ pub enum Outcome {
     RemoveStarted {
         /// The job removing the source.
         job: JobId,
+    },
+    /// `ExportXmp`'s background job, and how many photos it will look at.
+    XmpExportStarted {
+        /// The job writing the files.
+        job: JobId,
+        /// How many photos it will look at.
+        photos: usize,
     },
     /// `AcceptExternalChanges` or `IgnoreExternalChanges`: how many photos had a change waiting and were
     /// answered.
@@ -248,6 +261,33 @@ pub(crate) enum Inbound {
         source_id: SourceId,
         unreadable: usize,
     },
+    /// An XMP export job (`crate::xmp_export_job`, D-024) is about to write one photo's file at `path` in
+    /// `source_id`, and has read the file that is there, if any. The coordinator, which sees the photo as
+    /// it is now, makes the three-way comparison against the base (design note 003 §8.1) and answers what
+    /// to do; the job waits for the answer, which paces it.
+    ExportPrepare {
+        photo_id: PhotoId,
+        source_id: SourceId,
+        path: String,
+        existing: Option<Box<ExportExisting>>,
+        options: XmpExportOptions,
+        reply: mpsc::Sender<ExportDecision>,
+    },
+    /// An export job wrote `bytes` to `path` for a photo, and the file is now at `stat`: record it as the
+    /// base of the photo's external file, so that the next scan does not report Auroraw's own write as a
+    /// change made by another application (D-047).
+    ExportWritten {
+        photo_id: PhotoId,
+        path: String,
+        stat: ExternalStat,
+        bytes: Vec<u8>,
+    },
+    /// An export job is over, finished or cancelled: report how it ended, and that files were held back.
+    ExportDone {
+        job: JobId,
+        report: XmpExportReport,
+        cancelled: bool,
+    },
     /// A `batch_job` (a large `Batch` or `DeleteKeyword` sweep, D-126 volet B) applied one item: `edit`
     /// is run through [`Coordinator::apply_edit`], exactly as a small batch's own loop would run it,
     /// and `ack` is signalled once it lands, so the job thread paces its next send to the coordinator's
@@ -286,6 +326,15 @@ mod collection_ops;
 #[path = "series_ops.rs"]
 mod series_ops;
 
+/// The vocabulary and the path of each of its keywords, worked out once for as long as the vocabulary file
+/// is what it was (an export asks for them for every photo, on the thread that also serves every edit).
+struct ExportVocabulary {
+    /// Size and time of the file they were read from; `None` when there was no file.
+    stat: Option<(u64, Option<SystemTime>)>,
+    keywords: Vec<KeywordEntry>,
+    paths: HashMap<KeywordId, String>,
+}
+
 pub(crate) struct Coordinator {
     workspace: Arc<Workspace>,
     catalogue: Catalogue,
@@ -299,6 +348,8 @@ pub(crate) struct Coordinator {
     next_job: u64,
     /// What the person did to their photos, for Undo and Redo (D-096).
     history: History,
+    /// The vocabulary as an XMP export uses it, kept while its file is as it was read.
+    export_vocabulary: Option<Arc<ExportVocabulary>>,
     /// The path refreshes of the sidecars (after a keyword is renamed, moved, or one of those is undone)
     /// run one at a time, in the order asked, so that the last vocabulary wins.
     refresh_queue: VecDeque<RefreshRequest>,
@@ -360,6 +411,7 @@ impl Coordinator {
             batch_jobs: HashMap::new(),
             next_job: 0,
             history: History::default(),
+            export_vocabulary: None,
             refresh_queue: VecDeque::new(),
             refresh_running: false,
             series_gap: crate::series_detect::DEFAULT_GAP,
@@ -542,6 +594,50 @@ impl Coordinator {
                 Inbound::ResolveKeywords { paths, reply } => {
                     let _ = reply.send(self.resolve_keywords(&paths));
                 }
+                Inbound::ExportPrepare {
+                    photo_id,
+                    source_id,
+                    path,
+                    existing,
+                    options,
+                    reply,
+                } => {
+                    let decision =
+                        self.prepare_export(&photo_id, &source_id, &path, existing, &options);
+                    let _ = reply.send(decision);
+                }
+                Inbound::ExportWritten {
+                    photo_id,
+                    path,
+                    stat,
+                    bytes,
+                } => {
+                    // What a scan would read from the file just written: the base it is compared with.
+                    if let Ok(fields) = read_external(&bytes) {
+                        let _ = self
+                            .catalogue
+                            .set_external_base(&photo_id, &path, stat, &fields);
+                    }
+                }
+                Inbound::ExportDone {
+                    job,
+                    report,
+                    cancelled,
+                } => {
+                    if report.held_back > 0 {
+                        self.report_external();
+                    }
+                    let _ = self.events.send(Event::XmpExportFinished {
+                        job,
+                        report,
+                        cancelled,
+                    });
+                    let _ = self.events.send(if cancelled {
+                        Event::JobCancelled(job)
+                    } else {
+                        Event::JobFinished(job)
+                    });
+                }
                 Inbound::ExternalXmp { seen } => self.handle_external_seen(seen),
                 Inbound::ExternalDone {
                     source_id,
@@ -665,6 +761,7 @@ impl Coordinator {
                 }
                 Ok(Outcome::Applied)
             }
+            Command::ExportXmp { scope, options } => self.start_export(scope, options),
             Command::RemoveSource { source_id } => self.start_remove(source_id),
             Command::Import {
                 source_root,
@@ -2605,6 +2702,210 @@ impl Coordinator {
             decision: answer_rx,
         });
         Ok(Outcome::IndexStarted { job })
+    }
+
+    /// Starts an XMP export (`Command::ExportXmp`, D-024): resolves the photos of the scope and hands them
+    /// to the job that writes the files.
+    fn start_export(&mut self, scope: XmpScope, options: XmpExportOptions) -> Result<Outcome> {
+        let mut photos: Vec<ExportPhoto> = Vec::new();
+        match scope {
+            XmpScope::Photos(ids) => {
+                let mut seen = std::collections::HashSet::new();
+                for id in ids.into_iter().filter(|id| seen.insert(*id)) {
+                    if let Ok(Some(row)) = self.catalogue.photo(&id)
+                        && let (Some(source_id), Some(path)) = (row.source_id, row.path)
+                    {
+                        photos.push(ExportPhoto {
+                            photo_id: id,
+                            source_id,
+                            path,
+                        });
+                    }
+                }
+            }
+            XmpScope::Source(source_id) => {
+                self.source_entry(&source_id)?;
+                for (photo_id, path) in self.catalogue.photo_paths(&source_id)? {
+                    photos.push(ExportPhoto {
+                        photo_id,
+                        source_id,
+                        path,
+                    });
+                }
+                photos.sort_by(|a, b| a.path.cmp(&b.path));
+            }
+        }
+        let mut roots = HashMap::new();
+        let mut originals = HashMap::new();
+        for source_id in photos
+            .iter()
+            .map(|p| p.source_id)
+            .collect::<std::collections::HashSet<_>>()
+        {
+            if let Ok(entry) = self.source_entry(&source_id)
+                && let Ok(root) = Self::source_root(&entry)
+            {
+                roots.insert(source_id, root);
+            }
+            originals.insert(
+                source_id,
+                self.catalogue
+                    .photo_paths(&source_id)?
+                    .into_iter()
+                    .map(|(_, path)| path)
+                    .collect::<Vec<_>>(),
+            );
+        }
+        let job = self.spawn_job();
+        let count = photos.len();
+        xmp_export_job::spawn(ExportJob {
+            job,
+            photos,
+            roots,
+            originals,
+            options,
+            events: self.events.clone(),
+            inbound: self.inbound.clone(),
+            cancel: self.jobs[&job].clone(),
+        });
+        Ok(Outcome::XmpExportStarted { job, photos: count })
+    }
+
+    /// The vocabulary and its keyword paths for an export, read again only when the vocabulary file is not
+    /// the one they were read from.
+    fn export_vocabulary(&mut self) -> Arc<ExportVocabulary> {
+        let stat = std::fs::metadata(self.workspace.vocabulary_path())
+            .ok()
+            .map(|m| (m.len(), m.modified().ok()));
+        if let Some(kept) = &self.export_vocabulary
+            && kept.stat == stat
+        {
+            return Arc::clone(kept);
+        }
+        let keywords = self
+            .read_vocabulary()
+            .map(|v| v.keywords)
+            .unwrap_or_default();
+        let paths = auroraw_catalogue::keyword_paths(&keywords);
+        let fresh = Arc::new(ExportVocabulary {
+            stat,
+            keywords,
+            paths,
+        });
+        self.export_vocabulary = Some(Arc::clone(&fresh));
+        fresh
+    }
+
+    /// What to do with one photo's export file (`Inbound::ExportPrepare`, design note 003 §8.1): the
+    /// three-way comparison of what the file holds, what Auroraw last saw in it (the base) and what the
+    /// photo says now; a file another application changed is held back for the review of external
+    /// changes, anything else is merged with the photo's own values.
+    fn prepare_export(
+        &mut self,
+        photo_id: &PhotoId,
+        source_id: &SourceId,
+        path: &str,
+        existing: Option<Box<ExportExisting>>,
+        options: &XmpExportOptions,
+    ) -> ExportDecision {
+        let Ok((photo, _)) = self.read_photo(photo_id) else {
+            return ExportDecision::Failed("the photo is no longer in the workspace".into());
+        };
+        let vocabulary = self.export_vocabulary();
+        let (vocabulary, key_paths) = (&vocabulary.keywords, &vocabulary.paths);
+        let keywords = exported_keywords(&photo.meta, vocabulary, key_paths);
+        let view = ExportView {
+            meta: &photo.meta,
+            keywords: &keywords,
+            rejected_as_minus_one: options.rejected_as_minus_one,
+        };
+        let Some(existing) = existing else {
+            let mut xmp = build(&view);
+            stamp_metadata_date(&mut xmp, &Timestamp::now().to_string());
+            return ExportDecision::Write(xmp.to_bytes());
+        };
+        let parsed = match (&existing.parsed, options.existing) {
+            (Some(parsed), XmpExisting::Merge) => parsed,
+            // Replace (or a file that is not XMP, which only Replace gets here): the old file is kept
+            // under `removed/` first, never deleted, and a new one takes its place.
+            _ => {
+                let kept = std::path::Path::new("external-xmp")
+                    .join(source_id.to_string())
+                    .join(path);
+                return match self.workspace.keep_recoverably(&kept, &existing.bytes) {
+                    Ok(_) => {
+                        let mut xmp = build(&view);
+                        stamp_metadata_date(&mut xmp, &Timestamp::now().to_string());
+                        ExportDecision::Write(xmp.to_bytes())
+                    }
+                    Err(e) => ExportDecision::Failed(format!(
+                        "the existing file could not be kept before replacing it: {e}"
+                    )),
+                };
+            }
+        };
+        let (xmp, file) = parsed;
+        let tracked = self
+            .catalogue
+            .external_of(photo_id)
+            .ok()
+            .flatten()
+            .filter(|row| row.path == path);
+        // A change nobody has answered yet stays for its review: whatever it turns out to be, writing
+        // over it now would answer it.
+        if tracked.as_ref().is_some_and(|row| row.pending.is_some()) {
+            return ExportDecision::HeldBack;
+        }
+        // No base (a rebuilt catalogue, a file never scanned): an empty one, so that what the file has and
+        // Auroraw lacks is offered as the file's, and a field both have differently is a conflict.
+        let base = tracked
+            .as_ref()
+            .map(|row| row.base.clone())
+            .unwrap_or_default();
+        if !merge(Some(&base), file, &mine_of(&photo.meta, key_paths)).is_empty() {
+            if tracked.is_none() {
+                let _ = self.catalogue.set_external_base(
+                    photo_id,
+                    path,
+                    ExternalStat::default(),
+                    &Fields::default(),
+                );
+            }
+            let _ = self.catalogue.set_external_pending(
+                photo_id,
+                &ExternalPending {
+                    stat: existing.stat,
+                    file: file.clone(),
+                },
+            );
+            return ExportDecision::HeldBack;
+        }
+        let mut merged = xmp.clone();
+        merge_into(&mut merged, &view);
+        // Already what would be written, to the letter or in substance (a file another application wrote
+        // in its own layout, with nothing of ours to change, is not rewritten in ours): the file is what
+        // Auroraw has seen, whatever the base said.
+        if merged == *xmp || merged.to_bytes() == existing.bytes {
+            let _ = self
+                .catalogue
+                .set_external_base(photo_id, path, existing.stat, file);
+            return ExportDecision::UpToDate;
+        }
+        // A file Auroraw did not write is rewritten in its canonical form (comments, padding and layout go):
+        // the first time, the bytes are kept under `removed/`, as Replace keeps them, so that nothing of
+        // another application's file is lost if that form turns out to drop something.
+        if xmp.get(auroraw_format::xmp::ns::AUR, "Export").is_none() {
+            let kept = std::path::Path::new("external-xmp")
+                .join(source_id.to_string())
+                .join(path);
+            if let Err(e) = self.workspace.keep_recoverably(&kept, &existing.bytes) {
+                return ExportDecision::Failed(format!(
+                    "the existing file could not be kept before it was rewritten: {e}"
+                ));
+            }
+        }
+        stamp_metadata_date(&mut merged, &Timestamp::now().to_string());
+        ExportDecision::Write(merged.to_bytes())
     }
 
     /// Starts taking a source out (`Command::RemoveSource`).

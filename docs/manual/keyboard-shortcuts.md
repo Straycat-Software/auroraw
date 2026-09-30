@@ -11,6 +11,7 @@ The keys of the grid and of the image view apply to the selected photos, or to t
 | `Ctrl+O` | Open workspace |
 | `Ctrl+,` | Settings |
 | `Ctrl+I` | Import |
+| `Ctrl+Shift+E` | Export XMP files… |
 | `Ctrl+Q` | Quit |
 | `F1` | About |
 | `Ctrl+Z` | Undo |

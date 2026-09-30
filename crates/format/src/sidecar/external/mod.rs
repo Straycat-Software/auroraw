@@ -13,4 +13,4 @@ mod reader;
 
 pub use fields::{Fields, keyword_key, normalise_path};
 pub use merge::{Conflict, Field, FieldChange, KeywordMerge, Merge, merge};
-pub use reader::{ExternalError, MAX_BYTES, read};
+pub use reader::{ExternalError, MAX_BYTES, OwnExtras, own_extras, read};

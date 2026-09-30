@@ -125,6 +125,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     command("file.open-workspace", "Open workspace", "Ctrl+O", true),
     command("file.settings", "Settings", "Ctrl+,", true),
     command("file.import", "Import", "Ctrl+I", true),
+    command("file.export-xmp", "Export XMP files", "Ctrl+Shift+E", true),
     command("file.quit", "Quit", "Ctrl+Q", true),
     command("edit.undo", "Undo", "Ctrl+Z", true),
     command("edit.redo", "Redo", "Ctrl+Y", true),
@@ -179,6 +180,7 @@ mod tests {
             "edit.duplicates" => "\"Ctrl+D\"",
             "file.settings" => "\"Ctrl+,\"",
             "file.import" => "\"Ctrl+I\"",
+            "file.export-xmp" => "\"Ctrl+Shift+E\"",
             other => panic!("{other} has no shortcut spelled in the test yet"),
         }
     }

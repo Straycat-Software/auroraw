@@ -223,6 +223,13 @@ QtObject {
         enabled: root.host.inWorkspace && !root.host.dialogOpen
         onTriggered: root.host.showDuplicates()
     }
+    readonly property Action exportXmp: Action {
+        property string commandId: "file.export-xmp"
+        text: qsTr("Export XMP files…")
+        shortcut: "Ctrl+Shift+E"
+        enabled: root.host.inWorkspace && !root.host.dialogOpen
+        onTriggered: root.host.showXmpExport()
+    }
     readonly property Action invertSelection: Action {
         property string commandId: "edit.invert-selection"
         text: qsTr("Invert selection")

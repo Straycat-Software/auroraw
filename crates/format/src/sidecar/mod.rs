@@ -5,6 +5,7 @@
 //! `extra` and written back after the known ones, so nothing is lost. A sidecar whose Auroraw
 //! schema is newer than this version knows is reported as such and never interpreted.
 
+pub mod export;
 pub mod external;
 mod extract;
 mod metadata;
