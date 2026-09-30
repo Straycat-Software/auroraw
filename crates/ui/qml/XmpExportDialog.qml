@@ -61,7 +61,8 @@ AppDialog {
     ButtonGroup { buttons: [stemNaming, fullNaming] }
     ButtonGroup { buttons: [mergeExisting, replaceExisting, skipExisting] }
 
-    function reset() {
+    // (Not `reset`: a Dialog has a `reset` signal, for its Reset button, and Qt 6.8 warns of a function of that name.)
+    function fillForm() {
         dialog.sources.refresh()
         const names = []
         const ids = []
@@ -88,7 +89,7 @@ AppDialog {
         dialog.report = ({})
     }
 
-    onAboutToShow: dialog.reset()
+    onAboutToShow: dialog.fillForm()
 
     // Pressing Export: a Replace asks first, anything else starts.
     function exportPressed() {
