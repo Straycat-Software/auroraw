@@ -130,6 +130,8 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("keywords-add-en", "keywords-add"),
     ("keywords-drag-en", "keywords-drag"),
     ("duplicates-en", "duplicates"),
+    ("xmp-export", "xmp-export"),
+    ("xmp-export-held-back", "xmp-export-held-back"),
     ("metadata-en", "metadata"),
     ("info-en", "info"),
     ("collections-en", "collections"),

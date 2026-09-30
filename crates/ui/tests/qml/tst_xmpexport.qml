@@ -79,6 +79,8 @@ AppTestCase {
     function test_the_tools_menu_has_the_command_and_its_shortcut_opens_the_dialog() {
         verify(app.actions.exportXmp.enabled)
         compare(app.actions.exportXmp.shortcut.toString(), "Ctrl+Shift+E")
+        // (A photo selected, as a person asking for an export has: the form the manual shows.)
+        selectOnly("IMG_0003")
         keyClick(Qt.Key_E, Qt.ControlModifier | Qt.ShiftModifier)
         tryVerify(() => app.xmpExportDialog.visible)
         verify(!app.actions.exportXmp.enabled, "not over a dialog")
