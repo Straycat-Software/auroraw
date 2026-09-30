@@ -188,14 +188,14 @@ Item {
         anchors.right: parent.right
         anchors.top: parent.top
         height: header.implicitHeight + 8
-        color: "#c0000000"
+        color: Theme.scrimStrong
     }
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         height: 34
-        color: "#c0000000"
+        color: Theme.scrimStrong
     }
 
     // The header: which photo, and where it comes in the frames compared.

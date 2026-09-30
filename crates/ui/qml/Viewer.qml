@@ -345,7 +345,7 @@ FocusScope {
         text: qsTr("The original is not available")
         color: Theme.warning
         padding: 6
-        background: Rectangle { color: "#b0000000"; radius: Theme.radiusControl }
+        background: Rectangle { color: Theme.scrimMedium; radius: Theme.radiusControl }
     }
 
     // What the person can do with the mouse: the keys are the way, these are for finding them.
@@ -356,7 +356,7 @@ FocusScope {
         width: tools.implicitWidth + 12
         height: tools.implicitHeight + 8
         radius: Theme.radiusContainer
-        color: "#a0000000"
+        color: Theme.scrimLight
         RowLayout {
             id: tools
             anchors.centerIn: parent
@@ -399,7 +399,7 @@ FocusScope {
                     radius: 7
                     color: view.colour === "" ? "transparent" : Theme.labelColour(view.colour)
                     border.width: 2
-                    border.color: view.colour === "" ? Theme.quiet : "white"
+                    border.color: view.colour === "" ? Theme.quiet : Theme.white
                 }
                 onClicked: {
                     const order = ["", "red", "yellow", "green", "blue", "purple"]
@@ -542,7 +542,7 @@ FocusScope {
         anchors.bottom: strip.visible ? strip.top : parent.bottom
         height: visible ? 30 : 0
         visible: view.showInfo
-        color: "#c0000000"
+        color: Theme.scrimStrong
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 10
@@ -570,7 +570,7 @@ FocusScope {
     Rectangle {
         anchors.fill: strip
         visible: strip.visible
-        color: "#c0000000"
+        color: Theme.scrimStrong
     }
     ListView {
         id: strip

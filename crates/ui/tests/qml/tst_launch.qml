@@ -67,6 +67,7 @@ AppTestCase {
         // What just happened is exactly what the dialog's own answer always does (a plain folder is
         // refused, harmlessly): remembering it is not conditional on it being a real workspace.
         verify(app.notice.indexOf("Cannot open the workspace:") === 0, app.notice)
+        snapshot("notice-bar")
         click(app.noticeBar.dismissButton)
     }
 

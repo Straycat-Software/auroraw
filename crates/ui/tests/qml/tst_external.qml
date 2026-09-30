@@ -64,6 +64,7 @@ AppTestCase {
         edit("IMG_0003", "One", 4)
         tryVerify(() => app.externalBanner.visible)
         compare(app.externalBanner.count, 1)
+        snapshot("external-banner")
 
         click(app.externalBanner.reviewButton)
         tryVerify(() => app.externalDialog.visible)
@@ -93,6 +94,21 @@ AppTestCase {
         // One undo takes it back.
         app.actions.undo.trigger()
         tryVerify(() => app.photos.ratingAt(rowOfPhoto("IMG_0003")) === 0)
+    }
+
+    // D-135 (Patrick: "keep two colours"): the banners under the header have exactly two tones, by what they say.
+    // What the other application changed and a card that was inserted are both news that offers an action, so
+    // they share one; a refusal is the other. (`AppBanner` is the only way to draw one.)
+    function test_the_banners_have_two_tones_and_an_announcement_shares_the_card_banners() {
+        launch(freshMachine())
+        verify(Qt.colorEqual(app.externalBanner.color, app.cardBanner.color), "one tone for news that offers an action")
+        verify(Qt.colorEqual(app.externalBanner.color, Theme.infoGround))
+        verify(Qt.colorEqual(app.externalBanner.border.color, Theme.infoEdge))
+        verify(Qt.colorEqual(app.noticeBar.color, Theme.noticeGround))
+        verify(Qt.colorEqual(app.noticeBar.border.color, Theme.noticeEdge))
+        verify(!Qt.colorEqual(app.noticeBar.color, app.cardBanner.color), "and a refusal has its own")
+        compare(app.noticeBar.border.width, 1)
+        compare(app.externalBanner.border.width, 1)
     }
 
     function test_a_field_changed_on_both_sides_is_a_choice_that_keeps_the_photos_value_by_default() {

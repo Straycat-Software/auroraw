@@ -13,6 +13,7 @@ fn main() {
     let qml = [
         QmlFile::from("qml/Main.qml"),
         QmlFile::from("qml/Theme.qml").singleton(true),
+        QmlFile::from("qml/AppBanner.qml"),
         QmlFile::from("qml/AppButton.qml"),
         QmlFile::from("qml/AppShadow.qml"),
         QmlFile::from("qml/AppTabButton.qml"),

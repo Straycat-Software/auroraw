@@ -8,7 +8,7 @@ import org.auroraw.ui
 // metadata changed by another application", noticed by a scan and waiting for an answer. Review… opens the list
 // where each can be accepted or declined; Ignore declines them all (the files are remembered as they stand, and
 // are reported again only if they change again). Shown whenever something waits, also when a workspace opens.
-Rectangle {
+AppBanner {
     id: banner
     required property var external
     required property var host
@@ -20,9 +20,6 @@ Rectangle {
 
     visible: count > 0
     implicitHeight: visible ? 44 : 0
-    color: "#1e3f4a"
-    border.color: "#307a8a"
-    border.width: 1
 
     RowLayout {
         anchors.fill: parent
@@ -31,7 +28,7 @@ Rectangle {
         Label {
             Layout.fillWidth: true
             text: qsTr("%n photo(s) have metadata changed by another application", "", banner.count)
-            color: "white"
+            color: Theme.white
             elide: Text.ElideRight
         }
         AppButton {
