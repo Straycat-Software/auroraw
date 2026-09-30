@@ -27,6 +27,9 @@ TestCase {
     Component { id: comboComponent; AppComboBox { width: 160; model: ["All", "Picked", "Rejected"]
         property var chosen: []
         onActivated: index => chosen.push(index) } }
+    Component { id: listModelComboComponent; AppComboBox { width: 200; textRole: "name"
+        model: ListModel { ListElement { name: "Alpha" } ListElement { name: "Beta" } } } }
+    Component { id: busyProgressComponent; AppProgressBar { width: 200; indeterminate: true } }
     Component { id: recordComboComponent; AppComboBox { width: 200; model: [{ path: "Animals" }, { path: "Animals / Birds" }]; textRole: "path" } }
 
     function make(component, properties) {
@@ -60,7 +63,7 @@ TestCase {
     function test_a_text_field_takes_typing_and_its_edge_shows_the_focus() {
         const f = make(fieldComponent)
         compare(f.implicitHeight, 28)
-        verify(Qt.colorEqual(f.background.border.color, Theme.surface.border), "not focused: the hairline")
+        verify(Qt.colorEqual(f.background.border.color, Theme.controlEdge), "not focused: the control's edge")
         f.forceActiveFocus()
         keyClick("a"); keyClick("b")
         compare(f.text, "ab")
@@ -178,5 +181,76 @@ TestCase {
         compare(c.implicitWidth, w)
         const narrow = make(comboComponent)
         verify(w >= narrow.implicitWidth, "widest text of sizingTexts")
+    }
+
+    // ---- the review of #24
+
+    function test_a_combo_box_reads_the_rows_of_a_list_model_by_its_text_role() {
+        const c = make(listModelComboComponent)
+        compare(c.displayText, "Alpha")
+        mouseClick(c)
+        tryVerify(() => c.popup.visible)
+        tryVerify(() => c.popup.contentItem.itemAtIndex(1) !== null)
+        compare(c.popup.contentItem.itemAtIndex(1).text, "Beta")
+        c.popup.close()
+    }
+
+    // The WCAG contrast of two colours, from their relative luminance.
+    function luminance(color) {
+        const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+        return 0.2126 * lin(color.r) + 0.7152 * lin(color.g) + 0.0722 * lin(color.b)
+    }
+    function contrast(a, b) {
+        const la = luminance(Qt.color(a)), lb = luminance(Qt.color(b))
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+    }
+
+    function test_the_edge_of_a_control_holds_three_to_one_on_what_it_sits_on() {
+        // WCAG 1.4.11: what identifies a control. The frame's and the well's hairline (`surface.border`) is decoration and
+        // stays fainter; a control with nothing but its edge to show where it is takes `controlEdge`.
+        verify(contrast(Theme.controlEdge, Theme.surface.sunken) >= 3, "on a field's fill")
+        verify(contrast(Theme.controlEdge, Theme.surface.window) >= 3, "on the window")
+        const box = make(boxComponent)
+        verify(Qt.colorEqual(box.indicator.border.color, Theme.controlEdge), "a check box's edge")
+        const field = make(fieldComponent)
+        verify(Qt.colorEqual(field.background.border.color, Theme.controlEdge), "a text field's edge")
+        const area = make(areaComponent)
+        verify(Qt.colorEqual(area.background.border.color, Theme.controlEdge), "a text area's edge")
+        const slider = make(sliderComponent)
+        verify(Qt.colorEqual(slider.background.border.color, Theme.controlEdge), "a slider's groove")
+    }
+
+    // Nothing of what a control draws lies outside it: a view that clips (a list, a scroll view) would cut it.
+    function insideItsIndicator(indicator) {
+        for (let i = 0; i < indicator.children.length; i++) {
+            const child = indicator.children[i]
+            if (child.visible && (child.x < 0 || child.y < 0 || child.x + child.width > indicator.width || child.y + child.height > indicator.height))
+                return false
+        }
+        return true
+    }
+
+    function test_the_keyboard_focus_of_a_check_box_and_a_radio_is_on_their_own_edge_inside_them() {
+        const box = make(boxComponent)
+        box.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => box.visualFocus)
+        compare(box.indicator.border.width, 2)
+        tryVerify(() => Qt.colorEqual(box.indicator.border.color, Theme.accent))   // (it fades in)
+        verify(insideItsIndicator(box.indicator), "a check box's focus is not outside its box")
+        const col = make(radioComponent)
+        col.second.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => col.second.visualFocus)
+        compare(col.second.indicator.border.width, 2)
+        tryVerify(() => Qt.colorEqual(col.second.indicator.border.color, Theme.accent))
+        verify(insideItsIndicator(col.second.indicator), "a radio's focus is not outside its circle")
+    }
+
+    function test_a_progress_bar_that_is_indeterminate_says_so_and_is_not_an_empty_groove() {
+        ignoreWarning(/AppProgressBar: indeterminate is not drawn/)
+        const p = make(busyProgressComponent)
+        const bar = p.contentItem.children[0]
+        verify(bar.visible, "something is drawn")
+        fuzzyCompare(bar.width, p.contentItem.width, 1)
+        compare(bar.opacity, 0.5)
     }
 }

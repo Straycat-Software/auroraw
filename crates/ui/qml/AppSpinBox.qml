@@ -25,7 +25,7 @@ SpinBox {
     background: Rectangle {
         color: Theme.surface.sunken
         border.width: 1
-        border.color: control.activeFocus ? Theme.accent : Theme.surface.border
+        border.color: control.activeFocus ? Theme.accent : Theme.controlEdge
         Behavior on border.color { ColorAnimation { duration: Theme.motion } }
     }
     contentItem: TextInput {

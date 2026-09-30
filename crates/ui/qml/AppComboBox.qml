@@ -41,10 +41,10 @@ ComboBox {
     onFontChanged: sizing.measure()
 
     delegate: AppItemDelegate {
-        required property var modelData
         required property int index
         width: ListView.view ? ListView.view.width : control.width
-        text: control.textRole ? modelData[control.textRole] : modelData
+        // `textAt` follows `textRole` and the model itself: a list of texts, of objects, a ListModel or any item model.
+        text: control.textAt(index)
         highlighted: control.highlightedIndex === index
     }
     indicator: Text {

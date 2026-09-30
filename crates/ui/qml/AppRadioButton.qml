@@ -20,8 +20,9 @@ RadioButton {
         y: control.topPadding + (control.availableHeight - height) / 2
         radius: width / 2
         color: Theme.surface.sunken
-        border.width: 1
-        border.color: control.hovered ? Theme.quiet : Theme.surface.border
+        // Keyboard focus is on the circle's own edge, inside it, for the reason a check box's is (AppCheckBox).
+        border.width: control.visualFocus ? 2 : 1
+        border.color: control.visualFocus ? Theme.accent : (control.hovered ? Theme.quiet : Theme.controlEdge)
         Behavior on border.color { ColorAnimation { duration: Theme.motion } }
         Rectangle {
             anchors.centerIn: parent
@@ -30,15 +31,6 @@ RadioButton {
             radius: 3.5
             color: Theme.surface.text
             visible: control.checked
-        }
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -3
-            radius: width / 2
-            color: "transparent"
-            border.width: 2
-            border.color: Theme.accent
-            visible: control.visualFocus
         }
     }
     contentItem: Label {

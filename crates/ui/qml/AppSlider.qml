@@ -20,7 +20,7 @@ Slider {
         radius: 2
         color: Theme.surface.sunken
         border.width: 1
-        border.color: Theme.surface.border
+        border.color: Theme.controlEdge
         Rectangle {
             width: control.visualPosition * parent.width
             height: parent.height
