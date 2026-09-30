@@ -7,13 +7,21 @@
 //! (architecture §6.6). Replaying a request that was in flight is the render service's job, which
 //! comes with render requests; here a job that meets a lost device simply reports it.
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::cell::Cell;
+use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 
 use crate::adapter::{AdapterChoice, AdapterInfo, ChooseError, choose, enumerate};
-use crate::gpu::Gpu;
+use crate::gpu::{EngineLimits, Gpu};
+
+thread_local! {
+    /// Whether this thread is the GPU thread, so that a job calling back into the engine is
+    /// refused instead of waiting for the thread it is running on.
+    static ON_GPU_THREAD: Cell<bool> = const { Cell::new(false) };
+}
 
 /// How the engine is set up: the setting of architecture §6.6.
 #[derive(Debug, Clone, Default)]
@@ -50,6 +58,13 @@ pub(crate) enum RunError {
     /// The GPU thread has stopped.
     #[error("the GPU thread has stopped")]
     ThreadGone,
+    /// The job panicked. The GPU thread survives it and re-creates the device before the next job,
+    /// since the panic may have left the device's error scopes unbalanced.
+    #[error("the job panicked: {0}")]
+    Panicked(String),
+    /// The job called the engine from the GPU thread, which would wait for itself.
+    #[error("a job cannot run another job: it would wait for the GPU thread it is running on")]
+    Reentrant,
 }
 
 type Job = Box<dyn FnOnce(Result<&Gpu, RunError>) + Send>;
@@ -57,8 +72,12 @@ type Job = Box<dyn FnOnce(Result<&Gpu, RunError>) + Send>;
 /// What the handle and the thread both see.
 struct Shared {
     adapter: Mutex<AdapterInfo>,
+    /// The limits the current device was created with.
+    limits: Mutex<EngineLimits>,
     /// How many times the device was re-created since the engine started.
     generation: AtomicU64,
+    /// Set when a job panicked: the next job gets a fresh device.
+    tainted: AtomicBool,
 }
 
 /// The image engine's handle. It owns the GPU thread and ends it when dropped.
@@ -104,20 +123,44 @@ impl Pipeline {
             .clone()
     }
 
-    /// How many times the device has been re-created after a loss since the engine started; `0`
-    /// means never.
+    /// The limits the engine runs with on this adapter (its floor, [`EngineLimits::FLOOR`]), which a
+    /// stage may rely on.
+    pub fn limits(&self) -> EngineLimits {
+        *self
+            .shared
+            .limits
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// How many times the device has been re-created (after a loss, or after a job panicked) since
+    /// the engine started; `0` means never.
     pub fn generation(&self) -> u64 {
         self.shared.generation.load(Ordering::SeqCst)
     }
 
     /// Runs `f` on the GPU thread with the device and waits for its result.
+    ///
+    /// A panic in `f` comes back as [`RunError::Panicked`] and the GPU thread carries on. Calling
+    /// this from inside a job is refused ([`RunError::Reentrant`]); so is dropping the last handle
+    /// there, which would ask the thread to join itself, and the thread is left to end on its own.
     pub(crate) fn run<T: Send + 'static>(
         &self,
         f: impl FnOnce(&Gpu) -> T + Send + 'static,
     ) -> Result<T, RunError> {
+        if ON_GPU_THREAD.get() {
+            return Err(RunError::Reentrant);
+        }
         let (reply, result) = mpsc::channel();
+        let shared = Arc::clone(&self.shared);
         let job: Job = Box::new(move |gpu| {
-            let _ = reply.send(gpu.map(f));
+            let outcome = gpu.and_then(|gpu| {
+                catch_unwind(AssertUnwindSafe(|| f(gpu))).map_err(|payload| {
+                    shared.tainted.store(true, Ordering::SeqCst);
+                    RunError::Panicked(panic_message(payload.as_ref()))
+                })
+            });
+            let _ = reply.send(outcome);
         });
         self.jobs
             .as_ref()
@@ -133,9 +176,23 @@ impl Drop for Pipeline {
         // Closing the channel ends the thread's loop.
         self.jobs = None;
         if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+            // The last handle dropped by a job would join the thread it is on: let it end alone.
+            // (Not exercised by a test: `run` blocks, so no job can hold the last handle yet; the
+            // render service's fire-and-forget requests will.)
+            if !ON_GPU_THREAD.get() {
+                let _ = thread.join();
+            }
         }
     }
+}
+
+/// The text of a panic, for [`RunError::Panicked`].
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<&str>()
+        .map(ToString::to_string)
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "without a message".to_string())
 }
 
 /// Creates a device on the adapter `choice` names.
@@ -163,24 +220,29 @@ fn run_thread(
             return;
         }
     };
+    ON_GPU_THREAD.set(true);
     let shared = Arc::new(Shared {
         adapter: Mutex::new(gpu.info.clone()),
+        limits: Mutex::new(gpu.limits),
         generation: AtomicU64::new(0),
+        tainted: AtomicBool::new(false),
     });
     let _ = ready.send(Ok(Arc::clone(&shared)));
 
     // Why the last attempt to replace a lost device failed, if it did.
     let mut cannot_recreate: Option<String> = None;
     while let Ok(job) = inbox.recv() {
-        if gpu.is_lost() || cannot_recreate.is_some() {
+        if gpu.is_lost() || cannot_recreate.is_some() || shared.tainted.load(Ordering::SeqCst) {
             match create(choice) {
                 Ok(fresh) => {
                     *shared
                         .adapter
                         .lock()
                         .unwrap_or_else(PoisonError::into_inner) = fresh.info.clone();
+                    *shared.limits.lock().unwrap_or_else(PoisonError::into_inner) = fresh.limits;
                     gpu = fresh;
                     shared.generation.fetch_add(1, Ordering::SeqCst);
+                    shared.tainted.store(false, Ordering::SeqCst);
                     cannot_recreate = None;
                 }
                 Err(error) => cannot_recreate = Some(error.to_string()),

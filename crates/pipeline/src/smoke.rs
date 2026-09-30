@@ -14,24 +14,46 @@ use crate::adapter::AdapterInfo;
 use crate::gpu::{Gpu, GpuError};
 use crate::thread::{Pipeline, RunError};
 
-/// The tolerance on the final 8-bit output: at most this many levels of difference in any
-/// channel (testing strategy §4, item 2)...
-pub const MAX_LEVEL_DIFFERENCE: u32 = 1;
-/// ...and no more than this fraction of the channels may differ by more than one level. With
-/// [`MAX_LEVEL_DIFFERENCE`] of one it can only be zero; it is the stated bound the neighbourhood
-/// operations will be compared with when they get their looser tolerance.
-pub const MAX_FRACTION_OVER_ONE_LEVEL: f64 = 0.001;
+/// How far a shader's 8-bit output may be from its CPU reference (testing strategy §4, item 2).
+///
+/// It is set **per shader, from measurement**, as §4.2 asks, not once for all: a neighbourhood
+/// operation with 0.05 % of its channels two levels off must not fail a rule written for a probe.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Tolerance {
+    /// The largest difference allowed in any channel, in 8-bit levels; `None` only reports it.
+    pub max_level_difference: Option<u32>,
+    /// The largest fraction of channels allowed to differ by more than one level.
+    pub max_fraction_over_one_level: f64,
+}
+
+impl Tolerance {
+    /// The rule of testing strategy §4.2 for a stage's final output: one level on at least 99.9 %
+    /// of the channels, and the largest difference reported, not gated.
+    pub const OUTPUT: Tolerance = Tolerance {
+        max_level_difference: None,
+        max_fraction_over_one_level: 0.001,
+    };
+    /// The probe's: no channel more than one level off, as on every adapter measured so far.
+    /// (With a maximum of one level nothing can be over one level, so only that bound can fail.)
+    pub const PROBE: Tolerance = Tolerance {
+        max_level_difference: Some(1),
+        max_fraction_over_one_level: 0.001,
+    };
+}
 
 /// A shader of the engine, as WGSL text.
 pub(crate) struct Shader {
     pub(crate) name: &'static str,
     pub(crate) source: &'static str,
+    /// What it may differ from its reference by, from measurement.
+    pub(crate) tolerance: Tolerance,
 }
 
 /// Every shader of the engine. A `.wgsl` file in `src/shaders/` that is not here fails a test.
 pub(crate) const SHADERS: &[Shader] = &[Shader {
     name: "probe",
     source: include_str!("shaders/probe.wgsl"),
+    tolerance: Tolerance::PROBE,
 }];
 
 /// What running one shader against its reference showed.
@@ -47,13 +69,17 @@ pub struct ShaderReport {
     pub max_level_difference: u32,
     /// The fraction of channels that differ by more than one level.
     pub fraction_over_one_level: f64,
+    /// The tolerance it was held to.
+    pub tolerance: Tolerance,
 }
 
 impl ShaderReport {
     /// Whether the shader agrees with its reference within the stated tolerance.
     pub fn passed(&self) -> bool {
-        self.max_level_difference <= MAX_LEVEL_DIFFERENCE
-            && self.fraction_over_one_level <= MAX_FRACTION_OVER_ONE_LEVEL
+        self.tolerance
+            .max_level_difference
+            .is_none_or(|max| self.max_level_difference <= max)
+            && self.fraction_over_one_level <= self.tolerance.max_fraction_over_one_level
     }
 }
 
@@ -290,6 +316,7 @@ mod probe {
             channels,
             max_level_difference: max,
             fraction_over_one_level: over as f64 / channels as f64,
+            tolerance: shader.tolerance,
         })
     }
 }

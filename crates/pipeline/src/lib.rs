@@ -22,11 +22,11 @@ mod smoke;
 mod thread;
 
 pub use adapter::{
-    AdapterChoice, AdapterInfo, AdapterKind, Backend, ChooseError, choose, list_adapters,
+    AdapterChoice, AdapterInfo, AdapterKind, Backend, ChooseError, choose, choose_for,
+    list_adapters,
 };
-pub use smoke::{
-    MAX_FRACTION_OVER_ONE_LEVEL, MAX_LEVEL_DIFFERENCE, ShaderReport, SmokeError, SmokeReport,
-};
+pub use gpu::EngineLimits;
+pub use smoke::{ShaderReport, SmokeError, SmokeReport, Tolerance};
 pub use thread::{Config, OpenError, Pipeline};
 
 #[cfg(test)]

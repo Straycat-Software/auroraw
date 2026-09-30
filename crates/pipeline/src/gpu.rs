@@ -11,11 +11,55 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use crate::adapter::AdapterInfo;
 
+/// The limits the engine runs with: what a stage may rely on, on every adapter.
+///
+/// The engine asks the graphics API for **these**, not for the most the adapter can do: a stage that
+/// uses a 1 GiB binding would pass on a 4 GB card and fail on the smallest adapter we support
+/// (llvmpipe: 128 MiB, architecture §6.3: banding respects the binding limit). With the floor
+/// requested, the smoke test on the software adapters is what tells us a stage has outgrown it.
+///
+/// They are WebGPU's own defaults, which every adapter that runs wgpu provides. A stage that needs
+/// more raises the one limit it needs, here, with its reason in the pull request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EngineLimits {
+    /// The largest buffer the engine creates, in bytes.
+    pub max_buffer_size: u64,
+    /// The largest range of a storage buffer a shader binds, in bytes: what decides the height of
+    /// a band.
+    pub max_storage_binding_size: u64,
+}
+
+impl EngineLimits {
+    /// The floor every adapter is asked for: 256 MiB per buffer, 128 MiB per storage binding.
+    pub const FLOOR: EngineLimits = EngineLimits {
+        max_buffer_size: 256 << 20,
+        max_storage_binding_size: 128 << 20,
+    };
+
+    fn required(self) -> wgpu::Limits {
+        wgpu::Limits {
+            max_buffer_size: self.max_buffer_size,
+            max_storage_buffer_binding_size: self.max_storage_binding_size,
+            ..wgpu::Limits::default()
+        }
+    }
+
+    fn of(device: &wgpu::Device) -> EngineLimits {
+        let limits = device.limits();
+        EngineLimits {
+            max_buffer_size: limits.max_buffer_size,
+            max_storage_binding_size: limits.max_storage_buffer_binding_size,
+        }
+    }
+}
+
 /// A device on one adapter, with the queue and what is known of the adapter.
 pub(crate) struct Gpu {
     pub(crate) device: wgpu::Device,
     pub(crate) queue: wgpu::Queue,
     pub(crate) info: AdapterInfo,
+    /// The limits the device was created with.
+    pub(crate) limits: EngineLimits,
     lost: Arc<LostState>,
 }
 
@@ -32,8 +76,8 @@ pub(crate) enum GpuError {
     /// The adapter has no memory left for this allocation: shrink the work and retry.
     #[error("the graphics memory is exhausted (asked for {size} bytes)")]
     OutOfMemory { size: u64 },
-    /// The allocation is larger than the adapter can ever create.
-    #[error("{size} bytes exceed the largest buffer this adapter can create ({max})")]
+    /// The allocation is larger than the engine's buffer limit.
+    #[error("{size} bytes exceed the largest buffer the engine creates ({max})")]
     TooLarge { size: u64, max: u64 },
     /// The graphics API refused the call for a reason of its own.
     #[error("the graphics API refused the call: {0}")]
@@ -44,11 +88,12 @@ pub(crate) enum GpuError {
 }
 
 impl Gpu {
-    /// Requests a device on `adapter`, with the adapter's own limits, and watches for its loss.
+    /// Requests a device on `adapter` with the engine's floor limits ([`EngineLimits::FLOOR`]), and
+    /// watches for its loss.
     pub(crate) fn create(adapter: &wgpu::Adapter, info: AdapterInfo) -> Result<Gpu, String> {
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("auroraw pipeline"),
-            required_limits: adapter.limits(),
+            required_limits: EngineLimits::FLOOR.required(),
             ..Default::default()
         }))
         .map_err(|e| e.to_string())?;
@@ -61,10 +106,12 @@ impl Gpu {
                 .unwrap_or_else(PoisonError::into_inner) = Some(format!("{reason:?}: {message}"));
             watcher.lost.store(true, Ordering::SeqCst);
         });
+        let limits = EngineLimits::of(&device);
         Ok(Gpu {
             device,
             queue,
             info,
+            limits,
             lost,
         })
     }
@@ -108,7 +155,7 @@ impl Gpu {
         size: u64,
         usage: wgpu::BufferUsages,
     ) -> Result<wgpu::Buffer, GpuError> {
-        let max = self.info.max_buffer_size;
+        let max = self.limits.max_buffer_size;
         if size > max {
             return Err(GpuError::TooLarge { size, max });
         }

@@ -30,12 +30,10 @@ const ALLOWED: &[(&str, &[&str])] = &[
         &["auroraw-plugin-api", "auroraw-types", "auroraw-format"],
     ),
     ("auroraw-imaging", &["auroraw-types"]),
-    // The image engine. `plugin-api` is for `RawImage` and the parameter types (design note 005 §2.2,
-    // accepted in #34, D-140 to come); `imaging` for its colour and decoding helpers.
-    (
-        "auroraw-pipeline",
-        &["auroraw-imaging", "auroraw-plugin-api", "auroraw-types"],
-    ),
+    // The image engine. Its edges are added when the code first needs them (D-140 writes the ones
+    // design note 005 §2.2 names: `plugin-api` for `RawImage`, `imaging`): an allowed edge that is
+    // unused is a hole in this check, which only refuses what is not in the table.
+    ("auroraw-pipeline", &[]),
     (
         "auroraw-import",
         &[

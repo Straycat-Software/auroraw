@@ -7,7 +7,8 @@
 //! (continuous integration), where they fail.
 
 use auroraw_pipeline::{
-    AdapterChoice, AdapterKind, ChooseError, Config, OpenError, Pipeline, list_adapters,
+    AdapterChoice, AdapterKind, ChooseError, Config, EngineLimits, OpenError, Pipeline,
+    list_adapters,
 };
 
 /// Whether the machine has any adapter; fails instead of skipping when one is required.
@@ -34,6 +35,9 @@ fn the_smoke_test_passes_on_every_adapter() {
         })
         .unwrap_or_else(|e| panic!("cannot open {}: {e}", info.describe()));
         assert_eq!(engine.adapter().name, info.name);
+        // Every adapter gives the engine's floor, including the smallest (llvmpipe's 128 MiB
+        // binding): what a stage may rely on.
+        assert_eq!(engine.limits(), EngineLimits::FLOOR, "{}", info.describe());
         let report = engine
             .smoke_test()
             .unwrap_or_else(|e| panic!("smoke test on {}: {e}", info.describe()));

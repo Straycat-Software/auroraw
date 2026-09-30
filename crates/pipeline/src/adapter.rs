@@ -22,6 +22,32 @@ pub enum Backend {
     Dx12,
 }
 
+impl Backend {
+    /// The graphics API of this platform (architecture §12: Vulkan on Linux, DirectX 12 on Windows,
+    /// Metal on macOS). When a GPU is reachable through several APIs, this is the one used, so that
+    /// the same photo does not render through different drivers depending on the order the APIs
+    /// list adapters in.
+    pub const fn native() -> Backend {
+        if cfg!(target_os = "windows") {
+            Backend::Dx12
+        } else if cfg!(target_os = "macos") {
+            Backend::Metal
+        } else {
+            Backend::Vulkan
+        }
+    }
+
+    /// The words [`AdapterChoice::Named`] finds this back end by: the ones a person types (`dx12`)
+    /// and the ones it is displayed with (`DirectX 12`).
+    const fn keywords(self) -> &'static str {
+        match self {
+            Backend::Vulkan => "vulkan",
+            Backend::Metal => "metal",
+            Backend::Dx12 => "dx12 directx 12",
+        }
+    }
+}
+
 impl fmt::Display for Backend {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
@@ -82,9 +108,17 @@ pub struct AdapterInfo {
 }
 
 impl AdapterInfo {
-    /// The text [`AdapterChoice::Named`] matches against: the back end and the name, lowercase.
+    /// The text [`AdapterChoice::Named`] matches against: the back end's keywords and the name,
+    /// lowercase. `dx12` and `directx 12` both find a DirectX 12 adapter.
     fn searchable(&self) -> String {
-        format!("{} {}", self.backend, self.name).to_lowercase()
+        format!("{} {}", self.backend.keywords(), self.name).to_lowercase()
+    }
+
+    /// Where this adapter stands when several could do, on a platform whose own API is `native`:
+    /// the kind first (a discrete card over an integrated one, whatever the API), then the native
+    /// API over the others. Lower is better.
+    fn preference(&self, native: Backend) -> (u8, u8) {
+        (self.kind.rank(), u8::from(self.backend != native))
     }
 
     /// A short description for logs and reports, such as `NVIDIA GeForce GTX 1650 SUPER (Vulkan, discrete)`.
@@ -109,8 +143,8 @@ pub enum AdapterChoice {
     /// The software adapter, for tests that must not depend on the machine's GPU (continuous
     /// integration) and for a person who wants it.
     Software,
-    /// The first adapter whose `"<back end> <name>"` contains every word given, case-insensitively:
-    /// `"vulkan nvidia"`, `"dx12"`, `"llvmpipe"`.
+    /// The best adapter (in [`AdapterChoice::Best`]'s order) whose back end and name contain every
+    /// word given, case-insensitively: `"vulkan nvidia"`, `"dx12"` or `"directx 12"`, `"llvmpipe"`.
     Named(String),
 }
 
@@ -130,29 +164,47 @@ pub enum ChooseError {
     },
 }
 
-/// Picks the adapter to use among `adapters`, which are in [`list_adapters`]'s order (best first),
-/// and returns its index.
+/// Picks the adapter to use among `adapters` and returns its index, for this platform's own API
+/// ([`Backend::native`]).
 pub fn choose(adapters: &[AdapterInfo], choice: &AdapterChoice) -> Result<usize, ChooseError> {
+    choose_for(adapters, choice, Backend::native())
+}
+
+/// [`choose`] for a platform whose own graphics API is `native`, so that the tie-break between
+/// the APIs that reach one GPU is stated and tested on every platform, not only the one running.
+///
+/// Among the adapters the choice allows, the best by [`AdapterInfo::preference`] wins, and of two
+/// equal ones the first in `adapters`: the result does not depend on the order of the list, except
+/// to break a true tie.
+pub fn choose_for(
+    adapters: &[AdapterInfo],
+    choice: &AdapterChoice,
+    native: Backend,
+) -> Result<usize, ChooseError> {
     if adapters.is_empty() {
         return Err(ChooseError::NoAdapter);
     }
-    let found = match choice {
-        AdapterChoice::Best => Some(0),
-        AdapterChoice::Software => adapters
-            .iter()
-            .position(|a| a.kind == AdapterKind::Software),
-        AdapterChoice::Named(words) => {
-            let words: Vec<String> = words
-                .to_lowercase()
-                .split_whitespace()
-                .map(String::from)
-                .collect();
-            adapters.iter().position(|a| {
+    let words: Vec<String> = match choice {
+        AdapterChoice::Named(words) => words
+            .to_lowercase()
+            .split_whitespace()
+            .map(String::from)
+            .collect(),
+        _ => Vec::new(),
+    };
+    let found = adapters
+        .iter()
+        .enumerate()
+        .filter(|(_, a)| match choice {
+            AdapterChoice::Best => true,
+            AdapterChoice::Software => a.kind == AdapterKind::Software,
+            AdapterChoice::Named(_) => {
                 let text = a.searchable();
                 !words.is_empty() && words.iter().all(|w| text.contains(w))
-            })
-        }
-    };
+            }
+        })
+        .min_by_key(|(index, a)| (a.preference(native), *index))
+        .map(|(index, _)| index);
     found.ok_or_else(|| ChooseError::NoMatch {
         wanted: match choice {
             AdapterChoice::Software => "software".to_string(),
@@ -168,7 +220,8 @@ pub fn choose(adapters: &[AdapterInfo], choice: &AdapterChoice) -> Result<usize,
 }
 
 /// The adapter descriptions, best first: discrete, integrated, unclassified, virtual, software;
-/// within a kind, in the order the graphics API lists them.
+/// within a kind, this platform's own API first ([`Backend::native`]), then the order the graphics
+/// API lists them in.
 pub fn list_adapters() -> Vec<AdapterInfo> {
     enumerate().into_iter().map(|(_, info)| info).collect()
 }
@@ -195,8 +248,8 @@ pub(crate) fn enumerate() -> Vec<(wgpu::Adapter, AdapterInfo)> {
                 Some((adapter, info))
             })
             .collect();
-    // A stable sort: a kind's adapters keep the order the API gave them.
-    adapters.sort_by_key(|(_, info)| info.kind.rank());
+    // A stable sort: adapters that tie keep the order the API gave them.
+    adapters.sort_by_key(|(_, info)| info.preference(Backend::native()));
     adapters
 }
 
@@ -258,6 +311,140 @@ mod tests {
                 AdapterKind::Software,
             ),
         ]
+    }
+
+    /// A Windows machine: one discrete card reached through both DirectX 12 and Vulkan, an
+    /// integrated GPU, and WARP. The Vulkan listing comes first, as it can.
+    fn windows_desk() -> Vec<AdapterInfo> {
+        vec![
+            adapter(
+                "NVIDIA GeForce GTX 1650 SUPER",
+                Backend::Vulkan,
+                AdapterKind::Discrete,
+            ),
+            adapter(
+                "NVIDIA GeForce GTX 1650 SUPER",
+                Backend::Dx12,
+                AdapterKind::Discrete,
+            ),
+            adapter(
+                "Intel(R) UHD Graphics 630",
+                Backend::Dx12,
+                AdapterKind::Integrated,
+            ),
+            adapter(
+                "Microsoft Basic Render Driver",
+                Backend::Dx12,
+                AdapterKind::Software,
+            ),
+        ]
+    }
+
+    #[test]
+    fn dx12_and_directx_12_both_find_a_directx_adapter() {
+        let adapters = windows_desk();
+        for words in [
+            "dx12",
+            "DX12 nvidia",
+            "directx 12",
+            "DirectX 12 intel",
+            "dx12 warp",
+        ] {
+            let found = choose_for(
+                &adapters,
+                &AdapterChoice::Named(words.into()),
+                Backend::Dx12,
+            );
+            match words {
+                "dx12 warp" => assert!(found.is_err(), "WARP is called Basic Render Driver"),
+                _ => assert!(
+                    found.is_ok_and(|i| adapters[i].backend == Backend::Dx12),
+                    "{words:?} must find a DirectX 12 adapter"
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn vulkan_and_metal_are_found_by_their_names() {
+        let adapters = windows_desk();
+        assert_eq!(
+            choose_for(
+                &adapters,
+                &AdapterChoice::Named("vulkan".into()),
+                Backend::Dx12
+            ),
+            Ok(0)
+        );
+        let mac = vec![adapter("Apple M2", Backend::Metal, AdapterKind::Integrated)];
+        assert_eq!(
+            choose_for(
+                &mac,
+                &AdapterChoice::Named("metal apple".into()),
+                Backend::Metal
+            ),
+            Ok(0)
+        );
+    }
+
+    #[test]
+    fn a_gpu_listed_under_two_apis_is_taken_through_the_platforms_own() {
+        let windows = windows_desk();
+        // DirectX 12 on Windows, although Vulkan is listed first...
+        assert_eq!(
+            choose_for(&windows, &AdapterChoice::Best, Backend::Dx12),
+            Ok(1)
+        );
+        // ...and whichever order the API lists them in.
+        let mut reversed = windows.clone();
+        reversed.swap(0, 1);
+        assert_eq!(
+            choose_for(&reversed, &AdapterChoice::Best, Backend::Dx12),
+            Ok(0)
+        );
+        assert_eq!(reversed[0].backend, Backend::Dx12);
+        // On Linux the same two entries give Vulkan.
+        assert_eq!(
+            choose_for(&windows, &AdapterChoice::Best, Backend::Vulkan),
+            Ok(0)
+        );
+    }
+
+    #[test]
+    fn the_kind_outranks_the_platforms_own_api() {
+        // A discrete card through Vulkan beats an integrated GPU through the native DirectX 12.
+        let adapters = vec![
+            adapter("Intel UHD", Backend::Dx12, AdapterKind::Integrated),
+            adapter("NVIDIA", Backend::Vulkan, AdapterKind::Discrete),
+        ];
+        assert_eq!(
+            choose_for(&adapters, &AdapterChoice::Best, Backend::Dx12),
+            Ok(1)
+        );
+    }
+
+    #[test]
+    fn the_choice_does_not_depend_on_the_order_of_the_list_except_to_break_a_tie() {
+        let forward = windows_desk();
+        let mut backward = forward.clone();
+        backward.reverse();
+        let pick = |list: &[AdapterInfo]| {
+            let i = choose_for(list, &AdapterChoice::Best, Backend::Dx12).unwrap();
+            (list[i].name.clone(), list[i].backend)
+        };
+        assert_eq!(pick(&forward), pick(&backward));
+    }
+
+    #[test]
+    fn the_native_backend_is_the_one_of_the_platform() {
+        let native = Backend::native();
+        if cfg!(target_os = "windows") {
+            assert_eq!(native, Backend::Dx12);
+        } else if cfg!(target_os = "macos") {
+            assert_eq!(native, Backend::Metal);
+        } else {
+            assert_eq!(native, Backend::Vulkan);
+        }
     }
 
     #[test]
