@@ -379,7 +379,13 @@ ApplicationWindow {
     Duplicates { id: duplicates }
     ExternalChangesDialog { id: externalDialog; external: externalChanges; hostWindow: window }
     ExternalChanges { id: externalChanges }
-    XmpExportDialog { id: xmpExportDialog; exporter: xmpExport; sources: sourceList; photoGrid: photoGrid }
+    XmpExportDialog {
+        id: xmpExportDialog
+        exporter: xmpExport
+        sources: sourceList
+        photoGrid: photoGrid
+        onReviewRequested: externalDialog.open()
+    }
     XmpExport { id: xmpExport }
 
     Popup {

@@ -67,8 +67,9 @@ keywords, the copyright and other information fields, and the capture data. Noth
 - **Keywords marked "Do not export"** (and the keywords below one) stay out of the files.
 
 **A file another application changed since Auroraw last looked is not overwritten.** It is *held back*: the
-banner *N photos have metadata changed by another application* appears, and **Review…** lets you take the change or
-decline it, as in the previous section. Then export again. A file that is not XMP is never touched, unless you chose
+banner *N photos have metadata changed by another application* appears, and the result offers **Review changes…**
+(or **Review…** on the banner), which lets you take the change or decline it, as in the previous section. Then export
+again. A file that is not XMP is never touched, unless you chose
 *Replace it*. A source that cannot be reached (a card that is not there) is reported, and the rest goes on.
 
 Exporting again when nothing changed writes nothing. Auroraw does not take its own export for another

@@ -46,6 +46,15 @@ AppTestCase {
         compare(app.photos.selectedCount, names.length)
     }
 
+    // Waits for a frame drawn after this call with `item` in it (the update asks for one: a frame drawn before the
+    // call would leave the wait to time out, and an item with nothing of its own to paint asks for none; #30 makes
+    // this `drawn()` of AppTestCase).
+    function frameWith(item) {
+        item.update()
+        item.Window.window.update()
+        verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
+    }
+
     function openDialog() {
         // (A dialog just closed is still on its way out: the command is not enabled until it has gone.)
         tryVerify(() => !app.xmpExportDialog.visible)
@@ -54,9 +63,7 @@ AppTestCase {
         // sent before that (whether the popup has `opened` or not) lands where its buttons are not yet.
         tryVerify(() => app.xmpExportDialog.opened)
         const dialog = app.xmpExportDialog
-        // (A frame drawn after this call, hence the update: one drawn before it would leave the wait to time out.)
-        dialog.contentItem.update()
-        verify(waitForRendering(dialog.contentItem), "a frame was drawn with the dialog in it")
+        frameWith(dialog.contentItem)
         return dialog
     }
 
@@ -124,7 +131,7 @@ AppTestCase {
         verify(files.exists(card("IMG_0002.xmp")))
         verify(!files.exists(card("IMG_0003.xmp")), "the others are not touched")
         compare(dialog.report.written, 2)
-        verify(dialog.lines[0].indexOf("2 file") === 0, dialog.lines[0])
+        verify(dialog.lines[0].text.indexOf("2 file") === 0, dialog.lines[0].text)
         verify(files.read(card("IMG_0001.xmp")).indexOf("aur:Export") >= 0, "it carries the marker")
         // Exporting again writes nothing: the files already say it.
         dialog.close()
@@ -167,9 +174,65 @@ AppTestCase {
         defaults(dialog)
         runExport(dialog)
         compare(dialog.report.heldBack, 1, JSON.stringify(dialog.report))
-        verify(dialog.lines.join("\n").indexOf("held back") >= 0)
+        verify(dialog.lines.map(line => line.text).join("\n").indexOf("held back") >= 0)
+        verify(dialog.lines.find(line => line.text.indexOf("held back") >= 0).attention, "what waits for an answer is marked")
         tryVerify(() => app.externalBanner.visible, 5000, "the review of external changes is offered")
         verify(files.read(card("IMG_0004.xmp")).indexOf("<xmp:Rating>4") >= 0, "the file is untouched")
+        // The banner is behind this modal dialog: the last step leads to the review itself.
+        verify(dialog.reviewButton.visible, "Review changes… is offered")
+        snapshot("xmp-export-held-back")
+        frameWith(dialog.contentItem)
+        click(dialog.reviewButton)
+        tryVerify(() => app.externalDialog.visible, 5000, "the review of the external changes opened")
+        verify(!app.xmpExportDialog.visible, "and this dialog is gone")
+        tryCompare(app.externalDialog.entries, "length", 1)
+        compare(app.externalDialog.entries[0].filename, "IMG_0004.jpg")
+    }
+
+    function test_the_review_is_not_offered_when_nothing_was_held_back() {
+        selectOnly("IMG_0012")
+        const dialog = openDialog()
+        defaults(dialog)
+        runExport(dialog)
+        verify(!dialog.reviewButton.visible)
+        verify(dialog.lines.every(line => !line.attention), "good news is not marked")
+    }
+
+    function test_the_progress_says_how_far_it_is() {
+        selectOnly("IMG_0013")
+        const dialog = openDialog()
+        // (The export of one photo is over before a test can look: the bus is told what a job would say.)
+        dialog.phase = "running"
+        dialog.job = "a-job"
+        Bus.jobProgress("a-job", 3, 12)
+        compare(dialog.done, 3)
+        compare(dialog.total, 12)
+        compare(dialog.share, 0.25)
+        compare(dialog.progressBar.Accessible.name, "Export progress")
+        dialog.phase = "form"
+        dialog.job = ""
+    }
+
+    function test_a_small_window_scrolls_the_form_instead_of_cutting_the_footer_off() {
+        selectOnly("IMG_0015")
+        app.height = 520
+        tryVerify(() => app.contentItem.height <= 520)
+        const window = app.contentItem.height
+        const dialog = openDialog()
+        verify(dialog.height <= window, "the dialog fits the window: " + dialog.height + " in " + window)
+        const bottom = dialog.exportButton.mapToItem(null, 0, dialog.exportButton.height).y
+        verify(bottom <= window, "Export is in the window: " + bottom + " of " + window)
+        verify(dialog.body.contentHeight > dialog.body.height, "and the form scrolls")
+        snapshot("xmp-export-small-window")
+    }
+
+    function test_each_choice_carries_its_consequence_for_a_screen_reader() {
+        const dialog = openDialog()
+        compare(dialog.mergeExisting.Accessible.description, dialog.mergeHint)
+        compare(dialog.replaceExisting.Accessible.description, dialog.replaceHint)
+        compare(dialog.skipExisting.Accessible.description, dialog.skipHint)
+        compare(dialog.minusOneBox.Accessible.description, dialog.minusOneHint)
+        verify(dialog.mergeHint !== "")
     }
 
     function test_replace_asks_first_and_keeps_the_old_file() {
