@@ -1,11 +1,13 @@
 # Design note 008: place names, offline, and the place filter
 
-> **Status: proposal, for Patrick's approval.** WP10's last two items ([M1 plan](../m1-plan.md) §5, §6
-> item 12; specification §5.7 "Location", open question 29; D-048). It answers question 29 of the
-> specification (§10): the size of the database, the attribution its licence requires, how it is
-> updated, and the levels of detail. Nothing here is built. Items are tagged **[decided]**,
-> **[proposed]** or **[open]**; the sizes marked **[to measure]** are what I remember of GeoNames' files,
-> not measurements, and the first slice measures them before anything depends on them.
+> **Status: proposal, for Patrick's approval** (revised after his two comments: polygons from the start,
+> and the record of what Auroraw wrote follows the person's edits). WP10's last two items ([M1
+> plan](../m1-plan.md) §5, §6 item 12; specification §5.7 "Location", open question 29; D-048). It
+> answers question 29 of the specification (§10): the size of the database, the attribution its licences
+> require, how it is updated, and the levels of detail. Nothing here is built. Items are tagged
+> **[decided]**, **[proposed]** or **[open]**; what is marked **[to measure]** or **[to verify]** is what I
+> remember of the data sets, not a measurement, and the first slice settles it before anything depends on
+> it.
 
 ## 1. The question, and what exists
 
@@ -33,92 +35,124 @@ next fact.
 
 ## 2. The data [proposed]
 
-**GeoNames** (CC BY 4.0) publishes, among others, `citiesNNN.zip` (every populated place above NNN
-inhabitants, with its position, country code and first-level administrative code), `admin1CodesASCII.txt`
-(the names of the regions), and `countryInfo.txt` (the countries). The sizes, from memory **[to
-measure]**: `cities15000` about 25,000 places, `cities5000` about 50,000, `cities1000` about 150,000,
-`cities500` about 200,000; the largest is a few tens of megabytes as text and a few megabytes compressed.
+**Two public data sets, both bundled**, because they answer two different questions:
 
-**Proposal: bundle `cities1000`**, not a downloadable pack. The plan of M1 (§6, item 12) said "a
-downloadable pack"; D-048 said "bundled". Bundled wins on the measurements to come, if they show what I
-expect: 150,000 places is about the size of one RAW file of a modern camera, in an application that already
-ships Qt. Bundling means **no network at all, no consent
-prompt (D-061), no pack manager, no update mechanism to build and secure**. A bigger or finer database is
-the optional online plugin of D-048, unchanged.
+- **Which country and which region is this point in?** An *area* question, answered by **polygons**:
+  **Natural Earth** (public domain, no attribution required, credited anyway), the country layer
+  (`admin-0`) and the first-level subdivisions layer (`admin-1`: states, provinces, regions), at the
+  1:10 million scale **[to verify: the coverage of admin-1, and whether a finer scale is worth its size]**.
+  Each polygon carries its names in several languages (`NAME_EN`, `NAME_FR`… **[to verify how complete the
+  French names of the regions are]**), its ISO codes and the GeoNames identifier of the area.
+- **Which town is nearest?** A *point* question, answered by **GeoNames** (CC BY 4.0): `cities1000`, every
+  populated place above 1,000 inhabitants, about 150,000 **[to measure]**, with its name in the place's
+  own spelling (`Montréal`), its position, its country and its first-level code.
 
-**How it reaches the application.** A read-only SQLite file, `places.sqlite`, **built by a script from a
-pinned GeoNames snapshot** (`tools/build-places.py`, which checks the download against a recorded SHA-256
-like `tools/fetch-samples.sh`) and **shipped beside the binary** in the packages (`share/auroraw/` on
-Linux, next to the executable elsewhere). It is not in git (tens of megabytes of data are not source). It
-holds:
+**An earlier version of this note proposed the nearest town alone for all three.** The reason was to keep
+the first slice small, and it did not weigh what a polygon gives: the *right* country and region at a
+border, on a coast and far from any town (a hike 40 km from the nearest village is still in Quebec), names
+of the region and the country **in the interface's language** (Natural Earth carries them; GeoNames' region
+names are ASCII English), and a town that is constrained to the region the point is in, which removes the
+worst of the border errors. What it costs is the second data set (a few megabytes **[to measure]**), a
+point-in-polygon routine (holes, multipolygons, the antimeridian), and a choice of boundaries (below). Patrick
+asked for it from the start, and I agree.
+
+**How it reaches the application.** One read-only SQLite file, `places.sqlite`, **built by a script from
+pinned snapshots of both sets** (`tools/build-places.py`, which checks each download against a recorded
+SHA-256 like `tools/fetch-samples.sh`) and **shipped beside the binary** in the packages. It is not in git
+(data is not source). It holds:
 
 ```text
-places(id, name, ascii_name, lat, lon, country_code, admin1_code, population)   -- plus an R*Tree of (lat, lon)
-regions(country_code, admin1_code, name)
-countries(code, name)
-meta(key, value)        -- the snapshot's date, its source, its licence text, a format version
+areas(id, level, code, parent, name_en, name_fr, ..., geonames_id)   -- level: country, region
+area_boxes   -- an R*Tree of each area's bounding boxes (one row per polygon part)
+area_shapes(area_id, part, rings)   -- the rings as integer micro-degrees, delta-coded: a compact blob
+places(id, name, lat, lon, country_code, admin1_code, population)   -- plus an R*Tree of (lat, lon)
+meta(key, value)   -- each source's date, name, licence text and worldview, a format version
 ```
 
-A build without the file still works: **the feature reports "place names are not installed"** and the
-rest of the application is unaffected. Tests use a small fixture database written in the test, so no
-download is involved (testing strategy §1).
+A build without the file still works: **the feature reports "place names are not installed"** and the rest
+of the application is unaffected. Tests use a small hand-made fixture (a few squares, holes and a
+meridian-crossing shape, a dozen towns), so no download is involved (testing strategy §1).
 
-**Updates.** The snapshot is refreshed by the maintainers at each release, by re-running the script; its
-date is shown. The application never fetches it. A place that changed name since is the photographer's to
-edit.
+**Which boundaries.** Natural Earth draws the borders as they stand on the ground, and names disputed
+areas as it has decided to; other "worldviews" exist. Auroraw takes **no political position**: it ships one
+data set as it is, says which in the About window and in the file's `meta`, and never overwrites a value a
+person wrote, so a photographer who disagrees corrects the field. **[open: confirm the default
+worldview]**.
 
-**Attribution** (CC BY 4.0 asks for credit, a link to the licence and a note of changes): the About
-window, the manual's page on metadata, and the `meta` table of the file itself, which travels with it. The
-shipped file is data, not code: the GPL-3.0-or-later of the application is not its licence, and the notice
-of the packages says so.
+**Updates.** The snapshots are refreshed by the maintainers at each release, by re-running the script;
+their dates are shown. The application never fetches them.
+
+**Attribution**: GeoNames asks for credit and a link to CC BY 4.0 (the About window, the manual's page on
+metadata, the file's `meta`); Natural Earth asks for none and is named there too. The shipped file is data,
+not code: the GPL-3.0-or-later is not its licence, and the packages' notice says so.
 
 ## 3. The lookup [proposed]
 
-**The nearest populated place** to the position, within a radius, by the R*Tree (a bounding box, then the
-great-circle distance of the few candidates). A lookup is microseconds; 10,000 photos take well under a
-second, and the positions come from the catalogue, so no file is read.
+1. **Country and region: the polygon that contains the point.** The R*Tree gives the parts whose box holds
+   the point; a crossing-number test (holes included, a part at a time) decides. The region's polygon
+   knows its country; a point in a country without a region layer (or in an enclave's hole) gets the country
+   alone. Microseconds per photo.
+2. **A point that no polygon contains** is on a coast, a beach, a ferry or the open sea, and 1:10m
+   shorelines are generalised, so the point may be a few hundred metres "into the water" of a place it is
+   plainly at. A **coastal tolerance**: the nearest polygon within **5 km** counts **[open]**; beyond it,
+   there is no country (the open sea has none, and saying so is the honest answer).
+3. **The city: the nearest populated place in the same region**, within **25 km** **[open]**. "In the same
+   region" is what removes the border error: a point just inside Quebec does not get a town of Ontario. A
+   point in no region (or with no mapped region) falls back to the same country. Beyond the radius the city
+   stays empty and the country and region are still filled: a photo 40 km from a village has a region
+   and no city, which is true.
+4. **The names.** The country and the region **in the interface's language**, from Natural Earth's name for
+   it (English when the language is missing there); the city **in the place's own spelling**, as GeoNames
+   has it. Naming *cities* in the interface's language needs GeoNames' alternate names for the languages
+   Auroraw ships (hundreds of thousands of rows) and stays **[open]**, made only if Patrick wants it.
+   Country code: the ISO 3166-1 alpha-2 code of the country.
+5. **Sublocation is never touched**: it is where a person says "the market", "Chez Marie".
 
-- **The radius.** 25 km in this first version **[open]**: beyond it the photo gets **no place**, and is
-  counted as such. The photographer hiking between two villages has a position that belongs to no town.
-- **What is written.** The nearest place's name as the **city**; the **region** from `regions` through the
-  place's country and first-level code; the **country** name and its **ISO code** from `countries`.
-  Sublocation is never touched (it is where a person says "the market", "Chez Marie").
-- **The limit, said plainly.** This is *nearest place*, not *containing polygon*. Near a border, or on a
-  coast, the nearest town can be in the next region or country. A polygon lookup (the administrative
-  boundaries of Natural Earth, public domain, a few megabytes simplified) fixes it for the country and the
-  region, and is a later refinement of the same function; the radius and the nearest-place rule stay the
-  fallback. Saying "near" in the interface is not an option (the IPTC fields say "city"), so the manual
-  says it instead, and nothing is ever overwritten that a person wrote.
+**The limits, said plainly.** The city is *the nearest town*, not the municipality that contains the point
+(no global offline set of municipal boundaries exists, and the ones that do are gigabytes); the manual says
+so. The polygons are generalised: near a border the answer can be wrong by a kilometre or two **[to
+verify]**, and in a country that has disputed areas it is the data set's answer. A photo inside a hole or
+an enclave (Lesotho, the Vatican) is tested. Nothing is ever written over what a person wrote.
 
-**Language.** GeoNames' `name` is the place's own name in UTF-8 (`Montréal`); its region names are ASCII
-(`Quebec`); its country names are English. A French-speaking photographer may want `Québec`. The first
-version writes **GeoNames' names as they are**; naming places in the interface's language needs GeoNames'
-alternate names for the languages Auroraw ships (English and French at first, hundreds of thousands of rows
-otherwise) and is a **[open]** refinement with its own size to measure, made only if Patrick wants it.
-
-## 4. What gets written, and when [proposed]
+## 4. What gets written, and who owns it [proposed]
 
 **Only what is empty.** A field a person typed, or another application wrote, is **never overwritten**.
 The job fills `city`, `region`, `country` and `country_code` where they are empty, and leaves `sublocation`
 alone.
 
-**A record of what was written**, so that a correction of the position can refresh the names without
-trampling anyone. The sidecar gets one additive property, `aur:PlaceFilled`: the position used (rounded to
-the metre), the place's identifier, and the four values written. The rule on a refresh is the three-way
-rule of D-134, on a smaller scale: a field is replaced only if it **still equals what Auroraw wrote**;
-a field the photographer has edited since is theirs and stays. A position that moved (a GPX match, an
-overlay) makes the photo a candidate for a refresh; the refresh is offered, never silent. The property is
-additive and optional (no schema bump, a fixture, unknown content preserved), as D-145 does for the altitude
-reference.
+**A record of what Auroraw wrote**, in the sidecar, as one additive, optional property, `aur:PlaceFilled`:
+the **position** used (rounded to the metre), the **area and town identifiers**, and **each of the four
+values**, field by field. It exists so that a corrected position can refresh the names without trampling
+anyone (no schema bump, a fixture, unknown content preserved, as D-145 does for the altitude reference).
+
+**The record follows the person's edits** (Patrick's second comment). A field listed in `aur:PlaceFilled`
+means "Auroraw wrote this and nobody has touched it since". So:
+
+- **Any write to one of the four fields that is not the place job's takes that field out of the record
+  at once**, *whatever it writes*: a new value, **the same value** (typing "Montréal" over "Montréal" is
+  a person confirming it, and it is theirs), an **empty** one (clearing a city is an answer, not a gap to
+  refill). It covers every path that writes the field: the metadata panel, a batch edit, a paste of
+  metadata (D-128), the acceptance of an external change (D-134), a version's override. It is done where
+  the field is set, in `format` (`Metadata`'s setter for those fields), not in each caller, so that a new
+  path cannot forget it, and a test goes through each path.
+- The fill is **one undoable step that holds the record with the values**: undoing it restores the fields
+  and the record as they were, and so does undoing a person's edit (the change carries both). Redo
+  likewise.
+- **The refresh** (the position moved: a GPX match, an overlay, a hand correction) looks at the photo's
+  record: for each field **still in it**, the value is replaced by the new place's; a field that is not in
+  it is left alone. As a belt to these braces, a field still in the record but **no longer equal to what
+  was recorded** (an edit from outside this application that no path here saw, such as a sidecar changed by
+  hand) is treated as the person's and dropped from the record too. The refresh is **offered, never
+  silent**, with the before and after shown, as one undoable step.
+- `country` and `country_code` are two fields and two entries, so a person can change the country's
+  name and leave the code; consistency between them is theirs.
 
 **When.**
 
 1. **On request**: `Tools ▸ Find place names…` on the selected photos or a whole source, as a cancellable
    job with progress and one undo step (the machinery of D-127, the threshold of 200 included), and a
-   report: *filled, already had a place, no position, too far from any place*.
-2. **At import**, as an import-profile option, **off by default** **[open]**: the profile already does the
-   GPX matching and the metadata template; this is one more optional step that fills the fields after
-   the position is known.
+   report: *filled, already had a place, no position, in open water*.
+2. **At import**, as an import-profile option, **off by default** **[open]**.
 3. **Never on its own** for existing photos, and never on a scan: the fields are the photographer's.
 
 **Privacy.** The names are location metadata. D-046 sends everything except the location and the camera
@@ -148,29 +182,32 @@ The catalogue is derived from the sidecars and can be rebuilt, so it may keep wh
 
 Each a pull request, with its tests:
 
-1. **Measure and build the database**: `tools/build-places.py`, the file, its size and lookup time on the
-   three platforms, the fixture; a `places` crate (`auroraw-places`: `open`, `nearest`, the pure
-   arithmetic), with its row in the `ALLOWED` table. This settles the **[to measure]** of §2 and the
-   radius of §3.
-2. **The job**: `Command::FindPlaceNames`, the report, the sidecar's `aur:PlaceFilled`, undo, the CLI, the
-   refresh rule.
+1. **Build and measure the pack**: `tools/build-places.py` for both sets, the file, its size and the lookup
+   time on the three platforms, the fixture; a `places` crate (`auroraw-places`: `open`, `locate`, the
+   point-in-polygon arithmetic and the nearest-town rule), with its row in the `ALLOWED` table. This
+   settles every **[to measure]** and **[to verify]** of §2 and the radii of §3.
+2. **The job and the record**: `Command::FindPlaceNames`, the report, `aur:PlaceFilled` and the setter that
+   releases a field when a person writes it, undo, the CLI, the refresh.
 3. **The filter**: schema 6, `Filter.place`, the facet query, the engine's commands.
-4. **The interface** (Bob): the Tools command and its dialog, the import-profile option, the place menu,
-   the attribution in About, the manual.
+4. **The interface** (Bob): the Tools command and its dialog, the import-profile option, the place menu, the
+   attribution in About, the manual.
 5. **Packaging**: the file in the packages and the release checklist's line for it (WP12).
 
-Tests to write with them: the lookup against known cities (Montréal, Sydney, Reykjavík, a point in the
-ocean, a pole, the antimeridian), a border photo that shows the nearest-place limit, a field a person typed
-that survives, a refresh that replaces only what Auroraw wrote, a 10,000-photo run as one undoable step,
-and the filter and the facet on a generated catalogue.
+Tests to write with them: the lookup against known points (Montréal, Sydney, Reykjavík, a beach, a ferry
+in open water, a pole, both sides of the antimeridian), **both sides of a real border and a point in an
+enclave**, a point 40 km from any town, a field a person typed that survives, **a field a person rewrote
+(to a new value, to the same value, to nothing) that leaves the record through each writing path and is
+never refreshed**, undo and redo of a fill and of such an edit, a refresh that replaces only what Auroraw
+wrote, a 10,000-photo run as one undoable step, and the filter and the facet on a generated catalogue.
 
 ## 7. What I need decided
 
-1. **Bundle `cities1000`** in every package (proposed), or a smaller base with a download for the rest?
-   Decided by slice 1's measurement; the answer only matters to you if the size surprises.
-2. **Names in which language?** GeoNames' own (proposed for the first version), or the interface's
-   language (more data, later)?
+1. **Bundle both sets** in every package (proposed), at the size slice 1 measures; if the total surprises
+   (more than a few tens of megabytes), a smaller scale of polygons or a base with a download for the rest.
+2. **Names in which language?** Country and region in the interface's language from Natural Earth
+   (proposed), the city in its own spelling; cities in the interface's language later, only if wanted.
 3. **At import**: an option off by default (proposed), or on when the profile has a GPX track?
-4. **Nearest place for now, polygons later** (proposed), knowing the border limit of §3.
-5. **The feature is worth its place in M1** (it is on WP10's list), against the release checklist's
+4. **The coastal tolerance (5 km) and the town radius (25 km)** as starting values.
+5. **The boundaries**: Natural Earth's default worldview, with the choice said in About.
+6. **The feature is worth its place in M1** (it is on WP10's list), against the release checklist's
    remaining items (WP11, WP12).
