@@ -120,7 +120,8 @@ Rectangle {
             }
             AppToolButton {
                 id: closeButton
-                text: "✕"
+                iconName: "close"
+                iconSize: 12
                 focusPolicy: Qt.NoFocus
                 Accessible.name: qsTr("Close the similar photos")
                 ToolTip.visible: hovered

@@ -27,6 +27,11 @@ TestCase {
     Component { id: comboComponent; AppComboBox { width: 160; model: ["All", "Picked", "Rejected"]
         property var chosen: []
         onActivated: index => chosen.push(index) } }
+    Component { id: iconComponent; AppIcon { name: "star"; size: 20 } }
+    Component { id: ratingComponent; AppRatingMark { rating: 3 } }
+    Component { id: iconLabelComponent; AppIconLabel { sentence: "a<b> \u2605\u2714 c"; font.pixelSize: 20 } }
+    Component { id: iconButtonComponent; AppToolButton { iconName: "close"; iconSize: 13 } }
+    FontMetrics { id: iconMetrics; font.family: Icons.family; font.pixelSize: 100 }
     Component { id: listModelComboComponent; AppComboBox { width: 200; textRole: "name"
         model: ListModel { ListElement { name: "Alpha" } ListElement { name: "Beta" } } } }
     Component { id: busyProgressComponent; AppProgressBar { width: 200; indeterminate: true } }
@@ -181,6 +186,112 @@ TestCase {
         compare(c.implicitWidth, w)
         const narrow = make(comboComponent)
         verify(w >= narrow.implicitWidth, "widest text of sizingTexts")
+    }
+
+    // ---- the icons (D-137)
+
+    function test_the_icon_font_is_loaded_and_every_icon_is_one_private_use_character() {
+        tryCompare(Icons.loader, "status", FontLoader.Ready)
+        compare(Icons.family, "Auroraw Icons")
+        verify(Icons.names.length >= 10)
+        const seen = {}
+        for (const name of Icons.names) {
+            const glyph = Icons.glyph(name)
+            compare(glyph.length, 1, name + " is one character")
+            const code = glyph.charCodeAt(0)
+            verify(code >= 0xE000 && code <= 0xF8FF, name + " is in the private-use area")
+            verify(!seen[code], name + " has a code of its own")
+            seen[code] = true
+        }
+        compare(Icons.glyph("no such icon"), "")
+    }
+
+    function test_every_icon_is_in_the_font_and_is_a_square_of_the_size_set() {
+        tryCompare(Icons.loader, "status", FontLoader.Ready)
+        for (const name of Icons.names)
+            fuzzyCompare(iconMetrics.advanceWidth(Icons.glyph(name)), 100, 0.5, name + " is in the icon font, one em wide")
+    }
+
+    function test_an_icon_is_a_square_of_its_size_and_says_nothing_to_a_screen_reader() {
+        const i = make(iconComponent)
+        compare(i.width, 20)
+        compare(i.height, 20)
+        compare(i.text, Icons.glyph("star"))
+        compare(i.font.family, Icons.family)
+        verify(i.Accessible.ignored)
+        i.name = "close"
+        compare(i.text, Icons.glyph("close"))
+    }
+
+    function test_the_characters_the_interface_used_are_cut_out_of_a_text_from_elsewhere_as_runs_of_icons() {
+        compare(Icons.legacy["\u2605"], "star")
+        compare(Icons.legacy["\u2714"], "check")
+        const star = Icons.glyph("star")
+        compare(JSON.stringify(Icons.runs("3 \u2605\u2605 <a> & \u2716")),
+                JSON.stringify([{ text: "3 ", icons: false }, { text: star + star, icons: true },
+                                { text: " <a> & ", icons: false }, { text: Icons.glyph("close"), icons: true }]))
+        compare(JSON.stringify(Icons.runs("plain")), JSON.stringify([{ text: "plain", icons: false }]))
+        compare(JSON.stringify(Icons.runs("\u2605")), JSON.stringify([{ text: star, icons: true }]))
+        compare(Icons.runs("").length, 0)
+    }
+
+    function test_a_label_sets_the_old_characters_as_icons_in_the_icon_font_one_em_wide() {
+        tryCompare(Icons.loader, "status", FontLoader.Ready)
+        const l = make(iconLabelComponent)
+        compare(l.runItems.count, 3)
+        tryVerify(() => l.runItems.itemAt(2).item !== null)
+        const before = l.runItems.itemAt(0).item, icons = l.runItems.itemAt(1).item, after = l.runItems.itemAt(2).item
+        compare(before.text, "a<b> ")
+        compare(after.text, " c")
+        compare(icons.text, Icons.glyph("star") + Icons.glyph("check"))
+        compare(icons.font.family, Icons.family, "the icons are in the icon font, not in what the system finds")
+        verify(before.font.family !== Icons.family, "the rest is in the text's own")
+        compare(before.textFormat, Text.PlainText, "a '<' is what it is")
+        // Two icons, two em (the pixel size of the label's font): as measured, and as drawn.
+        fuzzyCompare(l.runItems.itemAt(1).width, 2 * l.font.pixelSize, 1)
+        fuzzyCompare(icons.contentWidth, 2 * l.font.pixelSize, 1)
+        fuzzyCompare(l.implicitWidth, before.contentWidth + icons.contentWidth + after.contentWidth, 1.5)
+        verify(icons.Accessible.ignored, "the line says its sentence once")
+        compare(l.Accessible.name, "a<b> \u2605\u2714 c")
+        compare(make(iconLabelComponent, { sentence: "" }).runItems.count, 0)
+    }
+
+    function test_a_label_that_is_too_narrow_elides_its_last_text_and_keeps_its_icons() {
+        tryCompare(Icons.loader, "status", FontLoader.Ready)
+        const l = make(iconLabelComponent, { sentence: "ab \u2605 cdefghijklmn" })
+        tryVerify(() => l.runItems.itemAt(2).item !== null)
+        const full = l.implicitWidth
+        compare(l.runItems.itemAt(2).item.text, " cdefghijklmn")
+        l.width = full - 40
+        tryVerify(() => l.runItems.itemAt(2).item.text !== " cdefghijklmn", 5000, "the text that follows is elided")
+        verify(l.runItems.itemAt(2).item.text.endsWith("\u2026"), l.runItems.itemAt(2).item.text)
+        compare(l.runItems.itemAt(0).item.text, "ab ", "what comes before it is kept")
+        fuzzyCompare(l.runItems.itemAt(1).width, l.font.pixelSize, 1, "an icon is not cut")
+        let shown = 0
+        for (let i = 0; i < l.runItems.count; i++)
+            shown += l.runItems.itemAt(i).width
+        verify(shown <= l.width + 1, "the runs fit the width: " + shown + " in " + l.width)
+        l.width = full
+        tryCompare(l.runItems.itemAt(2).item, "text", " cdefghijklmn")
+    }
+
+    function test_a_rating_mark_is_a_number_and_a_star_and_reads_as_stars() {
+        const m = make(ratingComponent)
+        verify(m.implicitWidth > 15 && m.implicitHeight >= 15)
+        // (No translation is installed in this suite: the source text, "%n star(s)", is what it says.)
+        compare(m.Accessible.name.indexOf("3 star"), 0)
+        m.rating = 1
+        compare(m.Accessible.name.indexOf("1 star"), 0)
+        const number = m.children[0]
+        compare(number.text, "1")
+        verify(number.Accessible.ignored, "the number is not read a second time")
+    }
+
+    function test_a_tool_button_with_an_icon_is_the_icon_and_its_padding() {
+        const b = make(iconButtonComponent)
+        compare(b.contentItem.implicitWidth, 13)
+        compare(b.implicitWidth, 13 + b.leftPadding + b.rightPadding)
+        compare(b.text, "", "no label under the icon")
     }
 
     // ---- the review of #24

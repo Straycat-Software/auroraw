@@ -765,6 +765,17 @@
     </message>
 </context>
 <context>
+    <name>AppRatingMark</name>
+    <message numerus="yes">
+        <location filename="../qml/AppRatingMark.qml" line="17"/>
+        <source>%n star(s)</source>
+        <translation>
+            <numerusform>%n étoile</numerusform>
+            <numerusform>%n étoiles</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
     <name>CardBanner</name>
     <message>
         <location filename="../qml/CardBanner.qml" line="66"/>
@@ -1170,6 +1181,16 @@
 </context>
 <context>
     <name>ComparePane</name>
+    <message>
+        <location filename="../qml/ComparePane.qml" line="247"/>
+        <source>Picked</source>
+        <translation>Retenue</translation>
+    </message>
+    <message>
+        <location filename="../qml/ComparePane.qml" line="247"/>
+        <source>Rejected</source>
+        <translation>Refusée</translation>
+    </message>
     <message>
         <location filename="../qml/ComparePane.qml" line="235"/>
         <source>★ Sharpest</source>
@@ -2231,6 +2252,14 @@
         <translation>Écrit le fichier de chaque photo affichée dans un fichier texte, un chemin par ligne</translation>
     </message>
     <message numerus="yes">
+        <location filename="../qml/Library.qml" line="1090"/>
+        <source>Series of %n photo(s)</source>
+        <translation>
+            <numerusform>Série de %n photo</numerusform>
+            <numerusform>Série de %n photos</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
         <location filename="../qml/Library.qml" line="964"/>
         <source>Photo, %n star(s)</source>
         <translation>
@@ -2813,6 +2842,14 @@
         <source>Rating</source>
         <translation>Note</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/Viewer.qml" line="385"/>
+        <source>%n star(s)</source>
+        <translation>
+            <numerusform>%n étoile</numerusform>
+            <numerusform>%n étoiles</numerusform>
+        </translation>
+    </message>
     <message>
         <location filename="../qml/Viewer.qml" line="374"/>
         <source>Rating: click to change it (0 to 5)</source>
@@ -2822,6 +2859,18 @@
         <location filename="../qml/Viewer.qml" line="385"/>
         <source>Flag</source>
         <translation>Drapeau</translation>
+    </message>
+    <message>
+        <location filename="../qml/Viewer.qml" line="399"/>
+        <location filename="../qml/Viewer.qml" line="671"/>
+        <source>Picked</source>
+        <translation>Retenue</translation>
+    </message>
+    <message>
+        <location filename="../qml/Viewer.qml" line="399"/>
+        <location filename="../qml/Viewer.qml" line="671"/>
+        <source>Rejected</source>
+        <translation>Refusée</translation>
     </message>
     <message>
         <location filename="../qml/Viewer.qml" line="387"/>

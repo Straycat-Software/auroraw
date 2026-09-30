@@ -10,6 +10,10 @@ import org.auroraw.ui
 // `palette.buttonText`, which is how the stars and the flag are drawn in their meaning colours.
 ToolButton {
     id: control
+    // An icon (see `AppIcon.qml`) in place of a text: its name and its size in pixels. A button that has one
+    // needs an `Accessible.name`, since an icon says nothing to a screen reader.
+    property string iconName: ""
+    property int iconSize: 15
     // Dimmed once, here: the label reads the plain text colour, not the palette's disabled one, or a disabled
     // tool would be dimmed twice.
     opacity: enabled ? 1 : 0.35
@@ -38,12 +42,26 @@ ToolButton {
             visible: control.visualFocus
         }
     }
-    contentItem: Label {
-        text: control.text
-        font: control.font
-        color: control.enabled ? control.palette.buttonText : Theme.surface.text
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+    contentItem: Item {
+        implicitWidth: control.iconName !== "" ? control.iconSize : label.implicitWidth
+        implicitHeight: control.iconName !== "" ? control.iconSize : label.implicitHeight
+        Label {
+            id: label
+            anchors.fill: parent
+            visible: control.iconName === ""
+            text: control.text
+            font: control.font
+            color: control.enabled ? control.palette.buttonText : Theme.surface.text
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideRight
+        }
+        AppIcon {
+            anchors.centerIn: parent
+            visible: control.iconName !== ""
+            name: control.iconName
+            size: control.iconSize
+            color: label.color
+        }
     }
 }

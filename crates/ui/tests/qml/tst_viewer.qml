@@ -331,6 +331,23 @@ AppTestCase {
         snapshot("viewer-state-en")
     }
 
+    function test_the_state_buttons_of_the_view_say_their_state_to_a_screen_reader() {
+        openOn(2)
+        // (Their icons say nothing: the description does.)
+        for (let n = 0; n < 3; n++) {
+            const rating = view.rating
+            mouseClick(view.ratingButton)
+            tryVerify(() => view.rating !== rating, 5000, "rating " + rating)
+            compare(view.ratingButton.Accessible.description, view.rating + (view.rating === 1 ? " star" : " stars"))
+        }
+        for (let n = 0; n < 3; n++) {
+            const flag = view.flag
+            compare(view.flagButton.Accessible.description, ["", "Picked", "Rejected"][flag])
+            mouseClick(view.flagButton)
+            tryVerify(() => view.flag !== flag, 5000, "flag " + flag)
+        }
+    }
+
     function test_leaving_full_screen_gives_back_a_maximised_window() {
         openOn(0)
         app.visibility = Window.Maximized
