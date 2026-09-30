@@ -94,6 +94,9 @@ jobs:
           sudo apt-get install -y libxkbcommon-dev libwayland-dev libxcb1-dev \
             libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxrandr-dev \
             libxi-dev libxcursor-dev libfontconfig1-dev libgl1-mesa-dev libegl1-mesa-dev
+      - name: Install the software Vulkan adapter (lavapipe) for the image engine's tests
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y mesa-vulkan-drivers libvulkan1
       - name: Cache RAW samples (testing strategy §5)
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -111,6 +114,10 @@ jobs:
           AUR_REQUIRE_EXIFTOOL: "1"
           AUR_REQUIRE_SAMPLES: "1"
           AUR_REQUIRE_PLUGINS: "1"
+          # The image engine's smoke test runs on the runner's software adapter: lavapipe on
+          # Linux, WARP on Windows, the Metal adapter on macOS (testing strategy §4). Its absence
+          # is a failure here, not a skip.
+          AUR_REQUIRE_GPU: "1"
           # The interface tests draw every view to a PNG here (kept below).
           AUR_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots
       - name: Keep the pictures of the views
@@ -122,6 +129,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - run: cargo test --workspace --doc --locked
+      - name: Say which graphics adapter this runner offered, and run the engine's smoke test on it
+        run: cargo run --locked --package auroraw-pipeline --example adapters
       - name: Launch test
         run: cargo run --locked --package auroraw-app -- --self-test
 

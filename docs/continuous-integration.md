@@ -43,7 +43,7 @@ Runs on every push to `dev` and to a pull request. Jobs run in parallel; the slo
 | **Lint** | `rustfmt --check`, `clippy` with warnings as errors, `cargo xtask check` (SPDX headers, the allowed dependencies between crates), and later the repository's own checks (links between documents resolve) | Linux |
 | **Build and test** | `cargo build --locked`, `cargo nextest run` (unit, property with few cases, format, catalogue, engine scenarios, plugin host and hostile plugins, crash consistency short) | Linux x64, Windows x64, macOS arm64 |
 | **Plugins** | Build the plugins for `wasm32-wasip1` (the spike's step) and run the conformance tests against them | Linux, Windows, macOS |
-| **GPU reference** | The smoke test and the stage-against-reference tests on the **software adapter** of each runner: lavapipe, WARP, the runner's Metal adapter. **Blocking.** | All three |
+| **GPU reference** | The smoke test (`auroraw-pipeline`: every shader compiled and run against its CPU reference) on the adapter each runner offers: lavapipe, WARP, the runner's Metal adapter (reported as integrated). **Blocking.** The stage-against-reference tests join it with the stages. Part of the `test` jobs: Linux installs lavapipe, `AUR_REQUIRE_GPU=1` makes a missing adapter a failure instead of a skip, and `cargo run -p auroraw-pipeline --example adapters` prints which adapter the runner offered and runs the smoke test on it, since the output of passing tests is hidden | All three |
 | **Dependencies** | `cargo deny check` (licences compatible with GPL-3.0, bans, sources, and the RustSec advisories, which is what `cargo audit` reads) | Linux |
 | **Translations** | Every `qsTr` string of the QML is in each `.ts` file and nothing else is, every translation is finished and keeps its placeholders (a Rust test); the files compile with `lrelease`; pseudo-locale run of every screen [open] | All three |
 | **Accessibility** | The AT-SPI check that every control has a role and a name | Linux, under a virtual display |
@@ -81,8 +81,8 @@ Runs on a tag `vX.Y.Z` pushed to `main`. See §6.
 ### 3.4 The spikes' workflow
 
 `spikes.yml` was deleted with the spike code (WP0, tag `spikes-final`). It is the ancestor of
-`ci.yml`; its GPU smoke test comes back with the pipeline in M2, and the sandbox tests with the
-plugin host in WP6.
+`ci.yml`; its GPU smoke test is back with the `auroraw-pipeline` crate (§3.1, "GPU reference"), and
+the sandbox tests came with the plugin host in WP6.
 
 ## 4. Running on real machines [proposed; the open item of the testing strategy]
 
