@@ -1,4 +1,4 @@
-# Design note 006: place names, offline, and the place filter
+# Design note 008: place names, offline, and the place filter
 
 > **Status: proposal, for Patrick's approval.** WP10's last two items ([M1 plan](../m1-plan.md) §5, §6
 > item 12; specification §5.7 "Location", open question 29; D-048). It answers question 29 of the
