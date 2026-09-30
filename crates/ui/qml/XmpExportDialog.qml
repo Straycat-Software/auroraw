@@ -47,10 +47,10 @@ AppDialog {
 
     closePolicy: dialog.phase === "running" ? Popup.NoAutoClose : Popup.CloseOnEscape
 
-    // What a choice means, under it and in step with its text: a radio button's own text does not wrap.
+    // What a choice means, under it and in step with its text (the 15px indicator and its 6px gap): a radio button's own text does not wrap.
     component Hint: Label {
         Layout.fillWidth: true
-        Layout.leftMargin: 26
+        Layout.leftMargin: 21
         wrapMode: Text.Wrap
         color: Theme.quiet
     }
@@ -174,7 +174,7 @@ AppDialog {
                 text: qsTr("Photos")
                 font.bold: true
             }
-            RadioButton {
+            AppRadioButton {
                 id: selectionScope
                 enabled: dialog.selectedCount > 0
                 text: dialog.selectedCount > 0 ? qsTr("The %n selected photo(s)", "", dialog.selectedCount)
@@ -182,16 +182,17 @@ AppDialog {
             }
             RowLayout {
                 spacing: 8
-                RadioButton {
+                AppRadioButton {
                     id: sourceScope
                     enabled: dialog.sourceIds.length > 0
                     text: qsTr("Every photo of the source:")
                 }
-                ComboBox {
+                AppComboBox {
                     id: sourceBox
                     Layout.fillWidth: true
                     enabled: sourceScope.checked && dialog.sourceIds.length > 0
                     model: dialog.sourceNames
+                sizingTexts: dialog.sourceNames
                     Accessible.name: qsTr("Source")
                 }
             }
@@ -201,11 +202,11 @@ AppDialog {
                 text: qsTr("Name of a new file")
                 font.bold: true
             }
-            RadioButton {
+            AppRadioButton {
                 id: stemNaming
                 text: qsTr("Named after the photo (photo.xmp)")
             }
-            RadioButton {
+            AppRadioButton {
                 id: fullNaming
                 text: qsTr("Named after the whole file (photo.ARW.xmp)")
             }
@@ -215,23 +216,23 @@ AppDialog {
                 text: qsTr("When a file already exists")
                 font.bold: true
             }
-            RadioButton {
+            AppRadioButton {
                 id: mergeExisting
                 text: qsTr("Merge into it")
             }
             Hint { text: qsTr("Only what Auroraw owns is rewritten; develop settings and the rest stay.") }
-            RadioButton {
+            AppRadioButton {
                 id: replaceExisting
                 text: qsTr("Replace it")
             }
             Hint { text: qsTr("The old file is kept in the workspace's removed folder.") }
-            RadioButton {
+            AppRadioButton {
                 id: skipExisting
                 text: qsTr("Leave it alone")
             }
             Hint { text: qsTr("Only the missing files are written.") }
 
-            CheckBox {
+            AppCheckBox {
                 id: minusOneBox
                 Layout.topMargin: 6
                 text: qsTr("Write a rejected photo with a rating of −1")
@@ -255,7 +256,7 @@ AppDialog {
             Label {
                 text: qsTr("Writing the files…")
             }
-            ProgressBar {
+            AppProgressBar {
                 id: progress
                 Layout.fillWidth: true
                 value: dialog.share
