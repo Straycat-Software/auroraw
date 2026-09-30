@@ -275,19 +275,6 @@ fn external_xmp_changes_are_announced_reviewed_and_answered() {
     run_suite("external", home.path(), None);
 }
 
-/// TEMPORARY, for the verification of issue #27 only, removed before this is merged: the suite above ten times,
-/// each in a process of its own (the failure was the first banner of a process), so that one CI run says what
-/// four or five would have.
-#[test]
-fn external_xmp_changes_ten_times_over() {
-    for round in 0..10 {
-        let home = temp_dir();
-        support::machine_with_photos(home.path(), 20);
-        println!("round {round}");
-        run_suite("external", home.path(), None);
-    }
-}
-
 /// Comparing frames: pages, marks, resolving from the comparison, linked zoom, the aids, the thumbnail size.
 #[test]
 fn comparing_frames_and_the_quality_aids() {
