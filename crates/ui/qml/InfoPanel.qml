@@ -93,7 +93,9 @@ Item {
         add("orientation", qsTr("Orientation"), formatOrientation(i.orientation))
         add("gps-latitude", qsTr("Latitude"), i.gps_latitude || "")
         add("gps-longitude", qsTr("Longitude"), i.gps_longitude || "")
-        add("gps-altitude", qsTr("Altitude"), i.gps_altitude || "")
+        // (The altitude is a distance; the reference says which side of sea level: "1" is below.)
+        add("gps-altitude", qsTr("Altitude"),
+            i.gps_altitude ? i.gps_altitude + (i.gps_altitude_ref === "1" ? " " + qsTr("below sea level") : "") : "")
         add("serial", qsTr("Serial number"), i.serial || "")
         return out
     }

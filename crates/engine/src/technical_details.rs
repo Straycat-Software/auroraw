@@ -28,6 +28,8 @@ pub struct TechnicalDetails {
     pub gps_longitude: Option<String>,
     /// As the file's own XMP already has it, not reformatted.
     pub gps_altitude: Option<String>,
+    /// `"0"` above sea level, `"1"` below, `None` when the file did not say (read as above).
+    pub gps_altitude_ref: Option<String>,
 }
 
 /// `"750/10"` -> `75.0`; the ratio and rounding are entirely `Original`'s own concern, kept local
@@ -48,6 +50,7 @@ fn technical_details_from(meta: &Metadata) -> TechnicalDetails {
         gps_latitude: o.gps_latitude.clone(),
         gps_longitude: o.gps_longitude.clone(),
         gps_altitude: o.gps_altitude.clone(),
+        gps_altitude_ref: o.gps_altitude_ref.clone(),
     }
 }
 
@@ -87,6 +90,7 @@ mod tests {
             gps_latitude: Some("49,17.859N".into()),
             gps_longitude: Some("123,6.573W".into()),
             gps_altitude: Some("180".into()),
+            gps_altitude_ref: Some("1".into()),
             ..Original::default()
         });
         let details = technical_details_from(&meta);
@@ -96,6 +100,7 @@ mod tests {
         assert_eq!(details.gps_latitude.as_deref(), Some("49,17.859N"));
         assert_eq!(details.gps_longitude.as_deref(), Some("123,6.573W"));
         assert_eq!(details.gps_altitude.as_deref(), Some("180"));
+        assert_eq!(details.gps_altitude_ref.as_deref(), Some("1"));
     }
 
     #[test]

@@ -49,8 +49,40 @@ pub struct Metadata {
     pub gps_latitude: Option<String>,
     /// `exif:GPSLongitude`, likewise.
     pub gps_longitude: Option<String>,
-    /// `exif:GPSAltitude`, a rational in metres.
+    /// `exif:GPSAltitude`, a rational in metres: a distance, never negative.
     pub gps_altitude: Option<String>,
+    /// `exif:GPSAltitudeRef`: `"0"` above sea level, `"1"` below. Only with an altitude, and only when
+    /// the file says which.
+    pub gps_altitude_ref: Option<String>,
+}
+
+/// The XMP text of an EXIF `GPSAltitudeRef` byte: `"0"` (above sea level) or `"1"` (below); any other
+/// value is a file's mistake and says nothing.
+fn altitude_ref_text(byte: u8) -> Option<String> {
+    matches!(byte, 0 | 1).then(|| byte.to_string())
+}
+
+/// The altitude and its reference in a standard file's EXIF.
+fn standard_altitude(exif: &exif::Exif) -> (Option<String>, Option<String>) {
+    let altitude = match exif
+        .get_field(exif::Tag::GPSAltitude, exif::In::PRIMARY)
+        .map(|f| &f.value)
+    {
+        Some(exif::Value::Rational(v)) if !v.is_empty() => {
+            Some(format!("{}/{}", v[0].num, v[0].denom))
+        }
+        _ => None,
+    };
+    let reference = altitude.as_ref().and_then(|_| {
+        match exif
+            .get_field(exif::Tag::GPSAltitudeRef, exif::In::PRIMARY)
+            .map(|f| &f.value)
+        {
+            Some(exif::Value::Byte(v)) => v.first().copied().and_then(altitude_ref_text),
+            _ => None,
+        }
+    });
+    (altitude, reference)
 }
 
 fn rational_text(r: &Rational) -> String {
@@ -110,7 +142,7 @@ fn read_raw_metadata(path: &Path) -> Result<Metadata> {
         .into_iter()
         .collect();
 
-    let (gps_latitude, gps_longitude, gps_altitude) = match &exif.gps {
+    let (gps_latitude, gps_longitude, gps_altitude, gps_altitude_ref) = match &exif.gps {
         Some(gps) => (
             match (&gps.gps_latitude, &gps.gps_latitude_ref) {
                 (Some(v), Some(r)) => Some(xmp_coordinate(v, r)),
@@ -121,8 +153,12 @@ fn read_raw_metadata(path: &Path) -> Result<Metadata> {
                 _ => None,
             },
             gps.gps_altitude.as_ref().map(rational_text),
+            gps.gps_altitude
+                .as_ref()
+                .and(gps.gps_altitude_ref)
+                .and_then(altitude_ref_text),
         ),
-        None => (None, None, None),
+        None => (None, None, None, None),
     };
 
     Ok(Metadata {
@@ -145,6 +181,7 @@ fn read_raw_metadata(path: &Path) -> Result<Metadata> {
         gps_latitude,
         gps_longitude,
         gps_altitude,
+        gps_altitude_ref,
     })
 }
 
@@ -235,7 +272,7 @@ fn read_standard_metadata(path: &Path) -> Result<Metadata> {
     ) {
         metadata.gps_longitude = Some(xmp_coordinate(&coord, &reference));
     }
-    metadata.gps_altitude = rational(exif::Tag::GPSAltitude);
+    (metadata.gps_altitude, metadata.gps_altitude_ref) = standard_altitude(&exif);
 
     Ok(metadata)
 }
@@ -291,6 +328,7 @@ pub fn normalise_capture_time(text: &str, offset: Option<&str>) -> Option<String
 #[cfg(test)]
 mod capture_time_tests {
     use super::normalise_capture_time as n;
+    use super::{altitude_ref_text, standard_altitude};
 
     #[test]
     fn the_forms_cameras_and_readers_write_become_one_iso_timestamp() {
@@ -314,6 +352,58 @@ mod capture_time_tests {
             n("2016:09:02 10:28:00.45", Some("bogus")).as_deref(),
             Some("2016-09-02T10:28:00Z")
         );
+    }
+
+    /// The EXIF of a file with these GPS altitude fields, as a reader would meet it.
+    fn exif_with(altitude: Option<(u32, u32)>, reference: Option<u8>) -> exif::Exif {
+        let mut fields = Vec::new();
+        if let Some((num, denom)) = altitude {
+            fields.push(exif::Field {
+                tag: exif::Tag::GPSAltitude,
+                ifd_num: exif::In::PRIMARY,
+                value: exif::Value::Rational(vec![exif::Rational { num, denom }]),
+            });
+        }
+        if let Some(byte) = reference {
+            fields.push(exif::Field {
+                tag: exif::Tag::GPSAltitudeRef,
+                ifd_num: exif::In::PRIMARY,
+                value: exif::Value::Byte(vec![byte]),
+            });
+        }
+        let mut writer = exif::experimental::Writer::new();
+        for field in &fields {
+            writer.push_field(field);
+        }
+        let mut out = std::io::Cursor::new(Vec::new());
+        writer.write(&mut out, false).expect("the EXIF is written");
+        exif::Reader::new()
+            .read_raw(out.into_inner())
+            .expect("the EXIF reads back")
+    }
+
+    #[test]
+    fn an_altitude_below_sea_level_keeps_its_reference() {
+        let below = standard_altitude(&exif_with(Some((4300, 100)), Some(1)));
+        assert_eq!(below, (Some("4300/100".into()), Some("1".into())));
+        let above = standard_altitude(&exif_with(Some((180, 1)), Some(0)));
+        assert_eq!(above, (Some("180/1".into()), Some("0".into())));
+    }
+
+    #[test]
+    fn a_file_that_does_not_say_which_side_of_sea_level_says_nothing() {
+        assert_eq!(
+            standard_altitude(&exif_with(Some((180, 1)), None)),
+            (Some("180/1".into()), None)
+        );
+        // A reference with no altitude to qualify, or a value the standard does not have, is ignored.
+        assert_eq!(standard_altitude(&exif_with(None, Some(1))), (None, None));
+        assert_eq!(
+            standard_altitude(&exif_with(Some((180, 1)), Some(7))),
+            (Some("180/1".into()), None)
+        );
+        assert_eq!(altitude_ref_text(0), Some("0".into()));
+        assert_eq!(altitude_ref_text(2), None);
     }
 
     #[test]

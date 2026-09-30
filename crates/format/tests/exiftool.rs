@@ -171,6 +171,40 @@ fn an_export_validates_and_is_read_where_other_software_looks() {
 }
 
 #[test]
+fn an_export_from_below_sea_level_reads_as_below_sea_level_to_other_software() {
+    let meta = Metadata {
+        original: Original {
+            gps_latitude: Some("31,30.0000N".into()),
+            gps_longitude: Some("35,28.0000E".into()),
+            gps_altitude: Some("4300/10".into()),
+            gps_altitude_ref: Some("1".into()),
+            ..exported_photo().original
+        },
+        ..exported_photo()
+    };
+    let bytes = build(&ExportView {
+        meta: &meta,
+        keywords: &[],
+        rejected_as_minus_one: true,
+    })
+    .to_bytes();
+    let file = written("dead-sea.xmp", &bytes);
+    if !valid(&file) {
+        return;
+    }
+    let tags = tags(&file);
+    assert_eq!(tags["XMP-exif:GPSAltitudeRef"], "Below Sea Level");
+    assert!(tags["XMP-exif:GPSAltitude"].to_string().contains("430"));
+    // (ExifTool's own composite says both together: "430 m Below Sea Level".)
+    if let Some(composite) = tags.get("Composite:GPSAltitude") {
+        assert!(
+            composite.to_string().contains("Below Sea Level"),
+            "{composite}"
+        );
+    }
+}
+
+#[test]
 fn a_rejected_export_reads_as_rejected_to_other_software() {
     let meta = Metadata {
         flag: Some(Flag::Rejected),

@@ -1810,6 +1810,11 @@
         <translation>Altitude</translation>
     </message>
     <message>
+        <location line="+1"/>
+        <source>below sea level</source>
+        <translation>sous le niveau de la mer</translation>
+    </message>
+    <message>
         <location filename="../qml/InfoPanel.qml" line="97"/>
         <source>Serial number</source>
         <translation>Numéro de série</translation>

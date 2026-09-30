@@ -94,6 +94,7 @@ fn to_original(m: auroraw_imaging::Metadata) -> auroraw_format::sidecar::Origina
         gps_latitude: m.gps_latitude,
         gps_longitude: m.gps_longitude,
         gps_altitude: m.gps_altitude,
+        gps_altitude_ref: m.gps_altitude_ref,
     }
 }
 
