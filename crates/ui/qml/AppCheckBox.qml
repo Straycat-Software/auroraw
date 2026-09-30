@@ -22,8 +22,10 @@ CheckBox {
         y: control.topPadding + (control.availableHeight - height) / 2
         radius: Theme.radiusControl
         color: Theme.surface.sunken
-        border.width: 1
-        border.color: control.hovered ? Theme.quiet : Theme.surface.border
+        // Keyboard focus is on the box's own edge, 2px of accent, inside it: a ring outside the box would be cut where the box
+        // sits at the edge of a clipped list or scroll view (the paste dialog's, the trees').
+        border.width: control.visualFocus ? 2 : 1
+        border.color: control.visualFocus ? Theme.accent : (control.hovered ? Theme.quiet : Theme.controlEdge)
         Behavior on border.color { ColorAnimation { duration: Theme.motion } }
         Text {
             anchors.centerIn: parent
@@ -38,16 +40,6 @@ CheckBox {
             width: 7
             height: 2
             color: Theme.surface.text
-        }
-        // Keyboard focus only.
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -3
-            radius: parent.radius + 3
-            color: "transparent"
-            border.width: 2
-            border.color: Theme.accent
-            visible: control.visualFocus
         }
     }
     contentItem: Label {

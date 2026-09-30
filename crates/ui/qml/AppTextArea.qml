@@ -19,7 +19,7 @@ TextArea {
         radius: Theme.radiusControl
         color: Theme.surface.sunken
         border.width: 1
-        border.color: control.activeFocus ? Theme.accent : Theme.surface.border
+        border.color: control.activeFocus ? Theme.accent : Theme.controlEdge
         Behavior on border.color { ColorAnimation { duration: Theme.motion } }
         Rectangle {
             anchors.fill: parent
