@@ -41,7 +41,7 @@ Button {
     contentItem: Label {
         text: control.text
         font: control.font
-        color: control.filled ? "#ffffff" : Theme.surface.text
+        color: control.filled ? Theme.white : Theme.surface.text
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
