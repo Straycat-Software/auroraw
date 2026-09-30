@@ -29,6 +29,7 @@ TestCase {
         onActivated: index => chosen.push(index) } }
     Component { id: iconComponent; AppIcon { name: "star"; size: 20 } }
     Component { id: ratingComponent; AppRatingMark { rating: 3 } }
+    Component { id: iconLabelComponent; AppIconLabel { sentence: "a<b> \u2605\u2714 c"; font.pixelSize: 20 } }
     Component { id: iconButtonComponent; AppToolButton { iconName: "close"; iconSize: 13 } }
     FontMetrics { id: iconMetrics; font.family: Icons.family; font.pixelSize: 100 }
     Component { id: listModelComboComponent; AppComboBox { width: 200; textRole: "name"
@@ -222,14 +223,45 @@ TestCase {
         compare(i.text, Icons.glyph("close"))
     }
 
-    function test_the_characters_the_interface_used_are_written_as_icons_in_a_text_from_elsewhere() {
+    function test_the_characters_the_interface_used_are_cut_out_of_a_text_from_elsewhere_as_runs_of_icons() {
         compare(Icons.legacy["\u2605"], "star")
         compare(Icons.legacy["\u2714"], "check")
-        const styled = Icons.styled("3 \u2605 <a> & \u2716")
-        verify(styled.indexOf('<font face="' + Icons.family + '">' + Icons.glyph("star") + "</font>") >= 0, styled)
-        verify(styled.indexOf(Icons.glyph("close")) >= 0)
-        verify(styled.indexOf("&lt;a>") >= 0 && styled.indexOf("&amp;") >= 0, "the text itself is escaped: " + styled)
-        compare(Icons.styled("plain"), "plain")
+        const star = Icons.glyph("star")
+        compare(JSON.stringify(Icons.runs("3 \u2605\u2605 <a> & \u2716")),
+                JSON.stringify([{ text: "3 ", icons: false }, { text: star + star, icons: true },
+                                { text: " <a> & ", icons: false }, { text: Icons.glyph("close"), icons: true }]))
+        compare(JSON.stringify(Icons.runs("plain")), JSON.stringify([{ text: "plain", icons: false }]))
+        compare(JSON.stringify(Icons.runs("\u2605")), JSON.stringify([{ text: star, icons: true }]))
+        compare(Icons.runs("").length, 0)
+    }
+
+    function test_a_label_sets_the_old_characters_as_icons_in_the_icon_font_one_em_wide() {
+        tryCompare(Icons.loader, "status", FontLoader.Ready)
+        const l = make(iconLabelComponent)
+        compare(l.runItems.count, 3)
+        const before = l.runItems.itemAt(0), icons = l.runItems.itemAt(1), after = l.runItems.itemAt(2)
+        compare(before.text, "a<b> ")
+        compare(after.text, " c")
+        compare(icons.text, Icons.glyph("star") + Icons.glyph("check"))
+        compare(icons.font.family, Icons.family, "the icons are in the icon font, not in what the system finds")
+        verify(before.font.family !== Icons.family, "the rest is in the text's own")
+        compare(before.textFormat, Text.PlainText, "a '<' is what it is")
+        // Two icons, two em (the pixel size of the label's font).
+        fuzzyCompare(icons.contentWidth, 2 * l.font.pixelSize, 1)
+        fuzzyCompare(l.implicitWidth, before.implicitWidth + icons.implicitWidth + after.implicitWidth, 1)
+        verify(icons.Accessible.ignored, "the line says its sentence once")
+        compare(l.Accessible.name, "a<b> \u2605\u2714 c")
+    }
+
+    function test_a_label_that_is_too_narrow_elides_its_last_text_and_keeps_its_icons() {
+        const l = make(iconLabelComponent)
+        const icons = l.runItems.itemAt(1), after = l.runItems.itemAt(2)
+        verify(!after.truncated)
+        l.width = l.implicitWidth - 12
+        tryVerify(() => after.truncated, 5000, "the text that follows is elided")
+        fuzzyCompare(icons.width, icons.implicitWidth, 1, "an icon is not")
+        verify(!l.runItems.itemAt(0).truncated, "and what comes before it is kept")
+        compare(make(iconLabelComponent, { sentence: "" }).runItems.count, 0)
     }
 
     function test_a_rating_mark_is_a_number_and_a_star_and_reads_as_stars() {
@@ -239,6 +271,9 @@ TestCase {
         compare(m.Accessible.name.indexOf("3 star"), 0)
         m.rating = 1
         compare(m.Accessible.name.indexOf("1 star"), 0)
+        const number = m.children[0]
+        compare(number.text, "1")
+        verify(number.Accessible.ignored, "the number is not read a second time")
     }
 
     function test_a_tool_button_with_an_icon_is_the_icon_and_its_padding() {

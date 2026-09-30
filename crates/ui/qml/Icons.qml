@@ -51,20 +51,24 @@ QtObject {
         "\u25a3": "series"
     })
 
-    // `text` for a Label displayed as `Text.StyledText`, with each of those characters written as its icon:
-    // for a sentence that comes from elsewhere (the summary the engine writes under the grid) and holds one.
-    function styled(text) {
-        let out = ""
+    // `text` cut into runs, for `AppIconLabel`: a run of the icons that replace those characters, `{ text: "<their
+    // characters>", icons: true }`, or a run of what lies between them, `{ text: "...", icons: false }`. A sentence
+    // that comes from elsewhere (the summary the engine writes under the grid) can hold them, and the icons are set in
+    // the icon font, the rest in the text's own.
+    function runs(text) {
+        const out = []
+        let run = { text: "", icons: false }
         for (const ch of String(text)) {
-            if (legacy[ch] !== undefined)
-                out += "<font face=\"" + family + "\">" + glyph(legacy[ch]) + "</font>"
-            else if (ch === "&")
-                out += "&amp;"
-            else if (ch === "<")
-                out += "&lt;"
-            else
-                out += ch
+            const icons = legacy[ch] !== undefined
+            if (icons !== run.icons && run.text !== "") {
+                out.push(run)
+                run = { text: "", icons: icons }
+            }
+            run.icons = icons
+            run.text += icons ? glyph(legacy[ch]) : ch
         }
+        if (run.text !== "")
+            out.push(run)
         return out
     }
 }

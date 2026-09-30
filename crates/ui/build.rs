@@ -15,6 +15,7 @@ fn main() {
         QmlFile::from("qml/Theme.qml").singleton(true),
         QmlFile::from("qml/Icons.qml").singleton(true),
         QmlFile::from("qml/AppIcon.qml"),
+        QmlFile::from("qml/AppIconLabel.qml"),
         QmlFile::from("qml/AppBanner.qml"),
         QmlFile::from("qml/AppButton.qml"),
         QmlFile::from("qml/AppCheckBox.qml"),

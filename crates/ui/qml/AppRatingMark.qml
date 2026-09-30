@@ -21,6 +21,7 @@ Item {
         text: mark.rating
         color: mark.color
         font.pixelSize: mark.size
+        Accessible.ignored: true   // the mark says it once, above
     }
     AppIcon {
         id: star
