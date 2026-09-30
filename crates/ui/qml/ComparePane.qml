@@ -91,7 +91,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#141414"
+        color: Theme.viewerGround
         border.width: pane.focused ? 2 : 0
         border.color: Theme.accent
     }
@@ -180,15 +180,34 @@ Item {
         onTapped: pane.compare.focusSlot(pane.slot)
     }
 
+    // The header and the footer sit on a scrim, like every other overlay on the viewer's 50% grey (D-129): the
+    // text and marks were tuned for a near-black ground, and bare on the grey the header is 3.7:1, `quiet` 1.7:1,
+    // the stars 2.2:1 and the flags 1.8:1 and 1.4:1; on a strong scrim they are 5:1 and up.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        height: header.implicitHeight + 8
+        color: "#c0000000"
+    }
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        height: 34
+        color: "#c0000000"
+    }
+
     // The header: which photo, and where it comes in the frames compared.
     Label {
+        id: header
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: 4
         text: pane.name
         elide: Text.ElideRight
-        color: "#e0e0e0"
+        color: Theme.surface.text
         font.pixelSize: 12
     }
 

@@ -82,10 +82,12 @@ TestCase {
             return
         const dir = root + "/views"
         files.mkdir(dir)
-        // A dialog that is a real secondary window (D-113, `AppWindow.qml`; `DuplicatesDialog` today) is not
-        // part of the main window's `contentItem` or `overlay` at all: grab it on its own instead.
-        if (app.duplicatesDialog && app.duplicatesDialog.visible)
-            grabImage(app.duplicatesDialog.contentItem).save(dir + "/" + name + ".png")
+        // A dialog that is a real secondary window (D-113, `AppWindow.qml`: the duplicates report and the
+        // external changes review) is not part of the main window's `contentItem` or `overlay` at all: grab
+        // it on its own instead.
+        const secondary = [app.duplicatesDialog, app.externalDialog].find(d => d && d.visible)
+        if (secondary)
+            grabImage(secondary.contentItem).save(dir + "/" + name + ".png")
         else
             grabImage(app.contentItem).save(dir + "/" + name + ".png")
         // Dialogs and menus live in the overlay, above the content.

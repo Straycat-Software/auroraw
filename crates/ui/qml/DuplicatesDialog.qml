@@ -28,7 +28,7 @@ AppWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 8
+        spacing: 12
         Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
@@ -37,57 +37,59 @@ AppWindow {
                   ? qsTr("%n photo(s) found at more than one place. Auroraw never deletes anything itself: use “Show in file manager” to go tidy up.", "", dialog.entries.length)
                   : qsTr("No duplicate photo found.")
         }
-        ListView {
-            id: list
+        AppListFrame {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            model: dialog.entries
-            spacing: 6
-            ScrollBar.vertical: ScrollBar {}
-            delegate: Rectangle {
-                id: entry
-                required property var modelData
-                required property int index
-                width: list.width
-                height: content.implicitHeight + 16
-                color: index % 2 === 0 ? "#00000000" : "#12ffffff"
-                RowLayout {
-                    id: content
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 10
-                    Image {
-                        Layout.preferredWidth: 64
-                        Layout.preferredHeight: 48
-                        source: "image://thumbs/" + entry.modelData.id
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        Label {
-                            Layout.fillWidth: true
-                            font.bold: true
-                            elide: Text.ElideRight
-                            text: entry.modelData.filename
+
+            AppListView {
+                id: list
+                anchors.fill: parent
+                model: dialog.entries
+                spacing: 6
+                delegate: Rectangle {
+                    id: entry
+                    required property var modelData
+                    required property int index
+                    width: list.rowWidth
+                    height: content.implicitHeight + 16
+                    color: index % 2 === 0 ? "#00000000" : "#12ffffff"
+                    RowLayout {
+                        id: content
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 14
+                        Image {
+                            Layout.preferredWidth: 64
+                            Layout.preferredHeight: 48
+                            source: "image://thumbs/" + entry.modelData.id
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
                         }
-                        Repeater {
-                            model: [entry.modelData.primary].concat(entry.modelData.extra)
-                            RowLayout {
-                                required property var modelData
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
+                            Label {
                                 Layout.fillWidth: true
-                                Label {
+                                font.bold: true
+                                elide: Text.ElideRight
+                                text: entry.modelData.filename
+                            }
+                            Repeater {
+                                model: [entry.modelData.primary].concat(entry.modelData.extra)
+                                RowLayout {
+                                    required property var modelData
                                     Layout.fillWidth: true
-                                    elide: Text.ElideMiddle
-                                    color: Theme.quiet
-                                    text: modelData.sourceName + " — " + modelData.path
-                                }
-                                ToolButton {
-                                    text: qsTr("Show in file manager")
-                                    focusPolicy: Qt.NoFocus
-                                    onClicked: dialog.duplicates.revealLocation(modelData.sourceId, modelData.path)
+                                    Label {
+                                        Layout.fillWidth: true
+                                        elide: Text.ElideMiddle
+                                        color: Theme.quiet
+                                        text: modelData.sourceName + " — " + modelData.path
+                                    }
+                                    ToolButton {
+                                        text: qsTr("Show in file manager")
+                                        focusPolicy: Qt.NoFocus
+                                        onClicked: dialog.duplicates.revealLocation(modelData.sourceId, modelData.path)
+                                    }
                                 }
                             }
                         }
@@ -97,7 +99,7 @@ AppWindow {
         }
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: 12
             Item { Layout.fillWidth: true }
             AppButton {
                 id: exportButton

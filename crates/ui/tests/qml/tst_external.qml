@@ -110,6 +110,7 @@ AppTestCase {
         tryVerify(() => app.externalDialog.visible)
         tryCompare(app.externalDialog.entries, "length", 1)
         compare(app.externalDialog.entries[0].changes[0].conflict, true)
+        snapshot("external-changes")
         // Kept by default: accepting leaves the rating as it is.
         click(app.externalDialog.acceptAllButton)
         tryVerify(() => !app.externalBanner.visible)

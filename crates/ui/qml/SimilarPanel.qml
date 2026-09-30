@@ -103,7 +103,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: Theme.grey.dark
+        color: Theme.surface.sunken
     }
 
     ColumnLayout {
@@ -153,10 +153,13 @@ Rectangle {
             Layout.preferredHeight: Math.max(1, Math.ceil(panel.count / 2)) * cellHeight
             Layout.maximumHeight: parent.height - 140
             clip: true
+            boundsBehavior: Flickable.StopAtBounds
             model: panel.similar
-            cellWidth: Math.floor(width / 2)
+            // Two columns that leave the scrollbar its own strip on the right, which the thumb then sits in
+            // without covering a thumbnail (a margin on the view itself would only shrink the thumb's own room).
+            cellWidth: Math.floor((width - vbar.width) / 2)
             cellHeight: cellWidth * 3 / 4 + 4
-            ScrollBar.vertical: ScrollBar {}
+            ScrollBar.vertical: AppScrollBar { id: vbar }
             delegate: Item {
                 id: entry
                 required property var modelData
@@ -166,7 +169,7 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     anchors.margins: 2
-                    color: "#262626"
+                    color: Theme.surface.sunken
                     border.width: hover.containsMouse ? 2 : 0
                     border.color: Theme.accent
                     Image {
@@ -183,7 +186,7 @@ Rectangle {
                         padding: 2
                         font.pixelSize: 11
                         text: panel.closeness(entry.modelData.distance) + " %"
-                        background: Rectangle { color: "#b0000000"; radius: 2 }
+                        background: Rectangle { color: "#b0000000"; radius: Theme.radiusControl }
                     }
                     MouseArea {
                         id: hover

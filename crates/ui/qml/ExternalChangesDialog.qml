@@ -103,118 +103,120 @@ AppWindow {
                   ? qsTr("%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.", "", dialog.entries.length)
                   : qsTr("Nothing is waiting.")
         }
-        ListView {
-            id: list
+        AppListFrame {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            model: dialog.entries
-            spacing: 6
-            ScrollBar.vertical: ScrollBar {}
-            delegate: Rectangle {
-                id: entry
-                required property var modelData
-                required property int index
-                width: list.width
-                height: content.implicitHeight + 16
-                color: index % 2 === 0 ? "#00000000" : "#12ffffff"
-                RowLayout {
-                    id: content
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 10
-                    Image {
-                        Layout.preferredWidth: 64
-                        Layout.preferredHeight: 48
-                        Layout.alignment: Qt.AlignTop
-                        source: "image://thumbs/" + entry.modelData.id
-                        fillMode: Image.PreserveAspectFit
-                        asynchronous: true
-                        Accessible.ignored: true
-                    }
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 3
-                        Label {
+
+            AppListView {
+                id: list
+                anchors.fill: parent
+                model: dialog.entries
+                spacing: 6
+                delegate: Rectangle {
+                    id: entry
+                    required property var modelData
+                    required property int index
+                    width: list.rowWidth
+                    height: content.implicitHeight + 16
+                    color: index % 2 === 0 ? "#00000000" : "#12ffffff"
+                    RowLayout {
+                        id: content
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 10
+                        Image {
+                            Layout.preferredWidth: 64
+                            Layout.preferredHeight: 48
+                            Layout.alignment: Qt.AlignTop
+                            source: "image://thumbs/" + entry.modelData.id
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            Accessible.ignored: true
+                        }
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            font.bold: true
-                            elide: Text.ElideRight
-                            text: entry.modelData.filename
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            elide: Text.ElideMiddle
-                            color: Theme.quiet
-                            text: entry.modelData.xmpPath
-                        }
-                        Repeater {
-                            model: entry.modelData.changes
-                            delegate: ColumnLayout {
-                                id: change
-                                required property var modelData
+                            spacing: 3
+                            Label {
                                 Layout.fillWidth: true
-                                spacing: 0
-                                Label {
-                                    Layout.fillWidth: true
-                                    wrapMode: Text.Wrap
-                                    visible: !change.modelData.conflict
-                                    text: qsTr("%1: %2 → %3")
-                                              .arg(dialog.fieldLabel(change.modelData.field))
-                                              .arg(dialog.valueText(change.modelData.field, change.modelData.mine))
-                                              .arg(dialog.valueText(change.modelData.field, change.modelData.file))
-                                }
-                                Label {
-                                    Layout.fillWidth: true
-                                    wrapMode: Text.Wrap
-                                    visible: change.modelData.conflict
-                                    color: Theme.warning
-                                    text: qsTr("%1: changed here and in the file").arg(dialog.fieldLabel(change.modelData.field))
-                                }
-                                RadioButton {
-                                    visible: change.modelData.conflict
-                                    text: qsTr("Keep mine: %1").arg(dialog.valueText(change.modelData.field, change.modelData.mine))
-                                    checked: dialog.useFile[entry.modelData.id + "|" + change.modelData.field] !== true
-                                    onClicked: dialog.choose(entry.modelData.id, change.modelData.field, false)
-                                }
-                                RadioButton {
-                                    visible: change.modelData.conflict
-                                    text: qsTr("Take the file's: %1").arg(dialog.valueText(change.modelData.field, change.modelData.file))
-                                    checked: dialog.useFile[entry.modelData.id + "|" + change.modelData.field] === true
-                                    onClicked: dialog.choose(entry.modelData.id, change.modelData.field, true)
-                                }
-                            }
-                        }
-                        Repeater {
-                            model: entry.modelData.keywordsAdded
-                            delegate: Label {
-                                required property string modelData
-                                Layout.fillWidth: true
+                                font.bold: true
                                 elide: Text.ElideRight
-                                text: qsTr("Keyword added: %1").arg(modelData)
+                                text: entry.modelData.filename
                             }
-                        }
-                        Repeater {
-                            model: entry.modelData.keywordsRemoved
-                            delegate: Label {
-                                required property string modelData
+                            Label {
                                 Layout.fillWidth: true
-                                elide: Text.ElideRight
-                                text: qsTr("Keyword removed: %1").arg(modelData)
+                                elide: Text.ElideMiddle
+                                color: Theme.quiet
+                                text: entry.modelData.xmpPath
+                            }
+                            Repeater {
+                                model: entry.modelData.changes
+                                delegate: ColumnLayout {
+                                    id: change
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    spacing: 0
+                                    Label {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
+                                        visible: !change.modelData.conflict
+                                        text: qsTr("%1: %2 → %3")
+                                                  .arg(dialog.fieldLabel(change.modelData.field))
+                                                  .arg(dialog.valueText(change.modelData.field, change.modelData.mine))
+                                                  .arg(dialog.valueText(change.modelData.field, change.modelData.file))
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.Wrap
+                                        visible: change.modelData.conflict
+                                        color: Theme.warning
+                                        text: qsTr("%1: changed here and in the file").arg(dialog.fieldLabel(change.modelData.field))
+                                    }
+                                    RadioButton {
+                                        visible: change.modelData.conflict
+                                        text: qsTr("Keep mine: %1").arg(dialog.valueText(change.modelData.field, change.modelData.mine))
+                                        checked: dialog.useFile[entry.modelData.id + "|" + change.modelData.field] !== true
+                                        onClicked: dialog.choose(entry.modelData.id, change.modelData.field, false)
+                                    }
+                                    RadioButton {
+                                        visible: change.modelData.conflict
+                                        text: qsTr("Take the file's: %1").arg(dialog.valueText(change.modelData.field, change.modelData.file))
+                                        checked: dialog.useFile[entry.modelData.id + "|" + change.modelData.field] === true
+                                        onClicked: dialog.choose(entry.modelData.id, change.modelData.field, true)
+                                    }
+                                }
+                            }
+                            Repeater {
+                                model: entry.modelData.keywordsAdded
+                                delegate: Label {
+                                    required property string modelData
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    text: qsTr("Keyword added: %1").arg(modelData)
+                                }
+                            }
+                            Repeater {
+                                model: entry.modelData.keywordsRemoved
+                                delegate: Label {
+                                    required property string modelData
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                    text: qsTr("Keyword removed: %1").arg(modelData)
+                                }
                             }
                         }
-                    }
-                    ColumnLayout {
-                        Layout.alignment: Qt.AlignTop
-                        spacing: 4
-                        AppButton {
-                            objectName: "acceptOne"
-                            text: qsTr("Accept")
-                            onClicked: dialog.acceptOne(entry.modelData.id)
-                        }
-                        AppButton {
-                            objectName: "ignoreOne"
-                            text: qsTr("Ignore")
-                            onClicked: dialog.external.ignore(JSON.stringify([entry.modelData.id]))
+                        ColumnLayout {
+                            Layout.alignment: Qt.AlignTop
+                            spacing: 4
+                            AppButton {
+                                objectName: "acceptOne"
+                                text: qsTr("Accept")
+                                onClicked: dialog.acceptOne(entry.modelData.id)
+                            }
+                            AppButton {
+                                objectName: "ignoreOne"
+                                text: qsTr("Ignore")
+                                onClicked: dialog.external.ignore(JSON.stringify([entry.modelData.id]))
+                            }
                         }
                     }
                 }

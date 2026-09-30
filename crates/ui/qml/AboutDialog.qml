@@ -12,7 +12,7 @@ AppDialog {
     title: qsTr("About Auroraw")
 
     contentItem: ColumnLayout {
-        spacing: 10
+        spacing: 16
         Label {
             text: qsTr("Auroraw %1").arg(dialog.launcher.version())
             font.pixelSize: 18
@@ -42,11 +42,12 @@ AppDialog {
         }
         Label {
             text: "https://auroraw.org"
-            color: Theme.accent
+            // D-129: the second, sparing accent — a link is exactly the rare highlight it's for.
+            color: Theme.accentSecondary
         }
     }
 
-    footer: DialogButtonBox {
+    footer: AppDialogButtonBox {
         AppButton {
             text: qsTr("Close")
             highlighted: true

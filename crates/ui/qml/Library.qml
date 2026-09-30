@@ -702,6 +702,7 @@ FocusScope {
                 Layout.fillHeight: true
                 clip: true
                 focus: true
+                boundsBehavior: Flickable.StopAtBounds
                 model: root.photoGrid
                 cellWidth: root.thumbW + 4
                 cellHeight: root.thumbH + 4
@@ -712,7 +713,7 @@ FocusScope {
                 readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
                 readonly property int visibleRows: Math.max(1, Math.floor(height / cellHeight))
 
-                ScrollBar.vertical: ScrollBar {}
+                ScrollBar.vertical: AppScrollBar {}
 
                 // The window was resized and the rows re-flowed: the cursor stays in view (once the
                 // view has laid its cells out again).
@@ -970,7 +971,7 @@ FocusScope {
                         width: root.thumbW - 10
                         height: 2
                         visible: cell.collapsed
-                        color: Theme.grey.light
+                        color: Theme.surface.border
                     }
                     Rectangle {
                         x: 14
@@ -978,7 +979,7 @@ FocusScope {
                         width: root.thumbW - 20
                         height: 1
                         visible: cell.collapsed
-                        color: Theme.grey.light
+                        color: Theme.surface.border
                     }
                     // The members of an open series are joined by a line under them.
                     Rectangle {
@@ -1011,7 +1012,7 @@ FocusScope {
                             anchors.centerIn: parent
                             visible: cell.unavailable && !cell.isMissing
                             text: qsTr("No preview")
-                            color: Theme.grey.placeholder
+                            color: Theme.surface.placeholder
                         }
                         // The last scan of this photo's source no longer found its file there (issue #7): its
                         // thumbnail may still be the one cached from before, so this is said outright rather than
@@ -1026,7 +1027,7 @@ FocusScope {
                         Rectangle {
                             anchors.fill: parent
                             visible: cell.selected
-                            color: root.palette.highlight
+                            color: Theme.accent
                             opacity: 0.38
                         }
                         // The rating, on a dark chip so that it reads over any picture.
@@ -1036,7 +1037,7 @@ FocusScope {
                             visible: cell.rating > 0
                             width: stars.implicitWidth + 8
                             height: stars.implicitHeight + 2
-                            radius: 3
+                            radius: Theme.radiusControl
                             color: "#a0000000"
                             Text {
                                 id: stars
@@ -1053,7 +1054,7 @@ FocusScope {
                             visible: cell.flag !== 0
                             width: flagMark.implicitWidth + 8
                             height: flagMark.implicitHeight + 2
-                            radius: 3
+                            radius: Theme.radiusControl
                             color: "#a0000000"
                             Text {
                                 id: flagMark
@@ -1072,7 +1073,7 @@ FocusScope {
                             visible: cell.inSeries && (cell.collapsed || cell.seriesEdge <= 1)
                             width: badgeText.implicitWidth + 10
                             height: badgeText.implicitHeight + 2
-                            radius: 3
+                            radius: Theme.radiusControl
                             color: "#c0000000"
                             Text {
                                 id: badgeText
@@ -1103,13 +1104,13 @@ FocusScope {
                             visible: !cell.isRawOriginal
                             width: noRawText.implicitWidth + 8
                             height: noRawText.implicitHeight + 2
-                            radius: 3
+                            radius: Theme.radiusControl
                             color: "#a0000000"
                             Text {
                                 id: noRawText
                                 anchors.centerIn: parent
                                 text: qsTr("No RAW")
-                                color: Theme.grey.placeholder
+                                color: Theme.surface.placeholder
                             }
                         }
                         // The colour label, a bar along the bottom of the picture.
@@ -1134,7 +1135,7 @@ FocusScope {
                             anchors.fill: parent
                             color: "transparent"
                             border.width: cell.selected ? 3 : 0
-                            border.color: root.palette.highlight
+                            border.color: Theme.accent
                         }
                         // The cursor, when it is not the only thing selected: where the keyboard is.
                         Rectangle {

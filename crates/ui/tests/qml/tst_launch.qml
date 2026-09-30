@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import org.auroraw.ui
 
@@ -86,6 +87,36 @@ AppTestCase {
         compare(app.launcher.screen, "welcome", "asked to see the list instead of reopening")
         app.known.refresh()
         compare(app.known.count, 1, "the workspace is still known")
+    }
+
+    // D-132 (Patrick's own review, "the list items are covered by the scrollbar"): an overlay
+    // scrollbar paints over the last pixels of its view, so rows are narrower than the list by the
+    // scrollbar's own width (`AppListView.rowWidth`), and no frame is drawn round a list with no rows.
+    function test_the_welcome_list_stops_its_rows_short_of_the_scrollbar_and_hides_when_empty() {
+        const machine = freshMachine()
+        launch(machine)
+        verify(!app.welcome.list.visible, "no workspace known, so no empty frame either")
+        createWorkspace("Main")
+        app.launcher.setStartupBehavior("list")
+        launch(machine)
+        wait(200)
+        app.known.refresh()
+        wait(150)
+        const list = app.welcome.list
+        verify(list.visible)
+        const row = list.itemAtIndex(0)
+        verify(row !== null, "the known workspace is a row")
+        // Where the handle really is (its geometry is the same whether or not it shows, and with one workspace it
+        // does not): after the row ends, `gap` pixels on, `thumbWidth` wide, and inside the list. A review of the
+        // pull request measured that a style lays the handle out by padding and not by an `x` of its own.
+        const bar = list.ScrollBar.vertical
+        const thumb = bar.contentItem
+        compare(thumb.width, bar.thumbWidth, "the handle is as wide as asked, not as wide as the padding leaves")
+        const thumbLeft = bar.x + thumb.x
+        verify(thumbLeft >= row.width, "the handle does not overlap a row")
+        compare(thumbLeft - row.width, bar.gap, "and stands a gap clear of it")
+        verify(thumbLeft + thumb.width <= list.width, "inside the list")
+        compare(list.boundsBehavior, Flickable.StopAtBounds)
     }
 
     function test_the_preview_follows_the_name_and_the_folder_and_the_folder_is_left_alone() {

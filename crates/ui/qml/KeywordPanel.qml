@@ -69,14 +69,38 @@ Rectangle {
         required property int slot
         text: tabRow.tabTexts[slot]
         width: Math.ceil(tabRow.tabWidth(slot))
-        horizontalPadding: Math.min(4, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        horizontalPadding: Math.min(8, Math.max(1, (width - tabRow.labelWidth(slot)) / 2))
+        // D-129: the same transparent-tab, accent-underline look as the header's AppTabButton.
+        background: Rectangle {
+            color: "transparent"
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 2
+                color: tab.checked ? Theme.accent : "transparent"
+                Behavior on color { ColorAnimation { duration: Theme.motion } }
+            }
+            // Keyboard focus only (`visualFocus`): an outline round the tab, since the underline alone
+            // says which tab is current, not which one has the focus.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: Theme.radiusControl
+                color: "transparent"
+                border.width: 2
+                border.color: Theme.accent
+                visible: tab.visualFocus
+            }
+        }
         contentItem: Label {
             text: tab.text
             font: tab.font
-            color: tab.palette.buttonText
+            color: tab.checked ? tab.palette.buttonText : Theme.quiet
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+            Behavior on color { ColorAnimation { duration: Theme.motion } }
         }
     }
 
@@ -88,7 +112,7 @@ Rectangle {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: edge.containsMouse || edge.pressed ? palette.highlight : palette.dark
+        color: edge.containsMouse || edge.pressed ? Theme.accent : palette.dark
     }
 
     // Anywhere in the panel where there is no keyword is a place to drop one to make it a top-level keyword
@@ -104,9 +128,9 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         visible: topLevelDrop.containsDrag && topLevelDrop.allowed
-        color: palette.highlight
+        color: Theme.accent
         opacity: 0.18
-        border.color: palette.highlight
+        border.color: Theme.accent
         border.width: 2
     }
 
@@ -271,10 +295,12 @@ Rectangle {
             function tabWidth(slot) {
                 const n = Math.max(measures.count, 1)
                 const label = labelWidth(slot)
-                if (room >= labelsTotal + 8 * n)
-                    return label + 8
-                if (room >= labelsTotal + 2 * n)
-                    return label + 2 + (room - labelsTotal - 2 * n) / n
+                // The generous ceiling was 8 (4px padding a side); Patrick's own review of D-129 found the
+                // inactive tabs, with no fill of their own, read as one run-on string without more room.
+                if (room >= labelsTotal + 16 * n)
+                    return label + 16
+                if (room >= labelsTotal + 4 * n)
+                    return label + 4 + (room - labelsTotal - 4 * n) / n
                 return labelsTotal > 0 ? Math.max(room, 0) * label / labelsTotal : label
             }
             TabBar {
@@ -358,119 +384,121 @@ Rectangle {
             Item { Layout.fillWidth: !panel.canAdd && panel.createUnder === "" }
         }
 
-        ListView {
-            id: tree
+        AppListFrame {
             visible: tabs.currentIndex === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            model: panel.keywords
-            ScrollBar.vertical: ScrollBar {}
 
-            delegate: Item {
-                id: row
-                required property int index
-                required property string keywordId
-                required property string name
-                required property int depth
-                required property int photos
-                required property int carried
-                required property bool hasChildren
-                required property bool expanded
-                width: ListView.view.width
-                height: 28
+            AppListView {
+                id: tree
+                anchors.fill: parent
+                model: panel.keywords
 
-                // Dropping a keyword here makes it a child of this one (when that is possible).
-                Rectangle {
-                    anchors.fill: parent
-                    visible: rowDrop.containsDrag && rowDrop.allowed
-                    color: palette.highlight
-                    opacity: 0.35
-                    border.color: palette.highlight
-                }
-                DropArea {
-                    id: rowDrop
-                    property bool allowed: false
-                    anchors.fill: parent
-                    keys: ["keyword"]
-                    onEntered: drag => allowed = drag.source.keywordId !== row.keywordId
-                                              && panel.keywords.canMove(drag.source.keywordId, row.keywordId)
-                    onDropped: drop => panel.dropOn(drop.source.keywordId, row.keywordId)
-                }
+                delegate: Item {
+                    id: row
+                    required property int index
+                    required property string keywordId
+                    required property string name
+                    required property int depth
+                    required property int photos
+                    required property int carried
+                    required property bool hasChildren
+                    required property bool expanded
+                    width: tree.rowWidth
+                    height: 28
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: row.depth * 14
-                    spacing: 2
-                    Label {
-                        Layout.preferredWidth: 16
-                        horizontalAlignment: Text.AlignHCenter
-                        text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
-                        color: Theme.quiet
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: row.hasChildren
-                            onClicked: panel.keywords.toggleExpanded(row.index)
-                        }
+                    // Dropping a keyword here makes it a child of this one (when that is possible).
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: rowDrop.containsDrag && rowDrop.allowed
+                        color: Theme.accent
+                        opacity: 0.35
+                        border.color: Theme.accent
                     }
-                    CheckBox {
-                        id: check
-                        tristate: true
-                        padding: 0
-                        focusPolicy: Qt.NoFocus
-                        checkState: row.carried === 2 ? Qt.Checked : row.carried === 1 ? Qt.PartiallyChecked : Qt.Unchecked
-                        enabled: panel.photoGrid.selectedCount > 0
-                        Accessible.name: row.name
-                        // The state comes from the selection, not from the click: the click asks for it.
-                        nextCheckState: function () { return checkState }
-                        onClicked: panel.assign(row.keywordId, row.carried !== 2)
+                    DropArea {
+                        id: rowDrop
+                        property bool allowed: false
+                        anchors.fill: parent
+                        keys: ["keyword"]
+                        onEntered: drag => allowed = drag.source.keywordId !== row.keywordId
+                                                  && panel.keywords.canMove(drag.source.keywordId, row.keywordId)
+                        onDropped: drop => panel.dropOn(drop.source.keywordId, row.keywordId)
                     }
-                    Label {
-                        Layout.fillWidth: true
-                        text: row.name
-                        elide: Text.ElideRight
-                        MouseArea {
-                            id: nameArea
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            drag.target: ghost
-                            drag.threshold: 8
-                            onPressed: mouse => {
-                                if (mouse.button !== Qt.LeftButton)
-                                    return
-                                const at = mapToItem(panel, mouse.x, mouse.y)
-                                ghost.x = at.x - ghost.Drag.hotSpot.x
-                                ghost.y = at.y - ghost.Drag.hotSpot.y
-                                ghost.keywordId = row.keywordId
-                                ghost.label = row.name
-                            }
-                            drag.onActiveChanged: {
-                                if (drag.active) {
-                                    ghost.visible = true
-                                    ghost.Drag.active = true
-                                    panel.dragging = true
-                                } else {
-                                    // (Not here: the drop can move the keyword and the list then rebuilds its rows,
-                                    // this one included.)
-                                    panel.endDrag()
-                                }
-                            }
-                            onClicked: mouse => {
-                                panel.createUnder = row.keywordId
-                                panel.createUnderName = row.name
-                                if (mouse.button === Qt.RightButton) {
-                                    menu.row = row.index
-                                    menu.keywordId = row.keywordId
-                                    menu.keywordName = row.name
-                                    menu.popup()
-                                }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: row.depth * 14
+                        spacing: 2
+                        Label {
+                            Layout.preferredWidth: 16
+                            horizontalAlignment: Text.AlignHCenter
+                            text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
+                            color: Theme.quiet
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: row.hasChildren
+                                onClicked: panel.keywords.toggleExpanded(row.index)
                             }
                         }
-                    }
-                    Label {
-                        text: row.photos
-                        color: Theme.quiet
-                        Layout.rightMargin: 6
+                        CheckBox {
+                            id: check
+                            tristate: true
+                            padding: 0
+                            focusPolicy: Qt.NoFocus
+                            checkState: row.carried === 2 ? Qt.Checked : row.carried === 1 ? Qt.PartiallyChecked : Qt.Unchecked
+                            enabled: panel.photoGrid.selectedCount > 0
+                            Accessible.name: row.name
+                            // The state comes from the selection, not from the click: the click asks for it.
+                            nextCheckState: function () { return checkState }
+                            onClicked: panel.assign(row.keywordId, row.carried !== 2)
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            text: row.name
+                            elide: Text.ElideRight
+                            MouseArea {
+                                id: nameArea
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                drag.target: ghost
+                                drag.threshold: 8
+                                onPressed: mouse => {
+                                    if (mouse.button !== Qt.LeftButton)
+                                        return
+                                    const at = mapToItem(panel, mouse.x, mouse.y)
+                                    ghost.x = at.x - ghost.Drag.hotSpot.x
+                                    ghost.y = at.y - ghost.Drag.hotSpot.y
+                                    ghost.keywordId = row.keywordId
+                                    ghost.label = row.name
+                                }
+                                drag.onActiveChanged: {
+                                    if (drag.active) {
+                                        ghost.visible = true
+                                        ghost.Drag.active = true
+                                        panel.dragging = true
+                                    } else {
+                                        // (Not here: the drop can move the keyword and the list then rebuilds its rows,
+                                        // this one included.)
+                                        panel.endDrag()
+                                    }
+                                }
+                                onClicked: mouse => {
+                                    panel.createUnder = row.keywordId
+                                    panel.createUnderName = row.name
+                                    if (mouse.button === Qt.RightButton) {
+                                        menu.row = row.index
+                                        menu.keywordId = row.keywordId
+                                        menu.keywordName = row.name
+                                        menu.popup()
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            text: row.photos
+                            color: Theme.quiet
+                            Layout.rightMargin: 6
+                        }
                     }
                 }
             }
@@ -513,7 +541,7 @@ Rectangle {
         anchors.margins: 6
         visible: panel.expanded && panel.note !== ""
         height: noteLabel.implicitHeight + 12
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.window
         border.color: Theme.danger
         Label {
@@ -535,7 +563,7 @@ Rectangle {
         z: 100
         width: 180
         height: 26
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.highlight
         opacity: 0.85
         Drag.keys: ["keyword"]
@@ -639,7 +667,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Rename")
                 highlighted: true
@@ -696,7 +724,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Move")
                 highlighted: true
@@ -805,7 +833,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Delete")
                 highlighted: true
@@ -880,9 +908,9 @@ Rectangle {
                 // Unlike TextField, Fusion gives TextArea no background of its own (D-122).
                 background: Rectangle {
                     color: palette.base
-                    radius: 3
+                    radius: Theme.radiusControl
                     border.width: 1
-                    border.color: synonymsField.activeFocus ? palette.highlight : palette.mid
+                    border.color: synonymsField.activeFocus ? Theme.accent : palette.mid
                 }
             }
             CheckBox {
@@ -898,7 +926,7 @@ Rectangle {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Save")
                 highlighted: true

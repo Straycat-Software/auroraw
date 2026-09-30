@@ -126,9 +126,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         visible: topLevelDrop.containsDrag && topLevelDrop.allowed
-        color: palette.highlight
+        color: Theme.accent
         opacity: 0.18
-        border.color: palette.highlight
+        border.color: Theme.accent
         border.width: 2
     }
 
@@ -196,118 +196,120 @@ Item {
             Item { Layout.fillWidth: !panel.canAdd && panel.createUnder === "" }
         }
 
-        ListView {
-            id: tree
+        AppListFrame {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            model: panel.collections
-            ScrollBar.vertical: ScrollBar {}
 
-            delegate: Item {
-                id: row
-                required property int index
-                required property string collectionId
-                required property string name
-                required property int depth
-                required property int photos
-                required property int held
-                required property bool hasChildren
-                required property bool expanded
-                width: ListView.view.width
-                height: 28
+            AppListView {
+                id: tree
+                anchors.fill: parent
+                model: panel.collections
 
-                // Dropping a collection here puts it inside this one (when that is possible).
-                Rectangle {
-                    anchors.fill: parent
-                    visible: rowDrop.containsDrag && rowDrop.allowed
-                    color: palette.highlight
-                    opacity: 0.35
-                    border.color: palette.highlight
-                }
-                DropArea {
-                    id: rowDrop
-                    property bool allowed: false
-                    anchors.fill: parent
-                    keys: ["collection"]
-                    onEntered: drag => allowed = drag.source.collectionId !== row.collectionId
-                                              && panel.collections.canMove(drag.source.collectionId, row.collectionId)
-                    onDropped: drop => panel.dropOn(drop.source.collectionId, row.collectionId)
-                }
+                delegate: Item {
+                    id: row
+                    required property int index
+                    required property string collectionId
+                    required property string name
+                    required property int depth
+                    required property int photos
+                    required property int held
+                    required property bool hasChildren
+                    required property bool expanded
+                    width: tree.rowWidth
+                    height: 28
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: row.depth * 14
-                    spacing: 2
-                    Label {
-                        Layout.preferredWidth: 16
-                        horizontalAlignment: Text.AlignHCenter
-                        text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
-                        color: Theme.quiet
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: row.hasChildren
-                            onClicked: panel.collections.toggleExpanded(row.index)
-                        }
+                    // Dropping a collection here puts it inside this one (when that is possible).
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: rowDrop.containsDrag && rowDrop.allowed
+                        color: Theme.accent
+                        opacity: 0.35
+                        border.color: Theme.accent
                     }
-                    CheckBox {
-                        id: check
-                        tristate: true
-                        padding: 0
-                        focusPolicy: Qt.NoFocus
-                        checkState: row.held === 2 ? Qt.Checked : row.held === 1 ? Qt.PartiallyChecked : Qt.Unchecked
-                        enabled: panel.photoGrid.selectedCount > 0
-                        Accessible.name: row.name
-                        // The state comes from the selection, not from the click: the click asks for it.
-                        nextCheckState: function () { return checkState }
-                        onClicked: panel.assign(row.collectionId, row.held !== 2)
+                    DropArea {
+                        id: rowDrop
+                        property bool allowed: false
+                        anchors.fill: parent
+                        keys: ["collection"]
+                        onEntered: drag => allowed = drag.source.collectionId !== row.collectionId
+                                                  && panel.collections.canMove(drag.source.collectionId, row.collectionId)
+                        onDropped: drop => panel.dropOn(drop.source.collectionId, row.collectionId)
                     }
-                    Label {
-                        Layout.fillWidth: true
-                        text: row.name
-                        elide: Text.ElideRight
-                        MouseArea {
-                            id: nameArea
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            drag.target: ghost
-                            drag.threshold: 8
-                            onPressed: mouse => {
-                                if (mouse.button !== Qt.LeftButton)
-                                    return
-                                const at = mapToItem(panel, mouse.x, mouse.y)
-                                ghost.x = at.x - ghost.Drag.hotSpot.x
-                                ghost.y = at.y - ghost.Drag.hotSpot.y
-                                ghost.collectionId = row.collectionId
-                                ghost.label = row.name
-                            }
-                            drag.onActiveChanged: {
-                                if (drag.active) {
-                                    ghost.visible = true
-                                    ghost.Drag.active = true
-                                    panel.dragging = true
-                                } else {
-                                    // (Not here: the drop can move the collection and the list then rebuilds its
-                                    // rows, this one included.)
-                                    panel.endDrag()
-                                }
-                            }
-                            onClicked: mouse => {
-                                panel.createUnder = row.collectionId
-                                panel.createUnderName = row.name
-                                if (mouse.button === Qt.RightButton) {
-                                    menu.row = row.index
-                                    menu.collectionId = row.collectionId
-                                    menu.collectionName = row.name
-                                    menu.popup()
-                                }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: row.depth * 14
+                        spacing: 2
+                        Label {
+                            Layout.preferredWidth: 16
+                            horizontalAlignment: Text.AlignHCenter
+                            text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
+                            color: Theme.quiet
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: row.hasChildren
+                                onClicked: panel.collections.toggleExpanded(row.index)
                             }
                         }
-                    }
-                    Label {
-                        text: row.photos
-                        color: Theme.quiet
-                        Layout.rightMargin: 6
+                        CheckBox {
+                            id: check
+                            tristate: true
+                            padding: 0
+                            focusPolicy: Qt.NoFocus
+                            checkState: row.held === 2 ? Qt.Checked : row.held === 1 ? Qt.PartiallyChecked : Qt.Unchecked
+                            enabled: panel.photoGrid.selectedCount > 0
+                            Accessible.name: row.name
+                            // The state comes from the selection, not from the click: the click asks for it.
+                            nextCheckState: function () { return checkState }
+                            onClicked: panel.assign(row.collectionId, row.held !== 2)
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            text: row.name
+                            elide: Text.ElideRight
+                            MouseArea {
+                                id: nameArea
+                                anchors.fill: parent
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                drag.target: ghost
+                                drag.threshold: 8
+                                onPressed: mouse => {
+                                    if (mouse.button !== Qt.LeftButton)
+                                        return
+                                    const at = mapToItem(panel, mouse.x, mouse.y)
+                                    ghost.x = at.x - ghost.Drag.hotSpot.x
+                                    ghost.y = at.y - ghost.Drag.hotSpot.y
+                                    ghost.collectionId = row.collectionId
+                                    ghost.label = row.name
+                                }
+                                drag.onActiveChanged: {
+                                    if (drag.active) {
+                                        ghost.visible = true
+                                        ghost.Drag.active = true
+                                        panel.dragging = true
+                                    } else {
+                                        // (Not here: the drop can move the collection and the list then rebuilds its
+                                        // rows, this one included.)
+                                        panel.endDrag()
+                                    }
+                                }
+                                onClicked: mouse => {
+                                    panel.createUnder = row.collectionId
+                                    panel.createUnderName = row.name
+                                    if (mouse.button === Qt.RightButton) {
+                                        menu.row = row.index
+                                        menu.collectionId = row.collectionId
+                                        menu.collectionName = row.name
+                                        menu.popup()
+                                    }
+                                }
+                            }
+                        }
+                        Label {
+                            text: row.photos
+                            color: Theme.quiet
+                            Layout.rightMargin: 6
+                        }
                     }
                 }
             }
@@ -321,7 +323,7 @@ Item {
         anchors.bottom: parent.bottom
         visible: panel.note !== ""
         height: noteLabel.implicitHeight + 12
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.window
         border.color: Theme.danger
         Label {
@@ -343,7 +345,7 @@ Item {
         z: 100
         width: 180
         height: 26
-        radius: 3
+        radius: Theme.radiusControl
         color: palette.highlight
         opacity: 0.85
         Drag.keys: ["collection"]
@@ -432,7 +434,7 @@ Item {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Rename")
                 highlighted: true
@@ -489,7 +491,7 @@ Item {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Move")
                 highlighted: true
@@ -549,7 +551,7 @@ Item {
             }
         }
 
-        footer: DialogButtonBox {
+        footer: AppDialogButtonBox {
             AppButton {
                 text: qsTr("Delete")
                 highlighted: true
