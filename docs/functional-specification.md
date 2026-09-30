@@ -1039,3 +1039,4 @@ Sorted by when they need an answer. No question is left to decide before the tec
    integration, open source governance, plugin licensing). Done on 2026-09-20: see the
    documents listed in the README (D-068 to D-083).
 4. ~~Plan milestone M1~~: drafted in [m1-plan.md](m1-plan.md).
+5. ~~Plan milestone M2~~: adopted in [m2-plan.md](m2-plan.md) (D-143).
