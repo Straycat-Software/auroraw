@@ -17,7 +17,7 @@ negative scans, non-destructively), convert, edit metadata and deliver galleries
 - [Governance and contributions](docs/governance.md)
 - [Milestone M1 plan](docs/m1-plan.md) and the [interface port's parity checklist](docs/ui-parity-checklist.md)
 - [Technical spikes](docs/technical-spikes.md)
-- Design notes: [001 workspace layout](docs/design/001-workspace-layout.md), [002 state files](docs/design/002-state-files.md), [003 sidecars](docs/design/003-sidecars.md), [004 fingerprint](docs/design/004-fingerprint.md)
+- Design notes: [001 workspace layout](docs/design/001-workspace-layout.md), [002 state files](docs/design/002-state-files.md), [003 sidecars](docs/design/003-sidecars.md), [004 fingerprint](docs/design/004-fingerprint.md), [005 image engine interfaces](docs/design/005-image-engine-interfaces.md)
 
 ## Building
 
