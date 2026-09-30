@@ -2231,6 +2231,14 @@
         <translation>Écrit le fichier de chaque photo affichée dans un fichier texte, un chemin par ligne</translation>
     </message>
     <message numerus="yes">
+        <location filename="../qml/Library.qml" line="1090"/>
+        <source>Series of %n photo(s)</source>
+        <translation>
+            <numerusform>Série de %n photo</numerusform>
+            <numerusform>Série de %n photos</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
         <location filename="../qml/Library.qml" line="964"/>
         <source>Photo, %n star(s)</source>
         <translation>

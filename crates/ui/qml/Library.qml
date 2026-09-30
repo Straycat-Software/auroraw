@@ -15,10 +15,6 @@ FocusScope {
     required property var launcher
     property var hostWindow: null
 
-    // The rating's star (a literal U+2605: a regression test reads it back, since a compiler that
-    // took the source for a legacy code page once turned it into mojibake on Windows).
-    readonly property string star: "★"
-
     property alias grid: grid
     property alias filterBar: filterBar
     property alias filterButtons: filterButtons
@@ -952,10 +948,8 @@ FocusScope {
                     required property bool isMissing
                     // A series is one thumbnail with a count, that opens in place.
                     readonly property bool inSeries: cell.seriesId !== "" && cell.seriesTotal > 1
-                    // What the series' badge says: a tick once resolved, the arrow, the photos listed, and of how many when the
-                    // filters hide some of the series.
-                    readonly property string badgeLabel: (cell.seriesResolved ? "✓ " : "") + (cell.seriesOpen ? "▾ " : "▣ ")
-                        + (cell.seriesSize < cell.seriesTotal ? cell.seriesSize + "/" + cell.seriesTotal : cell.seriesSize)
+                    // How many photos the series' badge counts: those listed, and of how many when the filters hide some.
+                    readonly property string badgeCount: cell.seriesSize < cell.seriesTotal ? cell.seriesSize + "/" + cell.seriesTotal : String(cell.seriesSize)
                     readonly property bool collapsed: cell.inSeries && cell.seriesSize > 1 && !cell.seriesOpen
                     // No thumbnail can be made for this photo (it says so instead of staying empty).
                     readonly property bool unavailable: thumbnail.status === Image.Error
@@ -1041,11 +1035,10 @@ FocusScope {
                             height: stars.implicitHeight + 2
                             radius: Theme.radiusControl
                             color: Theme.scrimLight
-                            Text {
+                            AppRatingMark {
                                 id: stars
                                 anchors.centerIn: parent
-                                text: cell.rating + root.star
-                                color: Theme.rating
+                                rating: cell.rating
                             }
                         }
                         // The flag: picked ✔, rejected ✖.
@@ -1054,15 +1047,19 @@ FocusScope {
                             anchors.top: parent.top
                             anchors.margins: 4
                             visible: cell.flag !== 0
-                            width: flagMark.implicitWidth + 8
-                            height: flagMark.implicitHeight + 2
+                            width: flagMark.width + 8
+                            height: flagMark.height + 2
                             radius: Theme.radiusControl
                             color: Theme.scrimLight
-                            Text {
+                            AppIcon {
                                 id: flagMark
                                 anchors.centerIn: parent
-                                text: cell.flag === 1 ? "✔" : "✖"
+                                name: cell.flag === 1 ? "check" : "close"
+                                size: 15
                                 color: cell.flag === 1 ? Theme.picked : Theme.danger
+                                Accessible.ignored: false
+                                Accessible.role: Accessible.StaticText
+                                Accessible.name: cell.flag === 1 ? qsTr("Picked") : qsTr("Rejected")
                             }
                         }
                         // The series' badge: how many photos, a tick once it is resolved; a click opens or closes it.
@@ -1073,16 +1070,36 @@ FocusScope {
                             anchors.margins: 4
                             anchors.bottomMargin: 9
                             visible: cell.inSeries && (cell.collapsed || cell.seriesEdge <= 1)
-                            width: badgeText.implicitWidth + 10
-                            height: badgeText.implicitHeight + 2
+                            width: badgeRow.implicitWidth + 10
+                            height: badgeRow.implicitHeight + 2
                             radius: Theme.radiusControl
                             color: Theme.scrimStrong
-                            Text {
-                                id: badgeText
+                            Accessible.role: Accessible.StaticText
+                            Accessible.name: qsTr("Series of %n photo(s)", "", cell.seriesTotal)
+                            // A tick once resolved, the series' icon (an arrow while it is open), and how many photos are
+                            // listed, and of how many when the filters hide some of the series.
+                            Row {
+                                id: badgeRow
                                 anchors.centerIn: parent
-                                // The photos listed, and of how many when the filters hide some of the series.
-                                text: cell.badgeLabel
-                                color: cell.seriesResolved ? Theme.picked : Theme.white
+                                spacing: 3
+                                AppIcon {
+                                    visible: cell.seriesResolved
+                                    name: "check"
+                                    size: 13
+                                    color: Theme.picked
+                                    anchors.verticalCenter: badgeText.verticalCenter
+                                }
+                                AppIcon {
+                                    name: cell.seriesOpen ? "caret-down" : "series"
+                                    size: 13
+                                    color: badgeText.color
+                                    anchors.verticalCenter: badgeText.verticalCenter
+                                }
+                                Text {
+                                    id: badgeText
+                                    text: cell.badgeCount
+                                    color: cell.seriesResolved ? Theme.picked : Theme.white
+                                }
                             }
                             MouseArea {
                                 anchors.fill: parent
@@ -1184,7 +1201,9 @@ FocusScope {
                     visible: !statusStrip.running
                     x: 6
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.summary
+                    // What the engine wrote holds the star, the tick and the cross for the rating and the flag: shown as icons.
+                    textFormat: Text.StyledText
+                    text: Icons.styled(root.summary)
                     color: Theme.quiet
                     elide: Text.ElideRight
                     width: parent.width - 12

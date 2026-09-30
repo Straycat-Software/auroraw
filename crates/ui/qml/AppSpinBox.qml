@@ -47,10 +47,10 @@ SpinBox {
         border.color: Theme.surface.border
         color: control.up.pressed ? Qt.lighter(Theme.surface.hover, 1.15) : (control.up.hovered ? Qt.lighter(Theme.surface.hover, 1.08) : Theme.surface.hover)
         Behavior on color { ColorAnimation { duration: Theme.motion } }
-        Text {
+        AppIcon {
             anchors.centerIn: parent
-            text: "▲"
-            font.pixelSize: 7
+            name: "caret-up"
+            size: 9
             color: Theme.surface.text
         }
     }
@@ -63,10 +63,10 @@ SpinBox {
         border.color: Theme.surface.border
         color: control.down.pressed ? Qt.lighter(Theme.surface.hover, 1.15) : (control.down.hovered ? Qt.lighter(Theme.surface.hover, 1.08) : Theme.surface.hover)
         Behavior on color { ColorAnimation { duration: Theme.motion } }
-        Text {
+        AppIcon {
             anchors.centerIn: parent
-            text: "▼"
-            font.pixelSize: 7
+            name: "caret-down"
+            size: 9
             color: Theme.surface.text
         }
     }

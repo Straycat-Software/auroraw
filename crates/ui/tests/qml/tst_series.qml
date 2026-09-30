@@ -260,7 +260,9 @@ AppTestCase {
         keyClick(Qt.Key_R)
         tryCompare(app.photos, "count", 34, 10000, "the four rejected frames are not listed")
         const one = cell(burstRow)
-        tryCompare(one, "badgeLabel", "✓ ▣ 1/5", 5000)
+        // The badge says: resolved (a tick), closed (the series' icon), and 1 of 5 listed.
+        tryCompare(one, "badgeCount", "1/5", 5000)
+        verify(one.seriesResolved && !one.seriesOpen)
         compare(one.seriesSize, 1)
         compare(one.seriesTotal, 5)
         lib.openView(burstRow)
@@ -277,7 +279,9 @@ AppTestCase {
         verify(lib.viewer.compareButton.enabled && lib.viewer.compareButton.opacity === 1)
         verify(!lib.viewer.keepButton.enabled)
         keyClick(Qt.Key_Escape)
-        tryCell(burstRow, "badgeLabel", "✓ ▾ 5")
+        // Resolved, open (an arrow instead of the series' icon), all 5 listed.
+        tryCell(burstRow, "badgeCount", "5")
+        verify(cell(burstRow).seriesResolved && cell(burstRow).seriesOpen)
     }
 
     function test_the_view_offers_keep_and_compare_only_for_a_photo_in_a_series() {

@@ -263,8 +263,8 @@ ApplicationWindow {
             spacing: 0
             AppToolButton {
                 id: hamburger
-                text: "☰"
-                font.pixelSize: 18
+                iconName: "menu"
+                iconSize: 18
                 Accessible.name: qsTr("Menu")
                 onClicked: appMenu.opened ? appMenu.close() : appMenu.popup(hamburger, 0, hamburger.height)
                 AppMenu {

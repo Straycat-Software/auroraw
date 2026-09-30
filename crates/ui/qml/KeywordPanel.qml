@@ -314,7 +314,11 @@ Rectangle {
             }
             AppToolButton {
                 id: collapseButton
-                text: "»"
+                iconName: "chevrons-right"
+                iconSize: 13
+                // No wider than the » it replaced (24px), or the tabs beside it lose the room that French's four just fit in.
+                leftPadding: 5
+                rightPadding: 5
                 focusPolicy: Qt.NoFocus
                 Accessible.name: qsTr("Hide the panel")
                 onClicked: panel.expanded = false
@@ -429,11 +433,16 @@ Rectangle {
                         anchors.fill: parent
                         anchors.leftMargin: row.depth * 14
                         spacing: 2
-                        Label {
+                        Item {
                             Layout.preferredWidth: 16
-                            horizontalAlignment: Text.AlignHCenter
-                            text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
-                            color: Theme.quiet
+                            Layout.fillHeight: true
+                            AppIcon {
+                                anchors.centerIn: parent
+                                visible: row.hasChildren
+                                name: row.expanded ? "caret-down" : "caret-right"
+                                size: 10
+                                color: Theme.quiet
+                            }
                             MouseArea {
                                 anchors.fill: parent
                                 enabled: row.hasChildren
@@ -585,7 +594,10 @@ Rectangle {
         anchors.top: parent.top
         anchors.horizontalCenter: parent.horizontalCenter
         visible: !panel.expanded
-        text: "«"
+        iconName: "chevrons-left"
+        iconSize: 13
+        leftPadding: 5
+        rightPadding: 5
         focusPolicy: Qt.NoFocus
         Accessible.name: qsTr("Show the keyword panel")
         onClicked: panel.expanded = true

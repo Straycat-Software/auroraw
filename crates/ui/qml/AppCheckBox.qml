@@ -4,7 +4,7 @@ import QtQuick.Controls
 import org.auroraw.ui
 
 // A check box (D-136): a 15px box on `sunken` with a hairline edge and `radius-control`; checked, it holds a light
-// check mark (the ✓ glyph, as the interface already uses ✔ and ✖), and partly checked (`tristate`, the keyword
+// check mark (the `check` icon), and partly checked (`tristate`, the keyword
 // tree's "some of the selected photos carry it") a short dash. Not a coloured fill: what a checked box says is
 // the mark, and a fill under it would need its own contrast. With no text it is only the box.
 CheckBox {
@@ -27,11 +27,11 @@ CheckBox {
         border.width: control.visualFocus ? 2 : 1
         border.color: control.visualFocus ? Theme.accent : (control.hovered ? Theme.quiet : Theme.controlEdge)
         Behavior on border.color { ColorAnimation { duration: Theme.motion } }
-        Text {
+        AppIcon {
             anchors.centerIn: parent
             visible: control.checkState === Qt.Checked
-            text: "✓"
-            font.pixelSize: 11
+            name: "check"
+            size: 11
             color: Theme.surface.text
         }
         Rectangle {

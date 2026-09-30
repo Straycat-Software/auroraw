@@ -47,11 +47,11 @@ ComboBox {
         text: control.textAt(index)
         highlighted: control.highlightedIndex === index
     }
-    indicator: Text {
+    indicator: AppIcon {
         x: control.width - width - 10
         y: (control.height - height) / 2
-        text: "▾"
-        font.pixelSize: 11
+        name: "caret-down"
+        size: 11
         color: Theme.quiet
     }
     contentItem: Label {

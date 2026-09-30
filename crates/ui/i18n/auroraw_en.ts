@@ -2231,6 +2231,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
+        <location filename="../qml/Library.qml" line="1090"/>
+        <source>Series of %n photo(s)</source>
+        <translation>
+            <numerusform>Series of %n photo</numerusform>
+            <numerusform>Series of %n photos</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
         <location filename="../qml/Library.qml" line="964"/>
         <source>Photo, %n star(s)</source>
         <translation>

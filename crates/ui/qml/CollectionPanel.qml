@@ -240,11 +240,16 @@ Item {
                         anchors.fill: parent
                         anchors.leftMargin: row.depth * 14
                         spacing: 2
-                        Label {
+                        Item {
                             Layout.preferredWidth: 16
-                            horizontalAlignment: Text.AlignHCenter
-                            text: row.hasChildren ? (row.expanded ? "▾" : "▸") : ""
-                            color: Theme.quiet
+                            Layout.fillHeight: true
+                            AppIcon {
+                                anchors.centerIn: parent
+                                visible: row.hasChildren
+                                name: row.expanded ? "caret-down" : "caret-right"
+                                size: 10
+                                color: Theme.quiet
+                            }
                             MouseArea {
                                 anchors.fill: parent
                                 enabled: row.hasChildren

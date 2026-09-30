@@ -312,14 +312,6 @@ AppTestCase {
                "the selected photo is in view after the columns changed")
     }
 
-    // The rating's star is one character, U+2605 (compiled QML once read as a legacy code page turned
-    // it into three, on Windows).
-    function test_the_rating_star_is_the_one_character() {
-        const star = app.library.star
-        compare(star.length, 1)
-        compare(star.charCodeAt(0), 0x2605)
-    }
-
     // Clicks the middle of what shows of the cell that is on screen (no scrolling to it first), and says which photo is
     // selected: it must be that cell's.
     function clickWhereItIs(index, note) {
