@@ -24,7 +24,8 @@ Rectangle {
     property alias groupButton: groupButton
     property alias compareButton: compareButton
 
-    readonly property int panelWidth: 264
+    // 272: the 264 it had, and the 8px the wider margins (D-144) took from what is inside.
+    readonly property int panelWidth: 272
     Layout.preferredWidth: visible ? panelWidth : 0
     Layout.fillHeight: true
     color: palette.window
@@ -108,8 +109,8 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 6
+        anchors.margins: 12
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true

@@ -312,6 +312,64 @@ AppTestCase {
                "the selected photo is in view after the columns changed")
     }
 
+    // The grid sits in the middle of its panel (D-144): what the columns leave over is shared by the two sides.
+    function test_the_grid_is_centred_in_its_panel() {
+        // 1400 holds eight cells of 164 and leaves 88: 44 on each side.
+        app.width = 1400 + panelWidth
+        wait(300)
+        compare(grid.columns, 8)
+        const left = grid.leftMargin
+        const right = grid.width - left - grid.columns * grid.cellWidth
+        verify(left > 0, "there is room to share: " + left)
+        verify(Math.abs(left - right) <= 1, "as much on the left (" + left + ") as on the right (" + right + ")")
+        compare(grid.itemAtIndex(0).mapToItem(grid, 0, 0).x, left, "the first cell starts after the margin, as drawn")
+        // The margin changes under the view when the window is resized, and the cells follow it (Qt would leave them where the
+        // last margin put them).
+        app.width = 1450 + panelWidth
+        wait(300)
+        compare(grid.columns, 8)
+        compare(grid.itemAtIndex(0).mapToItem(grid, 0, 0).x, grid.leftMargin, "still after the margin, once the margin changed")
+        compare(grid.contentX, grid.originX - grid.leftMargin)
+        app.width = 1400 + panelWidth
+        wait(300)
+        // Exactly full: nothing to share, the grid is where it was.
+        app.width = shownWidth(8)
+        wait(300)
+        compare(grid.leftMargin, 0)
+        // Narrower than one cell: still no negative margin.
+        app.width = 100 + panelWidth
+        wait(300)
+        compare(grid.leftMargin >= 0, true)
+    }
+
+    // A press in the margin is a press on empty space: it clears the selection, as it did when the leftover lay on the right.
+    // A photo is still where it shows, and the rubber band takes the columns from the content's own left.
+    function test_with_the_grid_centred_a_click_in_the_margin_clears_and_a_photo_and_a_rubber_band_are_where_they_show() {
+        app.width = 1400 + panelWidth
+        wait(300)
+        verify(grid.leftMargin > 10)
+        clickWhereItIs(1, "centred")
+        compare(app.library.selectedCount, 1)
+        mouseClick(grid, 4, 60)
+        wait(60)
+        compare(app.library.selectedCount, 0, "a click in the left margin clears the selection")
+        clickWhereItIs(2, "centred")
+        // (Not on the scrollbar's own 12px along the right edge.)
+        mouseClick(grid, grid.width - 24, 60)
+        wait(60)
+        compare(app.library.selectedCount, 0, "and in the right margin")
+        // A rubber band from the margin over the first two cells of the first row selects those two, and no more.
+        const first = cell(0).mapToItem(grid, 0, 0)
+        const y = first.y + 40
+        mousePress(grid, 4, y)
+        mouseMove(grid, first.x + grid.cellWidth + 60, y + 4)
+        mouseMove(grid, first.x + grid.cellWidth + 64, y + 6)
+        mouseRelease(grid, first.x + grid.cellWidth + 64, y + 6)
+        wait(100)
+        compare(app.library.selectedCount, 2, "the first two photos of the row")
+        verify(app.photos.isSelected(0) && app.photos.isSelected(1))
+    }
+
     // Clicks the middle of what shows of the cell that is on screen (no scrolling to it first), and says which photo is
     // selected: it must be that cell's.
     function clickWhereItIs(index, note) {
