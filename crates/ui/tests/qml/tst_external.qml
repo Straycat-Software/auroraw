@@ -50,6 +50,16 @@ AppTestCase {
         return -1
     }
 
+    // Opens the review from the banner. The banner is drawn before "Review…" is clicked, and the window before
+    // anything in it is (issue #27: a click sent before the first frame is lost).
+    function openReview() {
+        tryVerify(() => app.externalBanner.visible)
+        drawn(app.externalBanner)
+        click(app.externalBanner.reviewButton)
+        tryVerify(() => app.externalDialog.visible)
+        drawn(app.externalDialog.contentItem)
+    }
+
     // Writes `name`.xmp beside its original and lets a rescan see it, as another application's edit.
     function edit(name, title, rating) {
         files.write(home + "/Card/" + name + ".xmp", xmp(title, rating))
@@ -66,8 +76,7 @@ AppTestCase {
         compare(app.externalBanner.count, 1)
         snapshot("external-banner")
 
-        click(app.externalBanner.reviewButton)
-        tryVerify(() => app.externalDialog.visible)
+        openReview()
         tryCompare(app.externalDialog.entries, "length", 1)
         const entry = app.externalDialog.entries[0]
         compare(entry.filename, "IMG_0003.jpg")
@@ -122,8 +131,7 @@ AppTestCase {
         edit("IMG_0005", "Base", 3)
         tryVerify(() => app.externalBanner.visible)
 
-        click(app.externalBanner.reviewButton)
-        tryVerify(() => app.externalDialog.visible)
+        openReview()
         tryCompare(app.externalDialog.entries, "length", 1)
         compare(app.externalDialog.entries[0].changes[0].conflict, true)
         snapshot("external-changes")
@@ -139,8 +147,7 @@ AppTestCase {
         // Another change, and this time the file's value is chosen.
         edit("IMG_0005", "Base", 1)
         tryVerify(() => app.externalBanner.visible)
-        click(app.externalBanner.reviewButton)
-        tryVerify(() => app.externalDialog.visible)
+        openReview()
         tryCompare(app.externalDialog.entries, "length", 1)
         app.externalDialog.choose(app.externalDialog.entries[0].id, "rating", true)
         click(app.externalDialog.acceptAllButton)
@@ -151,6 +158,7 @@ AppTestCase {
         edit("IMG_0007", "Base")
         edit("IMG_0007", "Base", 3)
         tryVerify(() => app.externalBanner.visible)
+        drawn(app.externalBanner)
         click(app.externalBanner.ignoreButton)
         tryVerify(() => !app.externalBanner.visible)
         compare(app.photos.ratingAt(rowOfPhoto("IMG_0007")), 0)
@@ -175,8 +183,7 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
         app.launcher.chooseLanguage("fr")
         wait(250)
-        click(app.externalBanner.reviewButton)
-        tryVerify(() => app.externalDialog.visible)
+        openReview()
         tryCompare(app.externalDialog.entries, "length", 1)
         compare(app.externalDialog.title, "Métadonnées modifiées par une autre application")
         verify(app.externalDialog.acceptAllButton.text !== "Accept all")

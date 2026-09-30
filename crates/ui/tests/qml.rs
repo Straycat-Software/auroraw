@@ -265,13 +265,10 @@ fn exact_duplicates_are_reported_with_every_location() {
 /// Changes other applications make to the XMP files beside originals: the banner, the review window, accepting,
 /// declining and choosing where both sides changed.
 ///
-/// **Quarantined on Windows** (issue #27, `docs/testing-strategy.md` §10): the first test of this suite loses its
-/// click on "Review…" intermittently on the Windows runner (the review window never shows, even after 30 s), and
-/// never on Linux or macOS. The cause is not known: the button is enabled and has a size, and the runs that
-/// printed their state all passed. Ignored there so that it does not block the pull requests; it still runs on
-/// the other platforms, and the engine tests of the same feature still run everywhere.
+/// (It was ignored on Windows while issue #27 was open: the first click on "Review…" was lost intermittently there. A
+/// click sent before the frame that gives a banner or a window its contents is drawn is lost; the suite now waits
+/// for that frame, `drawn()` of `AppTestCase.qml`.)
 #[test]
-#[cfg_attr(windows, ignore = "intermittent on the Windows runner, see issue #27")]
 fn external_xmp_changes_are_announced_reviewed_and_answered() {
     let home = temp_dir();
     support::machine_with_photos(home.path(), 20);
