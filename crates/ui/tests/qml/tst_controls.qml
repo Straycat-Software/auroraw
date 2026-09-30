@@ -50,7 +50,10 @@ TestCase {
 
     function test_a_tool_button_is_as_high_as_a_text_needs_and_as_wide_as_its_label_and_padding() {
         const b = make(toolButtonComponent)
-        verify(b.implicitHeight >= 28 && b.implicitHeight <= 36, "about a control's height: " + b.implicitHeight)
+        // (What a line of text is high depends on the platform's default font, which this suite does not replace with
+        // the application's own: so the height is the label's and its padding, not a number of pixels.)
+        compare(b.implicitHeight, b.contentItem.implicitHeight + b.topPadding + b.bottomPadding)
+        compare(b.topPadding, 6)
         verify(b.implicitWidth > b.contentItem.implicitWidth + 12)
     }
 
