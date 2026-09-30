@@ -9,6 +9,11 @@ import QtQuick
 // convention painted a popup darker than the window behind it — and gave buttons, fields and the
 // spin box a flat, custom-drawn look instead of Fusion's default bevel gradient.
 QtObject {
+    // The hairline that says where a control is (a check box, a radio, a text field, a slider's groove): 4.2:1 on `sunken`
+    // and 3.4:1 on `window`, where `surface.border` (2.9 and 2.3:1) is right for a frame or a well and too faint for a control
+    // that has nothing else to show its edge (WCAG 1.4.11, asked by the review of #24).
+    readonly property color controlEdge: "#7a7e8d"
+
     readonly property var surface: ({
         sunken: "#1c1d21",
         window: "#2d2e34",

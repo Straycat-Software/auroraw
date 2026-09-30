@@ -76,7 +76,7 @@ Item {
                 id: list
                 anchors.fill: parent
                 model: root.known
-                delegate: ItemDelegate {
+                delegate: AppItemDelegate {
                     id: row
                     required property int index
                     required property string name

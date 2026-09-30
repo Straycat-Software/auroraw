@@ -44,7 +44,7 @@ AppDialog {
             color: Theme.quiet
         }
         Label { text: qsTr("Folder") }
-        TextField {
+        AppTextField {
             id: folderField
             Layout.fillWidth: true
             onAccepted: dialog.mergeQuestion === "" ? dialog.addRequested() : dialog.mergeRequested()
@@ -54,7 +54,7 @@ AppDialog {
             onClicked: browse.pick()
         }
         Label { text: qsTr("Name (optional)") }
-        TextField {
+        AppTextField {
             id: nameField
             Layout.fillWidth: true
             Layout.columnSpan: 2

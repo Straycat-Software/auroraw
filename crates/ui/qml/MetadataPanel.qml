@@ -174,6 +174,8 @@ Item {
         contentItem: ScrollView {
             id: pasteScroller
             clip: true
+            ScrollBar.vertical: AppScrollBar { id: pasteBar }
+            rightPadding: pasteBar.width
             contentWidth: availableWidth
             implicitHeight: Math.min(fieldColumn.implicitHeight, 360)
 
@@ -193,7 +195,7 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        CheckBox {
+                        AppCheckBox {
                             id: checkBox
                             checked: pasteDialog.checkedFields[fieldRow.modelData.key] === true
                             onToggled: pasteDialog.toggle(fieldRow.modelData.key, checked)
@@ -302,7 +304,7 @@ Item {
                     text: row.modelData.label
                     color: Theme.quiet
                 }
-                TextField {
+                AppTextField {
                     id: singleLine
                     visible: !row.modelData.multiline
                     Layout.fillWidth: true
@@ -311,7 +313,7 @@ Item {
                     Keys.onReturnPressed: row.apply(text)
                     Keys.onEnterPressed: row.apply(text)
                 }
-                TextArea {
+                AppTextArea {
                     id: multiLine
                     visible: row.modelData.multiline
                     Layout.fillWidth: true
@@ -319,14 +321,6 @@ Item {
                     wrapMode: TextArea.Wrap
                     placeholderText: row.mixed ? qsTr("Multiple values") : ""
                     onActiveFocusChanged: if (!activeFocus) row.apply(text)
-                    // Unlike TextField, Fusion gives TextArea no background of its own: without one it read
-                    // as bare text loose on the panel, not as a field (Patrick's own review caught this).
-                    background: Rectangle {
-                        color: palette.base
-                        radius: Theme.radiusControl
-                        border.width: 1
-                        border.color: multiLine.activeFocus ? Theme.accent : palette.mid
-                    }
                 }
             }
         }

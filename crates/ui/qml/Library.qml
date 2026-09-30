@@ -552,15 +552,16 @@ FocusScope {
                         }
                     }
                     // Which flags are shown: rejected photos are hidden unless asked for (spec §5.3).
-                    ComboBox {
+                    AppComboBox {
                         id: flagBox
+                        sizingTexts: [0, 1, 2, 3].map(i => root.flagName(i))
                         Layout.leftMargin: 8
                         model: 4
                         focusPolicy: Qt.NoFocus
                         currentIndex: root.photoGrid.flagFilter
                         displayText: root.flagName(currentIndex)
                         Accessible.name: qsTr("Show photos by flag")
-                        delegate: ItemDelegate {
+                        delegate: AppItemDelegate {
                             required property int index
                             width: flagBox.width
                             text: root.flagName(index)
@@ -575,7 +576,7 @@ FocusScope {
                     Repeater {
                         id: labelFilterButtons
                         model: ["red", "yellow", "green", "blue", "purple"]
-                        ToolButton {
+                        AppToolButton {
                             id: dot
                             required property string modelData
                             padding: 4
@@ -598,15 +599,16 @@ FocusScope {
                         }
                     }
                     // Series (WP9): which photos by series, and every series open or closed.
-                    ComboBox {
+                    AppComboBox {
                         id: seriesBox
+                        sizingTexts: [0, 1, 2, 3].map(i => root.seriesName(i))
                         visible: root.photoGrid.seriesCount > 0
                         model: 4
                         focusPolicy: Qt.NoFocus
                         currentIndex: root.photoGrid.seriesFilter
                         displayText: root.seriesName(currentIndex)
                         Accessible.name: qsTr("Show photos by series")
-                        delegate: ItemDelegate {
+                        delegate: AppItemDelegate {
                             required property int index
                             width: seriesBox.width
                             text: root.seriesName(index)
@@ -617,7 +619,7 @@ FocusScope {
                             grid.forceActiveFocus()
                         }
                     }
-                    ToolButton {
+                    AppToolButton {
                         id: expandButton
                         visible: root.photoGrid.seriesCount > 0
                         text: root.allOpen ? qsTr("Close all") : qsTr("Open all")
@@ -647,7 +649,7 @@ FocusScope {
                             grid.forceActiveFocus()
                         }
                     }
-                    Slider {
+                    AppSlider {
                         id: sizeSlider
                         Layout.preferredWidth: 90
                         from: 96
@@ -1194,7 +1196,7 @@ FocusScope {
                     anchors.leftMargin: 6
                     anchors.rightMargin: 6
                     spacing: 8
-                    ProgressBar {
+                    AppProgressBar {
                         id: batchProgress
                         Layout.preferredWidth: 120
                     }

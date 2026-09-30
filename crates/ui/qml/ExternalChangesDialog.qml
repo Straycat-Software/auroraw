@@ -171,13 +171,13 @@ AppWindow {
                                         color: Theme.warning
                                         text: qsTr("%1: changed here and in the file").arg(dialog.fieldLabel(change.modelData.field))
                                     }
-                                    RadioButton {
+                                    AppRadioButton {
                                         visible: change.modelData.conflict
                                         text: qsTr("Keep mine: %1").arg(dialog.valueText(change.modelData.field, change.modelData.mine))
                                         checked: dialog.useFile[entry.modelData.id + "|" + change.modelData.field] !== true
                                         onClicked: dialog.choose(entry.modelData.id, change.modelData.field, false)
                                     }
-                                    RadioButton {
+                                    AppRadioButton {
                                         visible: change.modelData.conflict
                                         text: qsTr("Take the file's: %1").arg(dialog.valueText(change.modelData.field, change.modelData.file))
                                         checked: dialog.useFile[entry.modelData.id + "|" + change.modelData.field] === true

@@ -261,7 +261,7 @@ ApplicationWindow {
         RowLayout {
             anchors.fill: parent
             spacing: 0
-            ToolButton {
+            AppToolButton {
                 id: hamburger
                 text: "☰"
                 font.pixelSize: 18

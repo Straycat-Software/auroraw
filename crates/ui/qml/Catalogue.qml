@@ -50,7 +50,7 @@ Item {
             color: Theme.warning
             text: qsTr("No source yet. Add the folder your photos are in.")
         }
-        ProgressBar {
+        AppProgressBar {
             Layout.fillWidth: true
             visible: root.flow.busy
             value: root.flow.progress
