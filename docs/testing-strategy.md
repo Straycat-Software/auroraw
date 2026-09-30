@@ -284,6 +284,11 @@ path, the format code and the plugin host, where a gap is expensive.
 - **Flaky tests.** A test that fails without a change is quarantined the same day (marked, kept
   running but not blocking), an issue is opened, and it is fixed or deleted within a week. A
   quarantine list that grows is a process failure, reported at each release.
+  The quarantine list (a test ignored on one platform, or for good, until it is fixed):
+
+  | Test | Since | Where | Issue | Why |
+  | --- | --- | --- | --- | --- |
+  | `external_xmp_changes_are_announced_reviewed_and_answered` (`crates/ui/tests/qml.rs`, suite `tst_external.qml`) | 2026-09-29 | Windows only (`#[cfg_attr(windows, ignore)]`) | #27 | Its first click on "Review…" is lost intermittently on the Windows runner; the cause is unknown. Ignored, not "kept running but not blocking": CI has no such mode, and a retry (`nextest` `retries`) would hide it. Due: 2026-10-06. |
 - **No test depends on another's result or order.**
 - **Tooling.** `cargo nextest` (faster, isolates each test), `proptest`, `cargo-fuzz`, `insta` or a
   small in-house comparison for golden files, `cargo-llvm-cov`, `cargo-deny` (which also covers the advisory database).
