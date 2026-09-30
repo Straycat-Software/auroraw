@@ -129,6 +129,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - run: cargo test --workspace --doc --locked
+      - name: Say which graphics adapter this runner offered, and run the engine's smoke test on it
+        run: cargo run --locked --package auroraw-pipeline --example adapters
       - name: Launch test
         run: cargo run --locked --package auroraw-app -- --self-test
 

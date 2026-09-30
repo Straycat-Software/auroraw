@@ -80,8 +80,10 @@ fn a_buffer_larger_than_the_adapter_allows_is_an_error_not_a_panic() {
     engine.smoke_test().expect("the smoke test still runs");
 }
 
-/// An adapter it is safe to destroy the device of: the software one, or a virtual GPU (a
-/// continuous-integration runner's), never a real card. `None` when the machine has neither.
+/// An adapter to lose the device of: the software one, or a virtual GPU (a continuous-integration
+/// runner's). On a machine with a real GPU it is `None` locally, so a developer's card is left
+/// alone; in continuous integration (`AUR_REQUIRE_GPU`) the runner's adapter is used whatever its
+/// kind, because a runner offers nothing else and the test must run on all three platforms.
 fn disposable_adapter() -> Option<AdapterChoice> {
     let adapters = crate::adapter::list_adapters();
     if adapters.iter().any(|a| a.kind == AdapterKind::Software) {
@@ -89,6 +91,7 @@ fn disposable_adapter() -> Option<AdapterChoice> {
     } else if adapters
         .first()
         .is_some_and(|a| a.kind == AdapterKind::Virtual)
+        || (!adapters.is_empty() && std::env::var_os("AUR_REQUIRE_GPU").is_some())
     {
         Some(AdapterChoice::Best)
     } else {
@@ -101,6 +104,10 @@ fn a_lost_device_is_recreated_before_the_next_job() {
     // Injects the loss the way testing strategy §4 asks: on the software adapter, where it is
     // cheap and cannot disturb a real GPU.
     let Some(adapter) = disposable_adapter() else {
+        assert!(
+            std::env::var_os("AUR_REQUIRE_GPU").is_none(),
+            "AUR_REQUIRE_GPU is set but the machine has no adapter at all"
+        );
         eprintln!("skipped: no software or virtual adapter to lose a device on");
         return;
     };
