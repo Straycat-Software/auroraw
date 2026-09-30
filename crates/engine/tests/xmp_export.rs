@@ -985,7 +985,7 @@ fn a_folder_that_cannot_be_listed_fails_its_photos_and_writes_nothing_there() {
     let s = setup();
     let folder = s.dir.path().join("Card");
     jpeg(&folder.join("sub/a.jpg"), 6);
-    jpeg(&folder.join("b.jpg"), 6);
+    jpeg(&folder.join("b.jpg"), 7); // (Not the same picture as a.jpg: two files with the same bytes are one photo with two locations.)
     other_app_writes(&folder.join("sub/a.xmp"), &foreign("lightroom.xmp"));
     add(&s, &folder);
     let (a, b) = (photo_named(&s, "a.jpg"), photo_named(&s, "b.jpg"));
