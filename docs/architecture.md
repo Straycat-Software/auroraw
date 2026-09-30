@@ -86,6 +86,7 @@ flowchart TD
   export --> pipeline
   import --> imaging["imaging (decoders, thumbnails, colour)"]
   pipeline --> imaging
+  pipeline --> api
   catalogue --> format["format (XMP, JSON, schemas)"]
   workspace --> format
   host --> api["plugin-api (declaration, interface)"]
@@ -107,7 +108,7 @@ flowchart TD
 | `sources` | The source interface; local folders and mounted cards through it; states (online, offline, missing); monitoring; fingerprints. | M1 |
 | `imaging` | Decoders glue, CFA handling, colour (working space, profiles), thumbnail generation, the previews database (D-075: a cache, not the truth, so it lives with the code that fills it, not with `workspace`). | M1 |
 | `import` | Import profiles, verified copy, RAW+JPEG pairing, series detection, GPX. | M1 |
-| `pipeline` | The wgpu engine: devices, stages, caching, tiling, fallbacks, shaders, plugin slots. **Depends on neither the catalogue nor the interface**, so it runs headless and is tested alone. | M2 |
+| `pipeline` | The wgpu engine: devices, stages, caching, tiling, fallbacks, shaders, plugin slots. **Depends on neither the catalogue, the interface nor the plugin host** (the engine gives it an operation registry, D-140), so it runs headless and is tested alone. Its one edge to `plugin-api` is for `RawImage` and the parameter types. | M2 |
 | `develop` | The version model: operations, history, snapshots, styles, local adjustments, base looks. | M2 |
 | `export` | Recipes, the job queue, encoders, watermark, metadata writing. | M2 (minimal), M4 |
 | `publish` | Publication records, revisions, client feedback, the gallery interface. | M4 |
@@ -164,6 +165,11 @@ runs in a separate helper process, so that its crash or corruption stays out of 
   import, then background analysis. A request that is no longer on screen is dropped: the
   thumbnail loader serves the **most recent request first** and caps its queue (spike 3: no empty
   cell on screen while scrolling at 21 rows per second).
+- **Renders are not writes** (D-140). The render service sits beside the coordinator, with its own queue
+  and the priorities above; the engine holds its handle, tells it to drop an image's caches when the
+  original changes, owns the budget of decoded sources, and emits `RenderReady` with the report. The
+  pixels do not travel through the event bus: the interface pulls them by id through an image provider,
+  as it does for thumbnails and previews.
 - **Undo and redo** live in the engine (D-096, `crates/engine/src/history.rs`): the single writer sees
   the state before it changes it, so each edit of a photo (rating, flag, keywords) is journaled as a
   **before and after pair** (`Change`), and an action is one **entry** however many photos it touches
@@ -319,12 +325,21 @@ granted it.
 
 ## 6. The image engine (`pipeline`)
 
-### 6.1 The model [proposed, following spec §5.6]
+### 6.1 The model [decided, D-140; following spec §5.6]
 
 A **pipeline definition** lists **stages**, each working in a defined data space; Auroraw ships
 one that works. A **version** is rendered by instantiating the definition with its operations,
-built in or supplied by plugins. A **render request** is *(version, region, quality)*; the
-engine returns finished pixels.
+built in or supplied by plugins. The pipeline knows nothing of versions, sidecars or history: it
+receives a **`Recipe`**, a plain value `develop` builds from a version (a definition version and
+the operation instances in pipeline order, each with its identifier, its own version, whether it
+is enabled and its typed parameters), and only validates the order it is given. A **render
+request** is *(image, recipe, view, quality, output transform, priority)*; the image is an
+`ImageKey` (photo and fingerprint of the original) and its decoded `RawImage`. The pipeline is
+opened with an **operation registry** the engine fills, and never loads a plugin. The service
+returns finished pixels and a report (a `Full` render streams its bands into a sink). The hash of
+a recipe's first `n` operations, over a canonical binary encoding of the typed values, is the
+cache key of stage `n` and the proof of determinism `develop` stores. The details are in
+[design note 005](design/005-image-engine-interfaces.md) §2.
 
 The order rule the spikes proved: **heavy, rarely changed operations early; controls that are
 dragged often, late.** White balance applied after the denoiser costs 0.6 ms to change,
@@ -472,13 +487,24 @@ productized): the component model's canonical-ABI copies cost real time on exact
 buffers a decoder or an operation plugin moves every call, for typed interfaces this crate does
 not need yet. It lives behind `plugin-api` and the API stays experimental until M5.
 
-### 8.3 The declaration [decided, D-078]
+### 8.3 The declaration [decided, D-078, D-142]
 
 Identifier, version, API version, family, panel, pipeline stage and ordering constraints,
 parameters with limits and defaults, permissions. The host refuses a declaration it cannot
 satisfy and says why (an impossible order, an unknown stage).
 
-### 8.4 GPU operations [decided, D-077]
+D-142 gives an operation's declaration **two layers**. **The declaration proper** is what `develop`,
+the version sidecar and the panels read, and it is small and stable: the fields above, with
+`Operation` added to the families, **typed parameters** (bool, int, float, enum, colour, point, list
+and curve, with limits, default and label key; `ParamSpec` and `ParamValue` are in `plugin-api`),
+input and output data space, and a **cost class** (heavy and rarely changed, or interactive). The
+sidecar stores (operation, operation version, values) against it. **The implementation descriptor**
+is what only the pipeline reads: halo as a function of the parameters and the view scale, passes and
+buffers, a draft variant, the shader, its CPU twin and tolerance, the portable WGSL subset. For the
+built-in operations of M2 it is a Rust trait; its data form is defined when the first external GPU
+operation arrives (M3, with the safety check of §8.4).
+
+### 8.4 GPU operations [decided, D-077; the descriptor's data form at M3, D-142]
 
 The shader is **data**; a **CPU twin** in WebAssembly gives the same result (spike 4: within 1.5e-8).
 The contract fixes the bindings and the shared parameter block. The host validates the shader
@@ -628,7 +654,7 @@ renderer on every platform; the image view's own rendering path is designed with
 | 2 | ~~DirectX 12 on a real GPU, and the Intel iGPU~~ | Closed (issue #1, 2026-09-22): both pass the smoke test on Patrick's machine | Done |
 | 3 | NTFS and antivirus with 243,000 sidecars, **including a real spinning disk** | Sidecars measured in WP1 (design note 001 §4.2): correct, but slow on a hard disk (25 minutes to write 225,000 files). D-075 (the thumbnail database) is still provisional. | The thumbnail database on NTFS |
 | 4 | Identity of a file edited elsewhere | The fingerprint changes with the content | Design in M1 (spec §10, 6) |
-| 5 | CPU fallback on Windows | WARP is slower than a Rust CPU path | Decide before M2 |
+| 5 | CPU fallback on Windows | WARP is slower than a Rust CPU path | For M2 (D-140): the same shaders on whatever adapter there is, the software one reported, no second Rust path unless a real machine needs one; decide with Windows evidence |
 | 6 | Host-to-plugin interface: C interface or component model | Typed interfaces against unmeasured cost | Before M5; experimental until then |
 | 7 | The native level's helper process | Shared memory for pixels, lifecycle | Before the first native plugin |
 | 8 | Colour engine and display profiles per platform | Fidelity is a priority (D-069) | M2 |

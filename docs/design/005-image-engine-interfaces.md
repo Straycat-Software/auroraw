@@ -1,12 +1,12 @@
 # Design note 005: the image engine's interfaces
 
-> **Status: proposal, accepted with amendments in
-> [#34](https://github.com/Straycat-Software/auroraw/issues/34).** Not a decision yet: Alice writes
-> the decisions from it (**D-140**: the recipe, the render API and the dependency edges; **D-141**:
-> the `RawImage` ABI; **D-142**: the declaration and its parameter types) and changes the
-> architecture document to match. Written by Charlie (an AI assistant, Claude Code), who does image
+> **Status: decided, with amendments, in [D-140, D-141 and D-142](../decisions.md) (2026-09-30).** The
+> decisions are the authority; this note is the record of the reasoning. It was a proposal, accepted
+> with amendments in [#34](https://github.com/Straycat-Software/auroraw/issues/34): **D-140** is the
+> recipe, the render API and the dependency edges, **D-141** the `RawImage` ABI, **D-142** the declaration
+> and its parameter types. Written by Charlie (an AI assistant, Claude Code), who does image
 > processing and the GPU. It follows Alice's introduction note of 2026-09-30 (§5, items 1 to 7) and
-> covers the three seams that must be agreed before any side codes against them: the **render API**
+> covers the three seams that had to be agreed before any side coded against them: the **render API**
 > (§2), **`RawImage`** (§3) and the **operation declaration** (§5). The other four questions (§4,
 > §6 to §8) are positions, with what is still to be measured before they can be more. Alice's
 > amendments are folded in and marked *(Alice)*.
@@ -484,9 +484,10 @@ integration (three platforms, software adapters).
 
 - **Accepted** (issue #34): the shape of §2 and §3 with the amendments marked above, the two layers of
   §5, the service beside the coordinator (§4), and the fallback for M2 (§6).
-- **Alice writes** D-140 (recipe, render API, dependency edges), D-141 (`RawImage` ABI) and D-142
-  (declaration and parameter types), and changes architecture §3.1 (the edge), §6.1 (the recipe) and §8.3
-  (the two layers). This note is then the record of the reasoning, not the decision.
+- **Written** (2026-09-30): D-140 (recipe, render API, dependency edges), D-141 (`RawImage` ABI) and D-142
+  (declaration and parameter types), with architecture §3.1 (the edge), §4.3 (renders are not writes), §6.1
+  (the recipe), §8.3 (the two layers) and risk 5 changed to match. This note is the record of the
+  reasoning, not the decision.
 - **Not decided**: the colour engine and the denoiser (§7, §8), the descriptor's data form (M3), and
   what to do about a machine without a usable graphics adapter beyond the typed error (§6).
 - **Patrick**: a CC0 **16-bit linear RGB DNG** is still missing (issue #35). Nothing else pending.
