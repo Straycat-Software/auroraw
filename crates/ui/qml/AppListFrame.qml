@@ -27,7 +27,7 @@ Rectangle {
     property color fill: Theme.surface.window
     // Room the frame itself takes on each side (border and inner margin), and both sides' worth: a list
     // sized to fit its rows adds `chrome` to their height, or its last row is clipped and it scrolls.
-    readonly property int inset: 4
+    readonly property int inset: 6
     readonly property int chrome: 2 * (border.width + inset)
 
     color: frame.fill

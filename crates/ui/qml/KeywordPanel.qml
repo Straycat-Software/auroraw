@@ -250,19 +250,34 @@ Rectangle {
 
     property string note: ""
 
+    // Room between what a tab shows and the panel's edge on the left (the one that resizes it) and the window's on the
+    // right (D-140), and under it; the tab row alone keeps the smaller margins it always had (`tabsInset...`), or the four
+    // tabs of French, which just fit at the default width, would be cut.
+    readonly property int bodyMarginLeft: 14
+    readonly property int bodyMarginRight: 14
+    readonly property int bodyMarginTop: 10
+    readonly property int bodyMarginBottom: 10
+    readonly property int tabsInsetLeft: 8
+    readonly property int tabsInsetRight: 6
+    readonly property int tabsInsetTop: 6
+
     ColumnLayout {
         id: content
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 6
-        anchors.topMargin: 6
-        anchors.bottomMargin: 6
-        spacing: 6
+        anchors.leftMargin: panel.bodyMarginLeft
+        anchors.rightMargin: panel.bodyMarginRight
+        anchors.topMargin: panel.bodyMarginTop
+        anchors.bottomMargin: panel.bodyMarginBottom
+        spacing: 8
         visible: panel.expanded
 
         RowLayout {
             id: tabRow
             Layout.fillWidth: true
+            // Back out to the tabs' own margins, out of the body's.
+            Layout.leftMargin: panel.tabsInsetLeft - panel.bodyMarginLeft
+            Layout.rightMargin: panel.tabsInsetRight - panel.bodyMarginRight
+            Layout.topMargin: panel.tabsInsetTop - panel.bodyMarginTop
             // The tabs' labels, and (measured by labels of their own, out of the bar, which are never cut) how wide
             // each needs to be shown whole. The four are wider than the panel's default width in French, and the
             // person can narrow the panel: the tabs give up their padding first (down to 1 px), then the labels
@@ -290,7 +305,7 @@ Rectangle {
             // What the panel's width leaves the bar. (Not the row's or the bar's own `width`: an item's width is its
             // implicit width until a layout sets it, and the tabs' widths would depend on themselves, through the
             // bar's implicit width.)
-            readonly property real room: panel.panelWidth - content.anchors.leftMargin - content.anchors.rightMargin
+            readonly property real room: panel.panelWidth - panel.tabsInsetLeft - panel.tabsInsetRight
                                          - collapseButton.implicitWidth - spacing
             function tabWidth(slot) {
                 const n = Math.max(measures.count, 1)
@@ -547,7 +562,9 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.margins: 6
+        anchors.leftMargin: panel.bodyMarginLeft
+        anchors.rightMargin: panel.bodyMarginRight
+        anchors.bottomMargin: panel.bodyMarginBottom
         visible: panel.expanded && panel.note !== ""
         height: noteLabel.implicitHeight + 12
         radius: Theme.radiusControl
