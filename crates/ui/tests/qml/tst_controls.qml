@@ -239,29 +239,40 @@ TestCase {
         tryCompare(Icons.loader, "status", FontLoader.Ready)
         const l = make(iconLabelComponent)
         compare(l.runItems.count, 3)
-        const before = l.runItems.itemAt(0), icons = l.runItems.itemAt(1), after = l.runItems.itemAt(2)
+        tryVerify(() => l.runItems.itemAt(2).item !== null)
+        const before = l.runItems.itemAt(0).item, icons = l.runItems.itemAt(1).item, after = l.runItems.itemAt(2).item
         compare(before.text, "a<b> ")
         compare(after.text, " c")
         compare(icons.text, Icons.glyph("star") + Icons.glyph("check"))
         compare(icons.font.family, Icons.family, "the icons are in the icon font, not in what the system finds")
         verify(before.font.family !== Icons.family, "the rest is in the text's own")
         compare(before.textFormat, Text.PlainText, "a '<' is what it is")
-        // Two icons, two em (the pixel size of the label's font).
+        // Two icons, two em (the pixel size of the label's font): as measured, and as drawn.
+        fuzzyCompare(l.runItems.itemAt(1).width, 2 * l.font.pixelSize, 1)
         fuzzyCompare(icons.contentWidth, 2 * l.font.pixelSize, 1)
-        fuzzyCompare(l.implicitWidth, before.implicitWidth + icons.implicitWidth + after.implicitWidth, 1)
+        fuzzyCompare(l.implicitWidth, before.contentWidth + icons.contentWidth + after.contentWidth, 1.5)
         verify(icons.Accessible.ignored, "the line says its sentence once")
         compare(l.Accessible.name, "a<b> \u2605\u2714 c")
+        compare(make(iconLabelComponent, { sentence: "" }).runItems.count, 0)
     }
 
     function test_a_label_that_is_too_narrow_elides_its_last_text_and_keeps_its_icons() {
-        const l = make(iconLabelComponent)
-        const icons = l.runItems.itemAt(1), after = l.runItems.itemAt(2)
-        verify(!after.truncated)
-        l.width = l.implicitWidth - 12
-        tryVerify(() => after.truncated, 5000, "the text that follows is elided")
-        fuzzyCompare(icons.width, icons.implicitWidth, 1, "an icon is not")
-        verify(!l.runItems.itemAt(0).truncated, "and what comes before it is kept")
-        compare(make(iconLabelComponent, { sentence: "" }).runItems.count, 0)
+        tryCompare(Icons.loader, "status", FontLoader.Ready)
+        const l = make(iconLabelComponent, { sentence: "ab \u2605 cdefghijklmn" })
+        tryVerify(() => l.runItems.itemAt(2).item !== null)
+        const full = l.implicitWidth
+        compare(l.runItems.itemAt(2).item.text, " cdefghijklmn")
+        l.width = full - 40
+        tryVerify(() => l.runItems.itemAt(2).item.text !== " cdefghijklmn", 5000, "the text that follows is elided")
+        verify(l.runItems.itemAt(2).item.text.endsWith("\u2026"), l.runItems.itemAt(2).item.text)
+        compare(l.runItems.itemAt(0).item.text, "ab ", "what comes before it is kept")
+        fuzzyCompare(l.runItems.itemAt(1).width, l.font.pixelSize, 1, "an icon is not cut")
+        let shown = 0
+        for (let i = 0; i < l.runItems.count; i++)
+            shown += l.runItems.itemAt(i).width
+        verify(shown <= l.width + 1, "the runs fit the width: " + shown + " in " + l.width)
+        l.width = full
+        tryCompare(l.runItems.itemAt(2).item, "text", " cdefghijklmn")
     }
 
     function test_a_rating_mark_is_a_number_and_a_star_and_reads_as_stars() {
