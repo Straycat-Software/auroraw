@@ -1,7 +1,7 @@
 # Design note 008: place names, offline, and the place filter
 
-> **Status: proposal, for Patrick's approval** (revised after his two comments: polygons from the start,
-> and the record of what Auroraw wrote follows the person's edits). WP10's last two items ([M1
+> **Status: approved by Patrick on 2026-09-30 (D-147)**, after his two comments (polygons from the start,
+> and the record of what Auroraw wrote follows the person's edits) and his answers to §7. WP10's last two items ([M1
 > plan](../m1-plan.md) §5, §6 item 12; specification §5.7 "Location", open question 29; D-048). It
 > answers question 29 of the specification (§10): the size of the database, the attribution its licences
 > require, how it is updated, and the levels of detail. Nothing here is built. Items are tagged
@@ -200,14 +200,14 @@ enclave**, a point 40 km from any town, a field a person typed that survives, **
 never refreshed**, undo and redo of a fill and of such an edit, a refresh that replaces only what Auroraw
 wrote, a 10,000-photo run as one undoable step, and the filter and the facet on a generated catalogue.
 
-## 7. What I need decided
+## 7. What Patrick decided (2026-09-30)
 
-1. **Bundle both sets** in every package (proposed), at the size slice 1 measures; if the total surprises
-   (more than a few tens of megabytes), a smaller scale of polygons or a base with a download for the rest.
-2. **Names in which language?** Country and region in the interface's language from Natural Earth
-   (proposed), the city in its own spelling; cities in the interface's language later, only if wanted.
-3. **At import**: an option off by default (proposed), or on when the profile has a GPX track?
-4. **The coastal tolerance (5 km) and the town radius (25 km)** as starting values.
-5. **The boundaries**: Natural Earth's default worldview, with the choice said in About.
-6. **The feature is worth its place in M1** (it is on WP10's list), against the release checklist's
-   remaining items (WP11, WP12).
+1. **Bundle both sets** in every package, at the size slice 1 measures; if the total surprises (more than a
+   few tens of megabytes), a smaller scale of polygons or a base with a download for the rest: **as proposed**.
+2. **Names in which language?** Country and region in the interface's language from Natural Earth, the city
+   in its own spelling; cities in the interface's language later, only if wanted: **as proposed**.
+3. **At import**: an import-profile option, **off by default**.
+4. **The coastal tolerance (5 km) and the town radius (25 km)** as starting values: **as proposed**.
+5. **The boundaries**: Natural Earth's default worldview, with the choice said in About: **as proposed**.
+6. **The feature is worth its place in M1**, against the release checklist's remaining items (WP11, WP12):
+   **yes**.
