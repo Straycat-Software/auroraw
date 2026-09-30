@@ -710,6 +710,13 @@ FocusScope {
                 keyNavigationEnabled: false
                 readonly property int columns: Math.max(1, Math.floor(width / cellWidth))
                 readonly property int visibleRows: Math.max(1, Math.floor(height / cellHeight))
+                // The room the columns leave over is shared by the two sides, so that the grid sits in the middle of its panel
+                // and not against the left (D-144). Never negative: with one column wider than the view there is nothing to share.
+                leftMargin: Math.max(0, Math.floor((width - columns * cellWidth) / 2))
+                // Qt does not move the content when the margin changes under it: the grid would stay where the last margin put
+                // it, off centre and out of step with the pointer's area (which reads `leftMargin`). It never scrolls sideways.
+                flickableDirection: Flickable.VerticalFlick
+                onLeftMarginChanged: contentX = originX - leftMargin
 
                 ScrollBar.vertical: AppScrollBar {}
 
@@ -819,7 +826,10 @@ FocusScope {
                     z: -1
                     // (The view's content starts at its origin, which is not always 0: after the cells were made another
                     // size, the first row can sit lower than 0 in the content's own coordinates.)
-                    x: grid.originX
+                    // With the grid centred (`leftMargin`) the view starts `gutter` before the content: the area covers
+                    // it too, so that a press in the margin clears the selection as a press on any empty space does.
+                    readonly property real gutter: grid.leftMargin
+                    x: grid.originX - gutter
                     y: grid.originY
                     width: grid.width
                     height: Math.max(grid.contentHeight, grid.height)
@@ -835,21 +845,24 @@ FocusScope {
                     property bool banding: false
 
                     // The photo under a point of the view's content, -1 for none (a gap, empty space).
-                    function photoAt(x, y) {
+                    function photoAt(pointerX, y) {
+                        const x = pointerX - gutter
                         const column = Math.floor(x / grid.cellWidth)
                         const row = Math.floor(y / grid.cellHeight)
                         const inside = x - column * grid.cellWidth >= 4 && x - column * grid.cellWidth < grid.cellWidth
                                        && y - row * grid.cellHeight < root.thumbH
                         const index = row * grid.columns + column
-                        return inside && column < grid.columns && index >= 0 && index < grid.count ? index : -1
+                        return inside && column >= 0 && column < grid.columns && index >= 0 && index < grid.count ? index : -1
                     }
 
                     // The rubber band, now: the cells it covers are selected.
                     function band() {
                         const left = Math.min(startX, lastX), right = Math.max(startX, lastX)
                         const top = Math.min(startY, lastY), bottom = Math.max(startY, lastY)
+                        // (The columns from the content's own left, not the pointer area's: the margin is not a column.)
                         root.photoGrid.rubberTo(Math.floor(top / grid.cellHeight), Math.floor(bottom / grid.cellHeight),
-                                                Math.floor(left / grid.cellWidth), Math.floor(right / grid.cellWidth),
+                                                Math.max(0, Math.floor((left - gutter) / grid.cellWidth)),
+                                                Math.min(grid.columns - 1, Math.max(0, Math.floor((right - gutter) / grid.cellWidth))),
                                                 grid.columns)
                         root.updateSummary()
                     }
