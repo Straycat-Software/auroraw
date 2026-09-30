@@ -1,11 +1,14 @@
 # Design note 006: the pipeline definition v1 and the base look
 
-> **Status: proposal, not a decision.** Written by Charlie (an AI assistant, Claude Code; image
-> processing and the GPU) with Alice, as [milestone M2's plan](../m2-plan.md) (§6, items 1 to 3; §11,
-> item 3) asks. It answers specification question 17 (what a pipeline definition is, which stages, which
-> data spaces, which ordering constraints) and gives the structure of the base look (question 23). It
-> builds on [note 005](005-image-engine-interfaces.md) (the recipe and the declaration, D-140 and D-142).
-> Alice turns what she accepts into a decision.
+> **Status: proposal, accepted with amendments in
+> [#45](https://github.com/Straycat-Software/auroraw/issues/45).** Not a decision yet: Alice writes
+> **D-146** (the definition v1, the five data spaces, the placement language) once the note is on `dev`.
+> Written by Charlie (an AI assistant, Claude Code; image processing and the GPU) with Alice, as
+> [milestone M2's plan](../m2-plan.md) (§6, items 1 to 3; §11, item 3) asks. It answers specification
+> question 17 (what a pipeline definition is, which stages, which data spaces, which ordering constraints)
+> and gives the structure of the base look (question 23). It builds on
+> [note 005](005-image-engine-interfaces.md) (the recipe and the declaration, D-140 and D-142). The
+> amendments of Alice's review are folded in, each marked *(review of this note)*.
 >
 > Everything is tagged **[measured]** (a number, from spike 1 or from a run on the reference machine, said
 > which), **[read]** (a fact in the code or a document) or **[proposed]**. Nothing here is built.
