@@ -232,15 +232,19 @@ Item {
         anchors.margins: 4
         height: 26
         spacing: 8
-        Label {
+        AppRatingMark {
             visible: pane.rating > 0
-            text: pane.rating + "★"
-            color: Theme.rating
+            rating: pane.rating
+            size: 15
         }
-        Label {
+        AppIcon {
             visible: pane.flag !== 0
-            text: pane.flag === 1 ? "✔" : "✖"
+            name: pane.flag === 1 ? "check" : "close"
+            size: 15
             color: pane.flag === 1 ? Theme.picked : Theme.danger
+            Accessible.ignored: false
+            Accessible.role: Accessible.StaticText
+            Accessible.name: pane.flag === 1 ? qsTr("Picked") : qsTr("Rejected")
         }
         Rectangle {
             visible: pane.colour !== ""
@@ -251,7 +255,8 @@ Item {
         }
         Label {
             visible: pane.rank >= 0
-            text: pane.rank >= 100 ? qsTr("★ Sharpest") : qsTr("Sharpness %1 %").arg(pane.rank)
+            textFormat: Text.StyledText
+            text: Icons.styled(pane.rank >= 100 ? qsTr("★ Sharpest") : qsTr("Sharpness %1 %").arg(pane.rank))
             color: pane.rank >= 100 ? Theme.rating : Theme.quiet
         }
         Item { Layout.fillWidth: true }

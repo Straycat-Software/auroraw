@@ -314,7 +314,8 @@ FocusScope {
                     }
                 }
                 AppToolButton {
-                    text: "◀"
+                    iconName: "caret-left"
+                    iconSize: 14
                     enabled: comparison.page > 0
                     opacity: enabled ? 1 : 0.35
                     focusPolicy: Qt.NoFocus
@@ -327,7 +328,8 @@ FocusScope {
                     color: Theme.surface.text
                 }
                 AppToolButton {
-                    text: "▶"
+                    iconName: "caret-right"
+                    iconSize: 14
                     enabled: comparison.page < comparison.pages - 1
                     opacity: enabled ? 1 : 0.35
                     focusPolicy: Qt.NoFocus
@@ -395,7 +397,8 @@ FocusScope {
                     onClicked: comparison.library.fullScreenToggled()
                 }
                 AppToolButton {
-                    text: "✕"
+                    iconName: "close"
+                    iconSize: 13
                     focusPolicy: Qt.NoFocus
                     Accessible.name: qsTr("Back to the grid")
                     ToolTip.visible: hovered

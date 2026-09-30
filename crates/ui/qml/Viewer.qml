@@ -366,9 +366,20 @@ FocusScope {
             AppToolButton {
                 id: ratingButton
                 focusPolicy: Qt.NoFocus
-                text: "★".repeat(view.rating) + "☆".repeat(5 - view.rating)
-                font.pixelSize: 15
                 palette.buttonText: view.rating > 0 ? Theme.rating : Theme.quiet
+                // The five stars, as many filled as the rating.
+                contentItem: Row {
+                    spacing: 1
+                    Repeater {
+                        model: 5
+                        AppIcon {
+                            required property int index
+                            name: index < view.rating ? "star" : "star-outline"
+                            size: 15
+                            color: ratingButton.palette.buttonText
+                        }
+                    }
+                }
                 Accessible.name: qsTr("Rating")
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Rating: click to change it (0 to 5)")
@@ -379,8 +390,8 @@ FocusScope {
                 focusPolicy: Qt.NoFocus
                 enabled: view.library.canFlag
                 opacity: enabled ? 1 : 0.35
-                text: view.flag === 1 ? "✔" : view.flag === 2 ? "✖" : "–"
-                font.pixelSize: 15
+                iconName: view.flag === 1 ? "check" : view.flag === 2 ? "close" : "minus"
+                iconSize: 15
                 palette.buttonText: view.flag === 1 ? Theme.picked : view.flag === 2 ? Theme.danger : Theme.quiet
                 Accessible.name: qsTr("Flag")
                 ToolTip.visible: hovered
@@ -524,7 +535,8 @@ FocusScope {
                 onClicked: view.library.fullScreenToggled()
             }
             AppToolButton {
-                text: "✕"
+                iconName: "close"
+                iconSize: 13
                 focusPolicy: Qt.NoFocus
                 Accessible.name: qsTr("Back to the grid")
                 ToolTip.visible: hovered
@@ -635,23 +647,25 @@ FocusScope {
                     visible: frame.colourLabel !== ""
                     color: Theme.labelColour(frame.colourLabel)
                 }
-                Text {
+                AppRatingMark {
                     anchors.left: parent.left
                     anchors.top: parent.top
                     anchors.margins: 3
                     visible: frame.rating > 0
-                    text: frame.rating + view.library.star
-                    font.pixelSize: 10
-                    color: Theme.rating
+                    rating: frame.rating
+                    size: 10
                 }
-                Text {
+                AppIcon {
                     anchors.right: parent.right
                     anchors.top: parent.top
                     anchors.margins: 3
                     visible: frame.flag !== 0
-                    text: frame.flag === 1 ? "✔" : "✖"
-                    font.pixelSize: 10
+                    name: frame.flag === 1 ? "check" : "close"
+                    size: 10
                     color: frame.flag === 1 ? Theme.picked : Theme.danger
+                    Accessible.ignored: false
+                    Accessible.role: Accessible.StaticText
+                    Accessible.name: frame.flag === 1 ? qsTr("Picked") : qsTr("Rejected")
                 }
                 MouseArea {
                     anchors.fill: parent

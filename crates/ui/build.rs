@@ -13,12 +13,15 @@ fn main() {
     let qml = [
         QmlFile::from("qml/Main.qml"),
         QmlFile::from("qml/Theme.qml").singleton(true),
+        QmlFile::from("qml/Icons.qml").singleton(true),
+        QmlFile::from("qml/AppIcon.qml"),
         QmlFile::from("qml/AppBanner.qml"),
         QmlFile::from("qml/AppButton.qml"),
         QmlFile::from("qml/AppCheckBox.qml"),
         QmlFile::from("qml/AppComboBox.qml"),
         QmlFile::from("qml/AppItemDelegate.qml"),
         QmlFile::from("qml/AppProgressBar.qml"),
+        QmlFile::from("qml/AppRatingMark.qml"),
         QmlFile::from("qml/AppRadioButton.qml"),
         QmlFile::from("qml/AppSlider.qml"),
         QmlFile::from("qml/AppTextArea.qml"),
@@ -67,6 +70,8 @@ fn main() {
     ];
     let mut builder = CxxQtBuilder::new_qml_module(QmlModule::new("org.auroraw.ui").qml_files(qml))
         .qt_module("Quick")
+        // The icon font, at qrc:/qt/qml/org/auroraw/ui/assets/fonts/AurorawIcons.ttf (`Icons.qml` loads it).
+        .qrc_resources(["assets/fonts/AurorawIcons.ttf"])
         .files([
             "src/bus.rs",
             "src/duplicates.rs",
