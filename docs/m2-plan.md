@@ -1,12 +1,14 @@
 # Milestone M2 plan: basic RAW development, from the card to a file
 
-> **Status: proposal, to be adopted by a decision (D-143) once Patrick has reviewed it.** The plan of
+> **Status: adopted (D-143, 2026-09-30).** The plan of
 > the second milestone, in the form of the [M1 plan](m1-plan.md): a goal, exit criteria, work packages,
 > questions to settle first, acceptance scenarios, an order and the risks. It follows the milestone
 > table of the [specification](functional-specification.md) (§8), the [architecture](architecture.md)
 > (§6, §7, §8), the [testing strategy](testing-strategy.md) (§4) and the [release plan](continuous-integration.md),
 > and it builds on [design note 005](design/005-image-engine-interfaces.md) and D-140 to D-142.
-> Items are tagged **[decided]**, **[proposed]** or **[open]**. There are no calendar dates: the plan
+> Items are tagged **[decided]**, **[proposed]** or **[open]**: adopting the plan adopts its packages,
+> increments and order; the proposed answers of §6 each still come back as a design note and, where they
+> change a format or the behaviour, a decision. There are no calendar dates: the plan
 > gives an order, sizes and exit criteria; sizes are relative (S, M, L, XL), as in M1.
 >
 > **It was started before it was written.** Charlie has begun the image engine's foundation
