@@ -111,6 +111,18 @@ TestCase {
         tryVerify(() => !app.flow.busy, 30000, "the scan or removal ended")
     }
 
+    // Waits until a frame has been drawn with `item` and what it shows in it. A banner, a popup or a window that
+    // has just been shown is `visible` at once, but its contents are given their place by the first frame: a click
+    // sent before that lands where the button was, and is lost for good (waiting longer does not bring it back).
+    // `waitForRendering` alone waits for a frame *after* the call, and times out when one has just been drawn, so a
+    // frame is asked for first. (Issue #27: the first "Review…" click of tst_external.qml on the Windows runner.)
+    function drawn(item) {
+        item.update()
+        if (item.Window.window)
+            item.Window.window.update()
+        verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
+    }
+
     // Clicks the centre of an item as a person would.
     function click(item) {
         mouseClick(item)
