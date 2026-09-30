@@ -173,7 +173,8 @@ The milestone of each feature (M1 to M5) is described in §8.
   photographer's choice, `photo.xmp` by default [decided, D-028]. It is on request only:
   automatic mirroring is not planned for v1 [decided, D-066]. An existing file is merged, never overwritten blindly: only what Auroraw owns is rewritten, the
   other application's develop settings stay, and a file that application changed since Auroraw last saw
-  it is held back for the review of external changes [decided, D-138].
+  it is held back for the review of external changes [decided, D-138]. Asked for from Tools ▸ Export XMP
+  files… [decided, D-139].
 - **Existing XMP** files found next to originals at import (from Lightroom or others) are read,
   never modified, and their ratings, labels, keywords, title, caption and IPTC fields are copied into
   the photo sidecar when the photo is first added; a photo the catalogue already knew is only

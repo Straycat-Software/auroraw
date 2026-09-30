@@ -48,3 +48,8 @@ keywords, information from the original).
 **Source.** A folder whose photos are in the catalogue.
 
 **Workspace.** The folder Auroraw writes everything you decide about your photos into: the thing you back up.
+
+**XMP file.** The small file some software (Lightroom, darktable, digiKam) keeps next to an original with its rating, keywords and
+information fields, and that Auroraw writes there when you ask it to (**Tools ▸ Export XMP files…**, see
+[Your files and their safety](07-your-files-and-safety.md#writing-xmp-files-for-other-applications)). Not the same as a
+sidecar, which is in the workspace.

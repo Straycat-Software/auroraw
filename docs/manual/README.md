@@ -34,8 +34,7 @@ And for reference: the [keyboard shortcuts](keyboard-shortcuts.md) and the [glos
 So that nobody looks for a button that does not exist. Planned, and not in this version: developing RAW files
 (the **Develop** tab is greyed out), delivering galleries (**Publish**), comparing two to four photos side by side,
 focus peaking, clipping warnings and the histogram, suggestions of similar photos, the report of exact duplicates,
-collections, editing titles, captions and places, search, exporting, and writing metadata next to your original
-files (XMP export).
+collections, editing titles, captions and places, search, and exporting photos.
 
 ## Licence
 

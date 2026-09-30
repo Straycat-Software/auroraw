@@ -34,7 +34,7 @@
         <translation>Composé en IBM Plex Sans, sous la licence SIL Open Font 1.1.</translation>
     </message>
     <message>
-        <location filename="../qml/AboutDialog.qml" line="51"/>
+        <location filename="../qml/AboutDialog.qml" line="52"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -732,11 +732,16 @@
     </message>
     <message>
         <location filename="../qml/AppActions.qml" line="228"/>
+        <source>Export XMP files…</source>
+        <translation>Exporter les fichiers XMP…</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="235"/>
         <source>Invert selection</source>
         <translation>Inverser la sélection</translation>
     </message>
     <message>
-        <location filename="../qml/AppActions.qml" line="236"/>
+        <location filename="../qml/AppActions.qml" line="243"/>
         <source>About Auroraw</source>
         <translation>À propos d&apos;Auroraw</translation>
     </message>
@@ -759,7 +764,7 @@
         <translation>&amp;Outils</translation>
     </message>
     <message>
-        <location filename="../qml/AppMenu.qml" line="59"/>
+        <location filename="../qml/AppMenu.qml" line="60"/>
         <source>&amp;Help</source>
         <translation>&amp;Aide</translation>
     </message>
@@ -778,17 +783,17 @@
 <context>
     <name>CardBanner</name>
     <message>
-        <location filename="../qml/CardBanner.qml" line="66"/>
+        <location filename="../qml/CardBanner.qml" line="67"/>
         <source>Card detected: %1</source>
         <translation>Carte détectée : %1</translation>
     </message>
     <message>
-        <location filename="../qml/CardBanner.qml" line="72"/>
+        <location filename="../qml/CardBanner.qml" line="73"/>
         <source>Import…</source>
         <translation>Importer…</translation>
     </message>
     <message>
-        <location filename="../qml/CardBanner.qml" line="83"/>
+        <location filename="../qml/CardBanner.qml" line="84"/>
         <source>Ignore</source>
         <translation>Ignorer</translation>
     </message>
@@ -816,12 +821,12 @@
         <translation>Aucune source pour l&apos;instant. Ajoutez le dossier où sont vos photos.</translation>
     </message>
     <message>
-        <location filename="../qml/Catalogue.qml" line="101"/>
+        <location filename="../qml/Catalogue.qml" line="104"/>
         <source>Offline</source>
         <translation>Hors ligne</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Catalogue.qml" line="112"/>
+        <location filename="../qml/Catalogue.qml" line="115"/>
         <source>%n photo(s)</source>
         <translation>
             <numerusform>%n photo</numerusform>
@@ -829,22 +834,22 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Catalogue.qml" line="115"/>
+        <location filename="../qml/Catalogue.qml" line="118"/>
         <source>Rescan</source>
         <translation>Réanalyser</translation>
     </message>
     <message>
-        <location filename="../qml/Catalogue.qml" line="116"/>
+        <location filename="../qml/Catalogue.qml" line="119"/>
         <source>Rescan: %1</source>
         <translation>Réanalyser : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Catalogue.qml" line="122"/>
+        <location filename="../qml/Catalogue.qml" line="125"/>
         <source>Remove</source>
         <translation>Retirer</translation>
     </message>
     <message>
-        <location filename="../qml/Catalogue.qml" line="123"/>
+        <location filename="../qml/Catalogue.qml" line="126"/>
         <source>Remove: %1</source>
         <translation>Retirer : %1</translation>
     </message>
@@ -960,84 +965,84 @@
         <translation>Les nouvelles collections vont au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="369"/>
+        <location filename="../qml/CollectionPanel.qml" line="371"/>
         <source>Show the photos in this collection</source>
         <translation>Afficher les photos de cette collection</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="373"/>
+        <location filename="../qml/CollectionPanel.qml" line="375"/>
         <source>Rename…</source>
         <translation>Renommer…</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="378"/>
+        <location filename="../qml/CollectionPanel.qml" line="380"/>
         <source>Move to…</source>
         <translation>Déplacer vers…</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="382"/>
+        <location filename="../qml/CollectionPanel.qml" line="384"/>
         <source>Move to the top level</source>
         <translation>Déplacer au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="388"/>
+        <location filename="../qml/CollectionPanel.qml" line="390"/>
         <source>Delete…</source>
         <translation>Supprimer…</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="399"/>
+        <location filename="../qml/CollectionPanel.qml" line="401"/>
         <source>Rename the collection</source>
         <translation>Renommer la collection</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="423"/>
+        <location filename="../qml/CollectionPanel.qml" line="425"/>
         <source>Name</source>
         <translation>Nom</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="437"/>
+        <location filename="../qml/CollectionPanel.qml" line="439"/>
         <source>Rename</source>
         <translation>Renommer</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="443"/>
-        <location filename="../qml/CollectionPanel.qml" line="501"/>
-        <location filename="../qml/CollectionPanel.qml" line="560"/>
+        <location filename="../qml/CollectionPanel.qml" line="445"/>
+        <location filename="../qml/CollectionPanel.qml" line="503"/>
+        <location filename="../qml/CollectionPanel.qml" line="562"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="457"/>
+        <location filename="../qml/CollectionPanel.qml" line="459"/>
         <source>Move the collection</source>
         <translation>Déplacer la collection</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="478"/>
+        <location filename="../qml/CollectionPanel.qml" line="480"/>
         <source>Move “%1” inside:</source>
         <translation>Déplacer «&#xa0;%1&#xa0;» dans&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="479"/>
+        <location filename="../qml/CollectionPanel.qml" line="481"/>
         <source>There is nowhere to move “%1”.</source>
         <translation>Il n’y a nulle part où déplacer «&#xa0;%1&#xa0;».</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="488"/>
+        <location filename="../qml/CollectionPanel.qml" line="490"/>
         <source>New parent</source>
         <translation>Nouveau parent</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="494"/>
+        <location filename="../qml/CollectionPanel.qml" line="496"/>
         <source>Move</source>
         <translation>Déplacer</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="517"/>
+        <location filename="../qml/CollectionPanel.qml" line="519"/>
         <source>Delete the collection</source>
         <translation>Supprimer la collection</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/CollectionPanel.qml" line="539"/>
+        <location filename="../qml/CollectionPanel.qml" line="541"/>
         <source>Delete “%1” and the %n collection(s) inside it?</source>
         <translation>
             <numerusform>Supprimer «&#xa0;%1&#xa0;» et la collection qu’elle contient&#xa0;?</numerusform>
@@ -1045,12 +1050,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="540"/>
+        <location filename="../qml/CollectionPanel.qml" line="542"/>
         <source>Delete “%1”?</source>
         <translation>Supprimer «&#xa0;%1&#xa0;»&#xa0;?</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/CollectionPanel.qml" line="546"/>
+        <location filename="../qml/CollectionPanel.qml" line="548"/>
         <source>The %n photo(s) in it stay in your catalogue. You can undo this.</source>
         <translation>
             <numerusform>La photo qu’elle contient reste dans votre catalogue. Vous pouvez annuler.</numerusform>
@@ -1058,12 +1063,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="547"/>
+        <location filename="../qml/CollectionPanel.qml" line="549"/>
         <source>No photo is in it. You can undo this.</source>
         <translation>Aucune photo n’y est. Vous pouvez annuler.</translation>
     </message>
     <message>
-        <location filename="../qml/CollectionPanel.qml" line="554"/>
+        <location filename="../qml/CollectionPanel.qml" line="556"/>
         <source>Delete</source>
         <translation>Supprimer</translation>
     </message>
@@ -1197,22 +1202,22 @@
         <translation>★ La plus nette</translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="235"/>
+        <location filename="../qml/ComparePane.qml" line="254"/>
         <source>Sharpness %1 %</source>
         <translation>Netteté %1&#xa0;%</translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="241"/>
+        <location filename="../qml/ComparePane.qml" line="260"/>
         <source>Keep</source>
         <translation>Garder</translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="250"/>
+        <location filename="../qml/ComparePane.qml" line="269"/>
         <source>Keep this photo</source>
         <translation>Garder cette photo</translation>
     </message>
     <message>
-        <location filename="../qml/ComparePane.qml" line="252"/>
+        <location filename="../qml/ComparePane.qml" line="271"/>
         <source>Mark this photo to keep (K)</source>
         <translation>Marquer cette photo à garder (K)</translation>
     </message>
@@ -1238,22 +1243,22 @@
         <translation>Aucune photo en double trouvée.</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="88"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="89"/>
         <source>Show in file manager</source>
         <translation>Montrer dans le gestionnaire de fichiers</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="104"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="106"/>
         <source>Export the list…</source>
         <translation>Exporter la liste&#xa0;…</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="107"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="109"/>
         <source>Writes the report to a text file, the same one the CLI&apos;s own duplicates command prints</source>
         <translation>Écrit le rapport dans un fichier texte, le même que celui que la commande duplicates du CLI affiche</translation>
     </message>
     <message>
-        <location filename="../qml/DuplicatesDialog.qml" line="111"/>
+        <location filename="../qml/DuplicatesDialog.qml" line="113"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -1406,10 +1411,10 @@
     </message>
     <message numerus="yes">
         <location filename="../qml/ExternalChangesDialog.qml" line="103"/>
-        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw never changes those files.</source>
+        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</source>
         <translation>
-            <numerusform>%n photo a un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie jamais ces fichiers.</numerusform>
-            <numerusform>%n photos ont un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie jamais ces fichiers.</numerusform>
+            <numerusform>%n photo a un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie ces fichiers que lorsque vous lui demandez d’exporter des fichiers XMP.</numerusform>
+            <numerusform>%n photos ont un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie ces fichiers que lorsque vous lui demandez d’exporter des fichiers XMP.</numerusform>
         </translation>
     </message>
     <message>
@@ -1418,57 +1423,57 @@
         <translation>Rien n’est en attente.</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="161"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="162"/>
         <source>%1: %2 → %3</source>
         <translation>%1&#xa0;: %2 → %3</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="171"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="172"/>
         <source>%1: changed here and in the file</source>
         <translation>%1&#xa0;: modifié ici et dans le fichier</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="175"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="176"/>
         <source>Keep mine: %1</source>
         <translation>Garder ma valeur&#xa0;: %1</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="181"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="182"/>
         <source>Take the file&apos;s: %1</source>
         <translation>Prendre celle du fichier&#xa0;: %1</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="193"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="194"/>
         <source>Keyword added: %1</source>
         <translation>Mot-clé ajouté&#xa0;: %1</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="202"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="203"/>
         <source>Keyword removed: %1</source>
         <translation>Mot-clé retiré&#xa0;: %1</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="211"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="212"/>
         <source>Accept</source>
         <translation>Accepter</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="216"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="217"/>
         <source>Ignore</source>
         <translation>Ignorer</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="229"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="231"/>
         <source>Accept all</source>
         <translation>Tout accepter</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="236"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="238"/>
         <source>Ignore all</source>
         <translation>Tout ignorer</translation>
     </message>
     <message>
-        <location filename="../qml/ExternalChangesDialog.qml" line="241"/>
+        <location filename="../qml/ExternalChangesDialog.qml" line="243"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -1818,190 +1823,190 @@
 <context>
     <name>KeywordPanel</name>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="196"/>
+        <location filename="../qml/KeywordPanel.qml" line="220"/>
         <source>A keyword needs a name, without |.</source>
         <translation>Un mot-clé doit avoir un nom, sans |.</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="198"/>
+        <location filename="../qml/KeywordPanel.qml" line="222"/>
         <source>A synonym cannot contain |.</source>
         <translation>Un synonyme ne peut pas contenir de |.</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="200"/>
+        <location filename="../qml/KeywordPanel.qml" line="224"/>
         <source>A keyword cannot be moved under itself or under one of its own keywords.</source>
         <translation>Un mot-clé ne peut pas être déplacé sous lui-même ni sous l’un de ses propres mots-clés.</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="202"/>
+        <location filename="../qml/KeywordPanel.qml" line="226"/>
         <source>There is already a keyword named “%1” there.</source>
         <translation>Il y a déjà un mot-clé nommé «&#xa0;%1&#xa0;» à cet endroit.</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="246"/>
+        <location filename="../qml/KeywordPanel.qml" line="270"/>
         <source>Keywords</source>
         <translation>Mots-clés</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="246"/>
+        <location filename="../qml/KeywordPanel.qml" line="270"/>
         <source>Metadata</source>
         <translation>Métadonnées</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="246"/>
+        <location filename="../qml/KeywordPanel.qml" line="270"/>
         <source>Info</source>
         <translation>Infos</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="246"/>
+        <location filename="../qml/KeywordPanel.qml" line="270"/>
         <source>Collections</source>
         <translation>Collections</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="293"/>
+        <location filename="../qml/KeywordPanel.qml" line="319"/>
         <source>Hide the panel</source>
         <translation>Masquer le panneau</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="302"/>
+        <location filename="../qml/KeywordPanel.qml" line="328"/>
         <source>Find or add a keyword…</source>
         <translation>Chercher ou ajouter un mot-clé…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="303"/>
+        <location filename="../qml/KeywordPanel.qml" line="329"/>
         <source>Find or add a keyword</source>
         <translation>Chercher ou ajouter un mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="329"/>
+        <location filename="../qml/KeywordPanel.qml" line="355"/>
         <source>Add “%1” at the top level</source>
         <translation>Ajouter «&#xa0;%1&#xa0;» au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="330"/>
+        <location filename="../qml/KeywordPanel.qml" line="356"/>
         <source>Add “%1” under %2</source>
         <translation>Ajouter «&#xa0;%1&#xa0;» sous %2</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="338"/>
+        <location filename="../qml/KeywordPanel.qml" line="364"/>
         <source>Shift+Enter</source>
         <translation>Maj+Entrée</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="347"/>
+        <location filename="../qml/KeywordPanel.qml" line="373"/>
         <source>New keywords go under %1</source>
         <translation>Les nouveaux mots-clés vont sous %1</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="355"/>
+        <location filename="../qml/KeywordPanel.qml" line="381"/>
         <source>New keywords go at the top level</source>
         <translation>Les nouveaux mots-clés vont au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="562"/>
+        <location filename="../qml/KeywordPanel.qml" line="590"/>
         <source>Show the keyword panel</source>
         <translation>Afficher le panneau des mots-clés</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="572"/>
+        <location filename="../qml/KeywordPanel.qml" line="600"/>
         <source>Show the photos with this keyword</source>
         <translation>Afficher les photos avec ce mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="576"/>
+        <location filename="../qml/KeywordPanel.qml" line="604"/>
         <source>Rename…</source>
         <translation>Renommer…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="580"/>
+        <location filename="../qml/KeywordPanel.qml" line="608"/>
         <source>Properties…</source>
         <translation>Propriétés…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="585"/>
+        <location filename="../qml/KeywordPanel.qml" line="613"/>
         <source>Move to…</source>
         <translation>Déplacer vers…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="589"/>
+        <location filename="../qml/KeywordPanel.qml" line="617"/>
         <source>Move to the top level</source>
         <translation>Déplacer au premier niveau</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="595"/>
+        <location filename="../qml/KeywordPanel.qml" line="623"/>
         <source>Delete…</source>
         <translation>Supprimer…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="606"/>
+        <location filename="../qml/KeywordPanel.qml" line="634"/>
         <source>Rename the keyword</source>
         <translation>Renommer le mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="630"/>
+        <location filename="../qml/KeywordPanel.qml" line="658"/>
         <source>Name</source>
         <translation>Nom</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="644"/>
+        <location filename="../qml/KeywordPanel.qml" line="672"/>
         <source>Rename</source>
         <translation>Renommer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="650"/>
-        <location filename="../qml/KeywordPanel.qml" line="708"/>
-        <location filename="../qml/KeywordPanel.qml" line="825"/>
-        <location filename="../qml/KeywordPanel.qml" line="909"/>
+        <location filename="../qml/KeywordPanel.qml" line="678"/>
+        <location filename="../qml/KeywordPanel.qml" line="736"/>
+        <location filename="../qml/KeywordPanel.qml" line="853"/>
+        <location filename="../qml/KeywordPanel.qml" line="937"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="664"/>
+        <location filename="../qml/KeywordPanel.qml" line="692"/>
         <source>Move the keyword</source>
         <translation>Déplacer le mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="685"/>
+        <location filename="../qml/KeywordPanel.qml" line="713"/>
         <source>Move “%1” under:</source>
         <translation>Déplacer «&#xa0;%1&#xa0;» sous&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="686"/>
+        <location filename="../qml/KeywordPanel.qml" line="714"/>
         <source>There is nowhere to move “%1”.</source>
         <translation>Il n’y a nulle part où déplacer «&#xa0;%1&#xa0;».</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="695"/>
+        <location filename="../qml/KeywordPanel.qml" line="723"/>
         <source>New parent</source>
         <translation>Nouveau parent</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="701"/>
+        <location filename="../qml/KeywordPanel.qml" line="729"/>
         <source>Move</source>
         <translation>Déplacer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="728"/>
+        <location filename="../qml/KeywordPanel.qml" line="756"/>
         <source>Delete the keyword</source>
         <translation>Supprimer le mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="745"/>
+        <location filename="../qml/KeywordPanel.qml" line="773"/>
         <source>Removing it from %1 photo(s)…</source>
         <translation>Retrait de %1 photo(s) en cours…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="760"/>
+        <location filename="../qml/KeywordPanel.qml" line="788"/>
         <source>Removing it from %1 of %2 photo(s)…</source>
         <translation>Retrait de %1 sur %2 photo(s) en cours…</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="770"/>
+        <location filename="../qml/KeywordPanel.qml" line="798"/>
         <source>Stopped: %1 photo(s) done. Delete again to finish.</source>
         <translation>Arrêté&#xa0;: %1 photo(s) traitées. Supprimez-le à nouveau pour terminer.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/KeywordPanel.qml" line="782"/>
+        <location filename="../qml/KeywordPanel.qml" line="810"/>
         <source>Delete “%1” and the %n keyword(s) under it?</source>
         <translation>
             <numerusform>Supprimer «&#xa0;%1&#xa0;» et le mot-clé placé dessous&#xa0;?</numerusform>
@@ -2009,12 +2014,12 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="783"/>
+        <location filename="../qml/KeywordPanel.qml" line="811"/>
         <source>Delete “%1”?</source>
         <translation>Supprimer «&#xa0;%1&#xa0;»&#xa0;?</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/KeywordPanel.qml" line="790"/>
+        <location filename="../qml/KeywordPanel.qml" line="818"/>
         <source>%n photo(s) will lose it. You can undo this.</source>
         <translation>
             <numerusform>%n photo le perdra. Vous pouvez annuler.</numerusform>
@@ -2022,52 +2027,52 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="791"/>
+        <location filename="../qml/KeywordPanel.qml" line="819"/>
         <source>No photo has it. You can undo this.</source>
         <translation>Aucune photo ne l’a. Vous pouvez annuler.</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="810"/>
+        <location filename="../qml/KeywordPanel.qml" line="838"/>
         <source>Delete</source>
         <translation>Supprimer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="817"/>
+        <location filename="../qml/KeywordPanel.qml" line="845"/>
         <source>Cancel sweep</source>
         <translation>Annuler le retrait</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="825"/>
+        <location filename="../qml/KeywordPanel.qml" line="853"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="842"/>
+        <location filename="../qml/KeywordPanel.qml" line="870"/>
         <source>Keyword properties</source>
         <translation>Propriétés du mot-clé</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="868"/>
+        <location filename="../qml/KeywordPanel.qml" line="896"/>
         <source>“%1”</source>
         <translation>«&#xa0;%1&#xa0;»</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="872"/>
+        <location filename="../qml/KeywordPanel.qml" line="900"/>
         <source>Synonyms, one a line:</source>
         <translation>Synonymes, un par ligne&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="879"/>
+        <location filename="../qml/KeywordPanel.qml" line="907"/>
         <source>Synonyms</source>
         <translation>Synonymes</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="890"/>
+        <location filename="../qml/KeywordPanel.qml" line="918"/>
         <source>Do not export</source>
         <translation>Ne pas exporter</translation>
     </message>
     <message>
-        <location filename="../qml/KeywordPanel.qml" line="903"/>
+        <location filename="../qml/KeywordPanel.qml" line="931"/>
         <source>Save</source>
         <translation>Enregistrer</translation>
     </message>
@@ -2268,96 +2273,96 @@
         </translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="964"/>
+        <location filename="../qml/Library.qml" line="965"/>
         <source>Photo</source>
         <translation>Photo</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1013"/>
+        <location filename="../qml/Library.qml" line="1014"/>
         <source>No preview</source>
         <translation>Aucun aperçu</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1022"/>
+        <location filename="../qml/Library.qml" line="1023"/>
         <source>Missing</source>
         <translation>Manquante</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1092"/>
+        <location filename="../qml/Library.qml" line="1093"/>
         <source>%1 of the series&apos; %2 photos are listed (the filters hide the others)</source>
         <translation>%1 des %2 photos de la série sont affichées (les filtres cachent les autres)</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1111"/>
+        <location filename="../qml/Library.qml" line="1112"/>
         <source>No RAW</source>
         <translation>Sans RAW</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1168"/>
+        <location filename="../qml/Library.qml" line="1169"/>
         <source>Applying to %1 of %2 photo(s)…</source>
         <translation>Application de %1 sur %2 photo(s) en cours…</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1207"/>
+        <location filename="../qml/Library.qml" line="1208"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1262"/>
+        <location filename="../qml/Library.qml" line="1263"/>
         <source>Open in the image view</source>
         <translation>Ouvrir dans la vue image</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1263"/>
-        <location filename="../qml/Library.qml" line="1288"/>
+        <location filename="../qml/Library.qml" line="1264"/>
+        <location filename="../qml/Library.qml" line="1289"/>
         <source>Show in file manager</source>
         <translation>Montrer dans le gestionnaire de fichiers</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1265"/>
+        <location filename="../qml/Library.qml" line="1266"/>
         <source>Similar photos</source>
         <translation>Photos similaires</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1266"/>
+        <location filename="../qml/Library.qml" line="1267"/>
         <source>Open or close the series</source>
         <translation>Ouvrir ou fermer la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1267"/>
+        <location filename="../qml/Library.qml" line="1268"/>
         <source>Group as a series</source>
         <translation>Grouper en série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1268"/>
+        <location filename="../qml/Library.qml" line="1269"/>
         <source>Take out of the series</source>
         <translation>Sortir de la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1269"/>
+        <location filename="../qml/Library.qml" line="1270"/>
         <source>Resolve the series</source>
         <translation>Résoudre la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1270"/>
+        <location filename="../qml/Library.qml" line="1271"/>
         <source>Reopen the series</source>
         <translation>Rouvrir la série</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1279"/>
-        <location filename="../qml/Library.qml" line="1297"/>
+        <location filename="../qml/Library.qml" line="1280"/>
+        <location filename="../qml/Library.qml" line="1298"/>
         <source>Pick</source>
         <translation>Retenir</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1280"/>
-        <location filename="../qml/Library.qml" line="1298"/>
+        <location filename="../qml/Library.qml" line="1281"/>
+        <location filename="../qml/Library.qml" line="1299"/>
         <source>Reject</source>
         <translation>Refuser</translation>
     </message>
     <message>
-        <location filename="../qml/Library.qml" line="1281"/>
-        <location filename="../qml/Library.qml" line="1299"/>
+        <location filename="../qml/Library.qml" line="1282"/>
+        <location filename="../qml/Library.qml" line="1300"/>
         <source>Clear the flag</source>
         <translation>Effacer le drapeau</translation>
     </message>
@@ -2365,42 +2370,42 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="150"/>
+        <location filename="../qml/Main.qml" line="155"/>
         <source>Cannot open the workspace: %1</source>
         <translation>Impossible d&apos;ouvrir le workspace : %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="265"/>
+        <location filename="../qml/Main.qml" line="270"/>
         <source>Menu</source>
         <translation>Menu</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="280"/>
+        <location filename="../qml/Main.qml" line="285"/>
         <source>Catalogue</source>
         <translation>Catalogue</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="286"/>
+        <location filename="../qml/Main.qml" line="291"/>
         <source>Cull</source>
         <translation>Trier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="291"/>
+        <location filename="../qml/Main.qml" line="296"/>
         <source>Develop</source>
         <translation>Développer</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="292"/>
+        <location filename="../qml/Main.qml" line="297"/>
         <source>Publish</source>
         <translation>Publier</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="392"/>
+        <location filename="../qml/Main.qml" line="399"/>
         <source>Choose a folder in the folder dialog…</source>
         <translation>Choisissez un dossier dans la fenêtre de sélection…</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="403"/>
+        <location filename="../qml/Main.qml" line="410"/>
         <source>Open a workspace</source>
         <translation>Ouvrir un workspace</translation>
     </message>
@@ -2523,8 +2528,8 @@
         <translation>Annuler</translation>
     </message>
     <message>
-        <location filename="../qml/MetadataPanel.qml" line="308"/>
-        <location filename="../qml/MetadataPanel.qml" line="319"/>
+        <location filename="../qml/MetadataPanel.qml" line="309"/>
+        <location filename="../qml/MetadataPanel.qml" line="320"/>
         <source>Multiple values</source>
         <translation>Valeurs multiples</translation>
     </message>
@@ -2595,7 +2600,7 @@
 <context>
     <name>NoticeBar</name>
     <message>
-        <location filename="../qml/NoticeBar.qml" line="32"/>
+        <location filename="../qml/NoticeBar.qml" line="33"/>
         <source>Dismiss</source>
         <translation>Fermer</translation>
     </message>
@@ -2675,77 +2680,77 @@
         <translation>Démarrage</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="33"/>
+        <location filename="../qml/SettingsDialog.qml" line="40"/>
         <source>Reopen the last workspace</source>
         <translation>Rouvrir le dernier espace de travail</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="33"/>
+        <location filename="../qml/SettingsDialog.qml" line="40"/>
         <source>Show the list of workspaces</source>
         <translation>Afficher la liste des espaces de travail</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="42"/>
+        <location filename="../qml/SettingsDialog.qml" line="49"/>
         <source>Language</source>
         <translation>Langue</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="54"/>
+        <location filename="../qml/SettingsDialog.qml" line="63"/>
         <source>System</source>
         <translation>Système</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="64"/>
+        <location filename="../qml/SettingsDialog.qml" line="76"/>
         <source>Series</source>
         <translation>Séries</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="71"/>
+        <location filename="../qml/SettingsDialog.qml" line="94"/>
         <source>Photos of one camera at most this many seconds apart form a series:</source>
         <translation>Les photos d’un même appareil espacées d’au plus ce nombre de secondes forment une série&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="81"/>
+        <location filename="../qml/SettingsDialog.qml" line="105"/>
         <source>Series gap in seconds</source>
         <translation>Écart des séries en secondes</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="87"/>
+        <location filename="../qml/SettingsDialog.qml" line="111"/>
         <source>Regroup the series now</source>
         <translation>Regrouper les séries maintenant</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="90"/>
+        <location filename="../qml/SettingsDialog.qml" line="114"/>
         <source>Forms the series that were made by themselves again with this gap. Series made by hand or resolved stay.</source>
         <translation>Refait avec cet écart les séries formées automatiquement. Les séries faites à la main ou résolues restent.</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="94"/>
+        <location filename="../qml/SettingsDialog.qml" line="118"/>
         <source>Similar photos</source>
         <translation>Photos similaires</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="101"/>
+        <location filename="../qml/SettingsDialog.qml" line="127"/>
         <source>Photos are similar when at most this many of the 64 bits of their pictures&apos; fingerprints differ:</source>
         <translation>Des photos sont similaires si, au plus, ce nombre des 64 bits de l&apos;empreinte de leur image diffèrent&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="111"/>
+        <location filename="../qml/SettingsDialog.qml" line="138"/>
         <source>Similar photos: how many bits may differ</source>
         <translation>Photos similaires&#xa0;: combien de bits peuvent différer</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="118"/>
+        <location filename="../qml/SettingsDialog.qml" line="147"/>
         <source>...and they were taken at most this many minutes apart:</source>
         <translation>...et elles ont été prises à au plus ce nombre de minutes d&apos;écart&#xa0;:</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="128"/>
+        <location filename="../qml/SettingsDialog.qml" line="158"/>
         <source>Similar photos: how many minutes apart</source>
         <translation>Photos similaires&#xa0;: combien de minutes d&apos;écart</translation>
     </message>
     <message>
-        <location filename="../qml/SettingsDialog.qml" line="136"/>
+        <location filename="../qml/SettingsDialog.qml" line="166"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -2795,22 +2800,22 @@
         <translation>Aucune photo similaire près de celle-ci.</translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="209"/>
+        <location filename="../qml/SimilarPanel.qml" line="212"/>
         <source>Group with this photo</source>
         <translation>Grouper avec cette photo</translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="213"/>
+        <location filename="../qml/SimilarPanel.qml" line="216"/>
         <source>Makes one series of this photo and the similar ones</source>
         <translation>Fait une série de cette photo et des similaires</translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="222"/>
+        <location filename="../qml/SimilarPanel.qml" line="225"/>
         <source>Compare</source>
         <translation>Comparer</translation>
     </message>
     <message>
-        <location filename="../qml/SimilarPanel.qml" line="226"/>
+        <location filename="../qml/SimilarPanel.qml" line="229"/>
         <source>Compares this photo with the three nearest</source>
         <translation>Compare cette photo avec les trois plus proches</translation>
     </message>
@@ -3046,17 +3051,17 @@
         <translation>Workspaces récents</translation>
     </message>
     <message>
-        <location filename="../qml/Welcome.qml" line="108"/>
+        <location filename="../qml/Welcome.qml" line="111"/>
         <source>Not found</source>
         <translation>Introuvable</translation>
     </message>
     <message>
-        <location filename="../qml/Welcome.qml" line="113"/>
+        <location filename="../qml/Welcome.qml" line="116"/>
         <source>Remove from the list</source>
         <translation>Retirer de la liste</translation>
     </message>
     <message>
-        <location filename="../qml/Welcome.qml" line="114"/>
+        <location filename="../qml/Welcome.qml" line="117"/>
         <source>Remove from the list: %1</source>
         <translation>Retirer de la liste : %1</translation>
     </message>
@@ -3064,6 +3069,226 @@
         <location filename="../qml/Welcome.qml" line="67"/>
         <source>No workspace yet.</source>
         <translation>Aucun workspace pour l&apos;instant.</translation>
+    </message>
+</context>
+<context>
+    <name>XmpExportDialog</name>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="19"/>
+        <source>Export XMP files</source>
+        <translation>Exporter les fichiers XMP</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="139"/>
+        <source>%n file(s) written</source>
+        <translation>
+            <numerusform>%n fichier écrit</numerusform>
+            <numerusform>%n fichiers écrits</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="141"/>
+        <source>%n file(s) already said the same, left as they are</source>
+        <translation>
+            <numerusform>%n fichier disait déjà la même chose, laissé tel quel</numerusform>
+            <numerusform>%n fichiers disaient déjà la même chose, laissés tels quels</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="143"/>
+        <source>%n file(s) held back: another application changed them since Auroraw last looked. Review the changes (the banner under the header), then export again.</source>
+        <translation>
+            <numerusform>%n fichier retenu&#xa0;: une autre application l’a modifié depuis le dernier passage d’Auroraw. Passez en revue les changements (le bandeau sous l’en-tête), puis exportez à nouveau.</numerusform>
+            <numerusform>%n fichiers retenus&#xa0;: une autre application les a modifiés depuis le dernier passage d’Auroraw. Passez en revue les changements (le bandeau sous l’en-tête), puis exportez à nouveau.</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="145"/>
+        <source>%n existing file(s) left alone</source>
+        <translation>
+            <numerusform>%n fichier existant laissé tel quel</numerusform>
+            <numerusform>%n fichiers existants laissés tels quels</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="147"/>
+        <source>%n existing file(s) that are not XMP, left untouched</source>
+        <translation>
+            <numerusform>%n fichier existant qui n’est pas du XMP, non touché</numerusform>
+            <numerusform>%n fichiers existants qui ne sont pas du XMP, non touchés</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="149"/>
+        <source>%n photo(s) on a source that cannot be reached</source>
+        <translation>
+            <numerusform>%n photo sur une source inaccessible</numerusform>
+            <numerusform>%n photos sur une source inaccessible</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="151"/>
+        <source>%n file(s) named after the whole file (photo.ARW.xmp), the name photo.xmp being shared by several photos of a folder</source>
+        <translation>
+            <numerusform>%n fichier nommé d’après le fichier entier (photo.ARW.xmp), le nom photo.xmp étant partagé par plusieurs photos d’un dossier</numerusform>
+            <numerusform>%n fichiers nommés d’après le fichier entier (photo.ARW.xmp), le nom photo.xmp étant partagé par plusieurs photos d’un dossier</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="153"/>
+        <source>%n photo(s) could not be exported: %1</source>
+        <translation>
+            <numerusform>%n photo n’a pas pu être exportée&#xa0;: %1</numerusform>
+            <numerusform>%n photos n’ont pas pu être exportées&#xa0;: %1</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="164"/>
+        <source>Writes an XMP file beside the original of each photo, for other applications to read. Your photos and Auroraw&apos;s own files are not changed.</source>
+        <translation>Écrit un fichier XMP à côté de l’original de chaque photo, pour que d’autres applications le lisent. Vos photos et les fichiers d’Auroraw ne sont pas modifiés.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="173"/>
+        <source>Photos</source>
+        <translation>Photos</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/XmpExportDialog.qml" line="179"/>
+        <source>The %n selected photo(s)</source>
+        <translation>
+            <numerusform>La photo sélectionnée (%n)</numerusform>
+            <numerusform>Les %n photos sélectionnées</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="180"/>
+        <source>The selected photos (none is selected)</source>
+        <translation>Les photos sélectionnées (aucune n’est sélectionnée)</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="187"/>
+        <source>Every photo of the source:</source>
+        <translation>Toutes les photos de la source&#xa0;:</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="194"/>
+        <source>Source</source>
+        <translation>Source</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="200"/>
+        <source>Name of a new file</source>
+        <translation>Nom d’un nouveau fichier</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="205"/>
+        <source>Named after the photo (photo.xmp)</source>
+        <translation>Nommé d’après la photo (photo.xmp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="209"/>
+        <source>Named after the whole file (photo.ARW.xmp)</source>
+        <translation>Nommé d’après le fichier entier (photo.ARW.xmp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="219"/>
+        <source>Merge into it</source>
+        <translation>Fusionner avec lui</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="221"/>
+        <source>Only what Auroraw owns is rewritten; develop settings and the rest stay.</source>
+        <translation>Seul ce qui relève d’Auroraw est réécrit&#xa0;; les réglages de développement et le reste sont conservés.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="224"/>
+        <source>Replace it</source>
+        <translation>Le remplacer</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="226"/>
+        <source>The old file is kept in the workspace&apos;s removed folder.</source>
+        <translation>L’ancien fichier est gardé dans le dossier removed de l’espace de travail.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="229"/>
+        <source>Leave it alone</source>
+        <translation>Le laisser</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="231"/>
+        <source>Only the missing files are written.</source>
+        <translation>Seuls les fichiers manquants sont écrits.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="236"/>
+        <source>Write a rejected photo with a rating of −1</source>
+        <translation>Écrire une photo rejetée avec une note de −1</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="238"/>
+        <source>Other applications understand −1 as rejected; the stars stay in the file for Auroraw.</source>
+        <translation>Les autres applications comprennent −1 comme «&#xa0;rejetée&#xa0;»&#xa0;; les étoiles restent dans le fichier pour Auroraw.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="214"/>
+        <source>When a file already exists</source>
+        <translation>Quand un fichier existe déjà</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="246"/>
+        <source>Replace the files that already exist? Each old file is first kept in the workspace&apos;s removed folder; nothing is deleted.</source>
+        <translation>Remplacer les fichiers qui existent déjà&#xa0;? Chaque ancien fichier est d’abord gardé dans le dossier removed de l’espace de travail&#xa0;; rien n’est supprimé.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="255"/>
+        <source>Writing the files…</source>
+        <translation>Écriture des fichiers…</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="273"/>
+        <source>Stopped. What was written stays written.</source>
+        <translation>Arrêté. Ce qui a été écrit reste écrit.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="274"/>
+        <source>Done.</source>
+        <translation>Terminé.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="274"/>
+        <source>Nothing to write.</source>
+        <translation>Rien à écrire.</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="292"/>
+        <source>Replace and export</source>
+        <translation>Remplacer et exporter</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="292"/>
+        <source>Export</source>
+        <translation>Exporter</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="301"/>
+        <source>Back</source>
+        <translation>Retour</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="308"/>
+        <source>Stop</source>
+        <translation>Arrêter</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="315"/>
+        <source>Close</source>
+        <translation>Fermer</translation>
+    </message>
+    <message>
+        <location filename="../qml/XmpExportDialog.qml" line="315"/>
+        <source>Cancel</source>
+        <translation>Annuler</translation>
     </message>
 </context>
 </TS>

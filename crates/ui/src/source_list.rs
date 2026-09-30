@@ -127,6 +127,22 @@ impl SourceList {
         engine()?.source_counts(source.id).ok()
     }
 
+    /// The name of the source in `row`, empty for a row that is not one.
+    pub fn name_at(&self, row: i32) -> QString {
+        usize::try_from(row)
+            .ok()
+            .and_then(|row| self.sources.get(row))
+            .map_or_else(QString::default, |source| text(&source.name))
+    }
+
+    /// The identifier of the source in `row`, empty for a row that is not one.
+    pub fn id_at(&self, row: i32) -> QString {
+        usize::try_from(row)
+            .ok()
+            .and_then(|row| self.sources.get(row))
+            .map_or_else(QString::default, |source| text(&source.id.to_string()))
+    }
+
     pub fn photos_at(&self, row: i32) -> i32 {
         self.counts(row).map_or(0, |c| c.photos as i32)
     }

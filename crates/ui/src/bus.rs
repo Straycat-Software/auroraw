@@ -110,6 +110,19 @@ pub mod qobject {
         #[cxx_name = "externalChanges"]
         fn external_changes(self: Pin<&mut Bus>, photos: i32, unreadable: i32);
 
+        /// An XMP export ended (D-138, D-139): what happened to each photo, as JSON (`written`, `upToDate`,
+        /// `heldBack`, `skippedExisting`, `unreachable`, `unreadable`, `nameShared`, `failed`, and the first
+        /// reason a file could not be written in `firstError`, empty for none). `cancelled` is whether it was
+        /// stopped before the last photo.
+        #[qsignal]
+        #[cxx_name = "xmpExportFinished"]
+        fn xmp_export_finished(
+            self: Pin<&mut Bus>,
+            job: &QString,
+            report: &QString,
+            cancelled: bool,
+        );
+
         /// A keyword branch was deleted (D-126 volet B): a small one right away, `job` empty; one past
         /// `BACKGROUND_THRESHOLD` photos once its background sweep actually ends, `job` its id.
         /// `finished` is `false` only for a sweep that was cancelled before every carrying photo was
@@ -333,6 +346,32 @@ fn dispatch(event: Event, session: &Session) {
         Event::JobFinished(job) => {
             let job = job.to_string();
             on_gui(move |bus| bus.job_finished(&QString::from(job.as_str())));
+        }
+        Event::XmpExportFinished {
+            job,
+            report,
+            cancelled,
+        } => {
+            let job = job.to_string();
+            let report = serde_json::json!({
+                "written": report.written,
+                "upToDate": report.up_to_date,
+                "heldBack": report.held_back,
+                "skippedExisting": report.skipped_existing,
+                "unreachable": report.unreachable,
+                "unreadable": report.unreadable,
+                "nameShared": report.name_shared,
+                "failed": report.failed,
+                "firstError": report.first_error.unwrap_or_default(),
+            })
+            .to_string();
+            on_gui(move |bus| {
+                bus.xmp_export_finished(
+                    &QString::from(job.as_str()),
+                    &QString::from(report.as_str()),
+                    cancelled,
+                )
+            });
         }
         Event::KeywordDeleted {
             keyword_id,

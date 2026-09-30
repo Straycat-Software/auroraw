@@ -51,6 +51,13 @@ pub struct AppSettings {
     /// What to do at launch, when none was named on the command line (issue #11): `"reopen"` (the
     /// last workspace) or `"list"` (the Welcome screen's known workspaces).
     pub startup_behavior: String,
+    /// The XMP export's last choices (D-139): how a new file is named (`"stem"` for `photo.xmp`,
+    /// `"full"` for `photo.ARW.xmp`), what to do with a file that exists (`"merge"` or `"skip"`;
+    /// Replace is asked for each time and never remembered), and whether a rejected photo is written
+    /// as a rating of -1.
+    pub xmp_naming: String,
+    pub xmp_existing: String,
+    pub xmp_minus_one: bool,
 }
 
 /// The keyword panel's width when nothing was chosen, and the limits of what can be.
@@ -76,6 +83,9 @@ impl Default for AppSettings {
             similar_minutes: 30,
             last_folders: HashMap::new(),
             startup_behavior: "reopen".into(),
+            xmp_naming: "stem".into(),
+            xmp_existing: "merge".into(),
+            xmp_minus_one: true,
         }
     }
 }
@@ -103,6 +113,12 @@ impl AppSettings {
                 settings.similar_minutes = settings.similar_minutes.clamp(1, 10_080);
                 if settings.startup_behavior != "list" {
                     settings.startup_behavior = "reopen".into();
+                }
+                if settings.xmp_naming != "full" {
+                    settings.xmp_naming = "stem".into();
+                }
+                if settings.xmp_existing != "skip" {
+                    settings.xmp_existing = "merge".into();
                 }
                 settings
             })
@@ -192,6 +208,9 @@ mod tests {
                 ("source".to_string(), "/mnt/backup".to_string()),
             ]),
             startup_behavior: "list".into(),
+            xmp_naming: "full".into(),
+            xmp_existing: "skip".into(),
+            xmp_minus_one: false,
         };
         chosen.save(&path);
         assert_eq!(AppSettings::load(&path), chosen);

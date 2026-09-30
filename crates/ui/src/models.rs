@@ -870,6 +870,15 @@ pub mod qobject {
         #[cxx_name = "lastFolder"]
         fn last_folder(self: &SourceList) -> QString;
 
+        /// The name and the identifier of the source in `row` (empty for a row that is not one), for a
+        /// picker that lists them as plain texts.
+        #[qinvokable]
+        #[cxx_name = "nameAt"]
+        fn name_at(self: &SourceList, row: i32) -> QString;
+        #[qinvokable]
+        #[cxx_name = "idAt"]
+        fn id_at(self: &SourceList, row: i32) -> QString;
+
         /// How many photos the source in `row` has, and how many of them have work in them (read
         /// from the catalogue now, not from the list).
         #[qinvokable]
