@@ -360,7 +360,8 @@ camera-to-working-space step; exposure, tone and colour; crop and straighten; sh
 and the output transform.
 
 Five data spaces name what each stage receives and returns (`sensor-raw`, `mosaic-linear`,
-`camera-linear`, `working-linear`, `display-referred`); an operation depends only on its own
+`camera-linear`, `working-linear`, `display-referred`), the first two with no lower bound (a sample below
+its black stays negative); an operation depends only on its own
 parameters, the operations before it and the image, so that nothing before `input-colour` reads
 the white balance. The stage and space names are constants in `plugin-api`; the definition is Rust
 data in `pipeline`, versioned, and a released version is never edited (D-146, note 006).
