@@ -171,22 +171,70 @@ fn the_device_has_the_engines_floor_limits_not_the_adapters_maximum() {
 
 #[test]
 fn a_shaders_tolerance_gates_what_it_says_and_reports_the_rest() {
-    use crate::smoke::{ShaderReport, Tolerance};
-    let report = |max, fraction, tolerance| ShaderReport {
+    use crate::smoke::{Measured, ShaderReport, Tolerance};
+    let levels = |max, fraction, tolerance| ShaderReport {
         shader: "t",
         cases: 1,
-        channels: 1000,
-        max_level_difference: max,
-        fraction_over_one_level: fraction,
+        compared: 1000,
+        measured: Measured::Levels {
+            max_level_difference: max,
+            fraction_over_one_level: fraction,
+            fraction_differing: fraction,
+        },
         tolerance,
     };
     // A neighbourhood operation with 0.05 % of its channels two levels off passes the output rule,
     // which reports the maximum and gates the fraction (testing strategy §4.2)...
-    assert!(report(2, 0.0005, Tolerance::OUTPUT).passed());
-    assert!(report(9, 0.0005, Tolerance::OUTPUT).passed());
+    assert!(levels(2, 0.0005, Tolerance::OUTPUT).passed());
+    assert!(levels(9, 0.0005, Tolerance::OUTPUT).passed());
     // ...fails when more than 0.1 % are over one level...
-    assert!(!report(2, 0.002, Tolerance::OUTPUT).passed());
+    assert!(!levels(2, 0.002, Tolerance::OUTPUT).passed());
     // ...and the probe's stricter rule gates the maximum.
-    assert!(report(1, 0.0, Tolerance::PROBE).passed());
-    assert!(!report(2, 0.0005, Tolerance::PROBE).passed());
+    assert!(levels(1, 0.0, Tolerance::PROBE).passed());
+    assert!(!levels(2, 0.0005, Tolerance::PROBE).passed());
+}
+
+#[test]
+fn a_bias_of_one_level_is_caught_by_the_fraction_that_differs_at_all() {
+    use crate::smoke::{Measured, ShaderReport, Tolerance};
+    // A truncation where the reference rounds: never more than one level off, on about half the channels.
+    let truncated = |tolerance| ShaderReport {
+        shader: "t",
+        cases: 1,
+        compared: 1000,
+        measured: Measured::Levels {
+            max_level_difference: 1,
+            fraction_over_one_level: 0.0,
+            fraction_differing: 0.5,
+        },
+        tolerance,
+    };
+    // The rule of one level lets it through; the stage that is the same arithmetic as its reference does not.
+    assert!(truncated(Tolerance::OUTPUT).passed());
+    assert!(!truncated(Tolerance::SAME_ARITHMETIC).passed());
+}
+
+#[test]
+fn a_linear_stage_is_held_to_an_absolute_bound_and_a_unit_mismatch_never_passes() {
+    use crate::smoke::{Measured, ShaderReport, Tolerance};
+    let absolute = |max: f32, bound: f32| ShaderReport {
+        shader: "t",
+        cases: 1,
+        compared: 10,
+        measured: Measured::Absolute {
+            max_difference: max,
+        },
+        tolerance: Tolerance::Absolute {
+            max_difference: bound,
+        },
+    };
+    assert!(absolute(5e-5, 1e-4).passed());
+    assert!(absolute(1e-4, 1e-4).passed());
+    assert!(!absolute(2e-4, 1e-4).passed());
+    // A registry that held an `f32` measure to a level tolerance would be a bug, and must not pass.
+    let mixed = ShaderReport {
+        tolerance: Tolerance::OUTPUT,
+        ..absolute(0.0, 1e-4)
+    };
+    assert!(!mixed.passed());
 }
