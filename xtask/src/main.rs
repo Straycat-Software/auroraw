@@ -30,6 +30,8 @@ const ALLOWED: &[(&str, &[&str])] = &[
         &["auroraw-plugin-api", "auroraw-types", "auroraw-format"],
     ),
     ("auroraw-imaging", &["auroraw-types"]),
+    // Offline place names (design note 008): a lookup in a file, nothing of the application.
+    ("auroraw-places", &[]),
     // The image engine. Its edges are added when the code first needs them (D-140 writes the ones
     // design note 005 §2.2 names: `plugin-api` for `RawImage`, `imaging`): an allowed edge that is
     // unused is a hole in this check, which only refuses what is not in the table.
@@ -53,6 +55,7 @@ const ALLOWED: &[(&str, &[&str])] = &[
             "auroraw-plugin-api",
             "auroraw-import",
             "auroraw-imaging",
+            "auroraw-places",
             "auroraw-plugin-host",
             "auroraw-types",
         ],

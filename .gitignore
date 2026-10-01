@@ -5,3 +5,5 @@ testdata/samples/
 docs/spikes/results/**/*.png
 
 __pycache__/
+
+testdata/places/

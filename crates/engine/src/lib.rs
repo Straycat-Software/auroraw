@@ -30,6 +30,7 @@ mod index_job;
 mod job;
 pub mod paths;
 mod photo_paths;
+mod place_names;
 mod reconcile_apply;
 mod refresh;
 mod remove_job;
@@ -44,6 +45,7 @@ mod xmp_export;
 mod xmp_export_job;
 
 pub use auroraw_catalogue::SourceCounts;
+pub use auroraw_format::sidecar::PlaceField;
 pub use auroraw_format::sidecar::{ColourLabel, Flag};
 pub use auroraw_imaging::{Aids, MaskKind};
 pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
@@ -57,13 +59,17 @@ pub use event::Event;
 pub use external_api::{ExternalChange, ExternalField, ExternalPhoto};
 pub use history::{
     Change, CollectionAction, CollectionDelta, HistoryState, KeywordDelta, KeywordSet, Label,
-    LabelKind, SeriesAction, VocabularyAction,
+    LabelKind, PlaceState, SeriesAction, VocabularyAction,
 };
 pub use import_flow::{
     DestinationKind, ImportRequest, ImportSourceInfo, ImportStarted, VolumeInfo,
 };
 pub use import_job::Registration;
 pub use job::JobId;
+pub use place_names::{
+    PREVIEW_EXAMPLES, PREVIEW_GROUPS, PlaceChangeGroup, PlaceFill, PlaceNamesReport, PlacePreview,
+    PlaceScope,
+};
 pub use similar_api::{SimilarPhoto, SimilarQuery};
 pub use sources_api::{AddPlan, AddSourceRequest, AddedSource, SourceInfo, SourceKind};
 pub use technical_details::TechnicalDetails;

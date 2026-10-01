@@ -102,6 +102,29 @@ pub enum Event {
         /// Whether it stopped early.
         cancelled: bool,
     },
+    /// A run of finding place names (`Command::FindPlaceNames`, design note 008) ended: what happened to each
+    /// photo. `cancelled` is whether it was stopped by `Command::CancelJob` before the last photo (what was
+    /// found stays, as one step of the history, and the report counts only the photos it got to). Followed
+    /// by `JobFinished` or `JobCancelled`, once the history has the step.
+    PlaceNamesFound {
+        /// The job.
+        job: JobId,
+        /// What happened.
+        report: crate::PlaceNamesReport,
+        /// Whether it stopped early.
+        cancelled: bool,
+    },
+    /// A preview of finding place names (`Command::PreviewPlaceNames`) ended: what the run would do, and nothing
+    /// was written. `cancelled` is whether it was stopped before the last photo (the preview then covers the
+    /// photos it got to). Followed by `JobFinished` or `JobCancelled`.
+    PlaceNamesPreview {
+        /// The job.
+        job: JobId,
+        /// The counts a run would report and the changes it would make.
+        preview: crate::PlacePreview,
+        /// Whether it stopped early.
+        cancelled: bool,
+    },
     /// The engine read the sidecars once to fill the place columns of a catalogue made before they existed (schema 6,
     /// design note 008 §5): the places of the photos can now be listed and filtered by. Sent once, when it is done;
     /// nothing is sent for the photos one by one.
