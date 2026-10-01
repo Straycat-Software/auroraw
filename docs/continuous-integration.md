@@ -40,7 +40,7 @@ Runs on every push to `dev` and to a pull request. Jobs run in parallel; the slo
 
 | Job | What | Platforms |
 | --- | --- | --- |
-| **Lint** | `rustfmt --check`, `clippy` with warnings as errors, `cargo xtask check` (SPDX headers, the allowed dependencies between crates), and later the repository's own checks (links between documents resolve) | Linux |
+| **Lint** | `rustfmt --check`, `clippy` with warnings as errors, `cargo xtask check` (SPDX headers, the allowed dependencies between crates, and that no QML test gains a fixed pause followed by one read, issue #73), and later the repository's own checks (links between documents resolve) | Linux |
 | **Build and test** | `cargo build --locked`, `cargo nextest run` (unit, property with few cases, format, catalogue, engine scenarios, plugin host and hostile plugins, crash consistency short) | Linux x64, Windows x64, macOS arm64 |
 | **Plugins** | Build the plugins for `wasm32-wasip1` (the spike's step) and run the conformance tests against them | Linux, Windows, macOS |
 | **GPU reference** | The smoke test (`auroraw-pipeline`: every shader compiled and run against its CPU reference) on the adapter each runner offers: lavapipe, WARP, the runner's Metal adapter (reported as integrated). **Blocking.** The stage-against-reference tests join it with the stages. Part of the `test` jobs: Linux installs lavapipe, `AUR_REQUIRE_GPU=1` makes a missing adapter a failure instead of a skip, and `cargo run -p auroraw-pipeline --example adapters` prints which adapter the runner offered and runs the smoke test on it, since the output of passing tests is hidden | All three |
@@ -231,7 +231,7 @@ crates/               types, format, catalogue, workspace, sources, imaging, imp
                       plugin-api (MIT OR Apache-2.0), plugin-host, engine, ui, cli, app,
                       testkit (tests only)     (architecture §3.1; pipeline, develop,
                       export and publish are added with M2 and M4)
-xtask/                developer commands: cargo xtask check (SPDX headers, crate layers)
+xtask/                developer commands: cargo xtask check (SPDX headers, crate layers, QML waits)
 tools/                scripts: fetch-samples.sh, a11y-check.py
 testdata/             fixtures per format version, golden images (small); samples/ is fetched
                       and ignored by git
