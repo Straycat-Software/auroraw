@@ -56,17 +56,33 @@ AppTestCase {
         return dialog
     }
 
+    // Clicks a button of the dialog once a frame with it in it has been drawn: Apply and Back have just appeared, and so has
+    // Find after Back, and a click sent before the frame that shows them is lost (issues #27 and #63).
+    function press(button) {
+        drawn(button)
+        click(button)
+    }
+
+    // Waits until the dialog is at `phase`, and says where it is, and what it reported, **as they are when the wait ends** (a
+    // message handed to `tryVerify` is made before the wait, and says how things were at its start).
+    function reach(dialog, phase) {
+        const deadline = Date.now() + 30000
+        while (dialog.phase !== phase && Date.now() < deadline)
+            wait(20)
+        compare(dialog.phase, phase)
+    }
+
     // Presses Find and waits for the report.
     function runFind(dialog) {
-        click(dialog.findButton)
-        tryVerify(() => dialog.phase === "done", 30000, "the run ended: " + JSON.stringify(dialog.report))
+        press(dialog.findButton)
+        reach(dialog, "done")
     }
 
     // Asks for a refresh and waits for what it would do (nothing is written yet).
     function previewRefresh(dialog) {
         dialog.refreshBox.checked = true
-        click(dialog.findButton)
-        tryVerify(() => dialog.phase === "preview", 30000, "the preview ended, phase " + dialog.phase)
+        press(dialog.findButton)
+        reach(dialog, "preview")
     }
 
     // Takes back what the runs of a test did.
@@ -186,8 +202,8 @@ AppTestCase {
         dialog = openDialog()
         previewRefresh(dialog)
         compare(field("IMG_0006", "region"), "Ouest", "shown, not done")
-        click(dialog.applyButton)
-        tryVerify(() => dialog.phase === "done", 30000)
+        press(dialog.applyButton)
+        reach(dialog, "done")
         compare(field("IMG_0006", "region"), "West")
         compare(field("IMG_0006", "country"), "Aland")
         dialog.close()
@@ -228,14 +244,14 @@ AppTestCase {
         drawn(dialog.contentItem)
         snapshot("place-names-preview")
         // Back leaves it undone, and the form is as it was.
-        click(dialog.backButton)
+        press(dialog.backButton)
         compare(dialog.phase, "form")
         verify(dialog.refreshBox.checked)
         compare(field("IMG_0000", "country"), "Alandie")
         // Apply makes the changes, and the usual report follows.
         previewRefresh(dialog)
-        click(dialog.applyButton)
-        tryVerify(() => dialog.phase === "done", 30000)
+        press(dialog.applyButton)
+        reach(dialog, "done")
         compare(dialog.report.filled, 6)
         compare(field("IMG_0000", "country"), "Aland")
         compare(field("IMG_0002", "region"), "East")
@@ -257,7 +273,7 @@ AppTestCase {
         compare(dialog.previewTitle.text, "The refresh would change nothing.")
         verify(!dialog.applyButton.visible, "nothing to apply")
         verify(dialog.backButton.visible)
-        click(dialog.backButton)
+        press(dialog.backButton)
         compare(dialog.phase, "form")
         dialog.close()
         undoAll("IMG_0007", "country")
