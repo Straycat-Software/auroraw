@@ -45,6 +45,7 @@ mod xmp_export;
 mod xmp_export_job;
 
 pub use auroraw_catalogue::SourceCounts;
+pub use auroraw_format::sidecar::PlaceField;
 pub use auroraw_format::sidecar::{ColourLabel, Flag};
 pub use auroraw_imaging::{Aids, MaskKind};
 pub use auroraw_import::{ItemOutcome, MetadataTemplate, PairRule, Profile};
@@ -65,7 +66,10 @@ pub use import_flow::{
 };
 pub use import_job::Registration;
 pub use job::JobId;
-pub use place_names::{PlaceFill, PlaceNamesReport, PlaceScope};
+pub use place_names::{
+    PREVIEW_EXAMPLES, PREVIEW_GROUPS, PlaceChangeGroup, PlaceFill, PlaceNamesReport, PlacePreview,
+    PlaceScope,
+};
 pub use similar_api::{SimilarPhoto, SimilarQuery};
 pub use sources_api::{AddPlan, AddSourceRequest, AddedSource, SourceInfo, SourceKind};
 pub use technical_details::TechnicalDetails;

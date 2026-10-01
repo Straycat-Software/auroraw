@@ -114,6 +114,17 @@ pub enum Event {
         /// Whether it stopped early.
         cancelled: bool,
     },
+    /// A preview of finding place names (`Command::PreviewPlaceNames`) ended: what the run would do, and nothing
+    /// was written. `cancelled` is whether it was stopped before the last photo (the preview then covers the
+    /// photos it got to). Followed by `JobFinished` or `JobCancelled`.
+    PlaceNamesPreview {
+        /// The job.
+        job: JobId,
+        /// The counts a run would report and the changes it would make.
+        preview: crate::PlacePreview,
+        /// Whether it stopped early.
+        cancelled: bool,
+    },
     /// A background job made progress.
     JobProgress {
         /// The job.

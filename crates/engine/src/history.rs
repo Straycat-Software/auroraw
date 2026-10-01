@@ -125,6 +125,17 @@ pub struct PlaceState {
 }
 
 impl PlaceState {
+    /// The text of a field in this state (`None`: empty).
+    pub fn get(&self, field: auroraw_format::sidecar::PlaceField) -> Option<&str> {
+        use auroraw_format::sidecar::PlaceField;
+        match field {
+            PlaceField::City => self.city.as_deref(),
+            PlaceField::Region => self.region.as_deref(),
+            PlaceField::Country => self.country.as_deref(),
+            PlaceField::CountryCode => self.country_code.as_deref(),
+        }
+    }
+
     /// The state of `meta`.
     pub fn of(meta: &Metadata) -> Self {
         Self {

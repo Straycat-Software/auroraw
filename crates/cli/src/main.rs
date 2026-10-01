@@ -47,8 +47,8 @@ usage: auroraw-cli --version
        auroraw-cli source scan <workspace-dir> <catalogue-file> <source-id>
        auroraw-cli source add-new <workspace-dir> <catalogue-file> <source-id> --all
        auroraw-cli source add-new <workspace-dir> <catalogue-file> <source-id> <path>...
-       auroraw-cli place-names <workspace-dir> <catalogue-file> <places-file> [--language <code>] [--refresh] --source <source-id>
-       auroraw-cli place-names <workspace-dir> <catalogue-file> <places-file> [--language <code>] [--refresh] <photo-id>...
+       auroraw-cli place-names <workspace-dir> <catalogue-file> <places-file> [--language <code>] [--refresh] [--preview] --source <source-id>
+       auroraw-cli place-names <workspace-dir> <catalogue-file> <places-file> [--language <code>] [--refresh] [--preview] <photo-id>...
        auroraw-cli duplicates <workspace-dir> <catalogue-file>";
 
 enum CliError {
@@ -178,13 +178,15 @@ fn cmd_duplicates(args: &[String]) -> Result<(), CliError> {
 }
 
 /// Finds the place names of photos offline (WP10, design note 008): the city, region, country and country
-/// code of where they were taken, written into the fields that are empty. One undoable step.
+/// code of where they were taken, written into the fields that are empty. One undoable step. With
+/// `--preview`, shows what it would change and writes nothing.
 fn cmd_place_names(args: &[String]) -> Result<(), CliError> {
     let [workspace, catalogue, pack, rest @ ..] = args else {
         return Err(CliError::Usage);
     };
     let mut language = "en".to_string();
     let mut refresh = false;
+    let mut preview = false;
     let mut source: Option<SourceId> = None;
     let mut photos: Vec<PhotoId> = Vec::new();
     let mut rest = rest.iter();
@@ -192,6 +194,7 @@ fn cmd_place_names(args: &[String]) -> Result<(), CliError> {
         match arg.as_str() {
             "--language" => language = rest.next().ok_or(CliError::Usage)?.clone(),
             "--refresh" => refresh = true,
+            "--preview" => preview = true,
             "--source" => {
                 let id = rest.next().ok_or(CliError::Usage)?;
                 source = Some(id.parse().map_err(|_| CliError::Usage)?);
@@ -205,15 +208,24 @@ fn cmd_place_names(args: &[String]) -> Result<(), CliError> {
         _ => return Err(CliError::Usage),
     };
     let (engine, events) = open(Path::new(workspace), Path::new(catalogue))?;
-    let Outcome::PlaceNamesStarted { job, photos } =
-        engine.submit_and_wait(Command::FindPlaceNames {
+    let (pack, scope) = (PathBuf::from(pack), scope);
+    let started = if preview {
+        engine.submit_and_wait(Command::PreviewPlaceNames {
             scope,
-            pack: PathBuf::from(pack),
+            pack,
             language,
             refresh,
         })?
-    else {
-        unreachable!("FindPlaceNames always returns PlaceNamesStarted");
+    } else {
+        engine.submit_and_wait(Command::FindPlaceNames {
+            scope,
+            pack,
+            language,
+            refresh,
+        })?
+    };
+    let Outcome::PlaceNamesStarted { job, photos } = started else {
+        unreachable!("FindPlaceNames and PreviewPlaceNames always return PlaceNamesStarted");
     };
     println!("looking up {photos} photo(s)");
     let mut report = None;
@@ -222,6 +234,27 @@ fn cmd_place_names(args: &[String]) -> Result<(), CliError> {
             Some(Event::PlaceNamesFound {
                 job: j, report: r, ..
             }) if j == job => report = Some(r),
+            Some(Event::PlaceNamesPreview {
+                job: j, preview, ..
+            }) if j == job => {
+                println!("nothing is written; a run would change:");
+                for group in &preview.groups {
+                    println!(
+                        "  {}: {} -> {}  ({} photo(s))",
+                        group.field.key(),
+                        group.before.as_deref().unwrap_or("(empty)"),
+                        group.after.as_deref().unwrap_or("(empty)"),
+                        group.photos
+                    );
+                }
+                if preview.groups_total > preview.groups.len() {
+                    println!(
+                        "  ... and {} smaller change(s)",
+                        preview.groups_total - preview.groups.len()
+                    );
+                }
+                report = Some(preview.report);
+            }
             Some(Event::JobFinished(j) | Event::JobCancelled(j)) if j == job => break,
             Some(_) => {}
             None => {
@@ -238,7 +271,7 @@ fn cmd_place_names(args: &[String]) -> Result<(), CliError> {
 
 fn place_names_summary(report: &PlaceNamesReport) -> String {
     format!(
-        "{} photo(s): {} filled, {} already had their places, {} without a position, {} in no country, {} failed",
+        "{} photo(s): {} filled, {} already had their places, {} without a position, {} in no country, {} failed (could not be read or written)",
         report.photos,
         report.filled,
         report.had_place,

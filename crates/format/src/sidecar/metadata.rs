@@ -303,31 +303,56 @@ pub enum PlaceField {
     CountryCode,
 }
 
+impl PlaceField {
+    /// The four fields, in the order the place names are written and reported.
+    pub const ALL: [PlaceField; 4] = [
+        PlaceField::City,
+        PlaceField::Region,
+        PlaceField::Country,
+        PlaceField::CountryCode,
+    ];
+
+    /// A stable, ASCII name for the field, as the interface and the command line spell it.
+    pub const fn key(self) -> &'static str {
+        match self {
+            PlaceField::City => "city",
+            PlaceField::Region => "region",
+            PlaceField::Country => "country",
+            PlaceField::CountryCode => "country-code",
+        }
+    }
+}
+
 /// The record of what Auroraw filled into the place fields (`aur:PlaceFilled`, design note 008 §4): the
-/// position the names were found for, and, for each field, the value written. **A field is listed while it
-/// is Auroraw's**: the moment a person writes it (a new value, the same one, an empty one) it leaves the
-/// record ([`Metadata::release_place_field`]), and a refresh after the position moves touches only what is
-/// still listed.
+/// position the names were found for, and, for each field, the value written. **A field is listed with its
+/// value while it is Auroraw's**: the moment a person writes it (a new value, or the same one) it leaves the
+/// record ([`Metadata::release_place_field`]), and a refresh after the position moves touches only what
+/// is still listed. **A person who empties a field is answering**, not leaving a gap: the record then keeps
+/// the field with an empty text ([`Metadata::decline_place_field`], [`PlaceFilled::is_cleared`]), so that
+/// the place job does not fill it again, until a person writes it.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PlaceFilled {
     /// The latitude the names were found for, in decimal degrees as text.
     pub latitude: String,
     /// The longitude, likewise.
     pub longitude: String,
-    /// The city written, if it is still Auroraw's.
+    /// The city: the text written if it is still Auroraw's, an **empty text if a person emptied it** (a
+    /// field they answered, see [`PlaceFilled::is_cleared`]), nothing otherwise.
     pub city: Option<String>,
-    /// The region written, if it is still Auroraw's.
+    /// The region, likewise.
     pub region: Option<String>,
-    /// The country written, if it is still Auroraw's.
+    /// The country, likewise.
     pub country: Option<String>,
-    /// The country code written, if it is still Auroraw's.
+    /// The country code, likewise.
     pub country_code: Option<String>,
     /// Properties this version does not know, kept.
     pub extra: Vec<Property>,
 }
 
 impl PlaceFilled {
-    /// The value written for `field`, if it is still Auroraw's.
+    /// What the record holds for `field`: the text Auroraw wrote and nobody has touched, an empty text for
+    /// a field a person emptied ([`PlaceFilled::is_cleared`]), nothing for a field that is theirs or was
+    /// never filled. Four states in all, with the field's own text: absent, written, cleared.
     pub fn get(&self, field: PlaceField) -> Option<&str> {
         match field {
             PlaceField::City => self.city.as_deref(),
@@ -347,7 +372,15 @@ impl PlaceFilled {
         }
     }
 
-    /// Whether any field is still Auroraw's.
+    /// Whether a person emptied `field` after it was filled, or on their own: **an answer, not a gap to
+    /// refill** (design note 008 §4). The place job leaves such a field empty, a refresh included, until a
+    /// person writes it again.
+    pub fn is_cleared(&self, field: PlaceField) -> bool {
+        self.get(field) == Some("")
+    }
+
+    /// Whether the record holds nothing: no field Auroraw wrote and no field a person emptied. (A record
+    /// that holds only emptied fields is not empty: it is what keeps them from being filled again.)
     pub fn is_empty(&self) -> bool {
         self.city.is_none()
             && self.region.is_none()
@@ -385,8 +418,8 @@ impl Metadata {
     }
 
     /// A person wrote this field: it is theirs from now on, whatever they wrote (design note 008 §4). Takes
-    /// it out of the record of what Auroraw filled, and drops the record when nothing is left of it.
-    /// Returns whether it was in the record.
+    /// it out of the record of what Auroraw filled (an emptied field too: a value is an answer of its own),
+    /// and drops the record when nothing is left of it. Returns whether it was in the record.
     pub fn release_place_field(&mut self, field: PlaceField) -> bool {
         let Some(record) = &mut self.place_filled else {
             return false;
@@ -397,6 +430,16 @@ impl Metadata {
             self.place_filled = None;
         }
         was
+    }
+
+    /// A person emptied this field: that is their answer, and **not a gap to refill** (design note 008 §4).
+    /// The record keeps it, as an empty text, so that the place job and its refresh leave it empty until a
+    /// person writes it again ([`Metadata::release_place_field`]). Makes the record if there was none: it
+    /// then has no position, only the answer.
+    pub fn decline_place_field(&mut self, field: PlaceField) {
+        self.place_filled
+            .get_or_insert_with(PlaceFilled::default)
+            .set(field, Some(String::new()));
     }
 
     /// Where the photo was taken, in decimal degrees `(latitude, longitude)`: the photographer's correction
@@ -603,10 +646,14 @@ fn custom_from_fields(mut fields: Vec<Property>) -> Option<CustomField> {
 }
 
 fn place_filled_property(p: &PlaceFilled) -> Property {
-    let mut fields = vec![
-        Property::text(ns::AUR, "Latitude", p.latitude.clone()),
-        Property::text(ns::AUR, "Longitude", p.longitude.clone()),
-    ];
+    // (A record that holds only the fields a person emptied has no position to give.)
+    let mut fields = Vec::new();
+    if !p.latitude.is_empty() {
+        fields.push(Property::text(ns::AUR, "Latitude", p.latitude.clone()));
+    }
+    if !p.longitude.is_empty() {
+        fields.push(Property::text(ns::AUR, "Longitude", p.longitude.clone()));
+    }
     fields.extend(x::opt_text(ns::AUR, "City", &p.city));
     fields.extend(x::opt_text(ns::AUR, "Region", &p.region));
     fields.extend(x::opt_text(ns::AUR, "Country", &p.country));

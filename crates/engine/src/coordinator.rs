@@ -311,10 +311,18 @@ pub(crate) enum Inbound {
     BatchDone { job: JobId },
     /// A run of finding place names is over, finished or cancelled: records its one history entry like
     /// [`Inbound::BatchDone`], then reports. `report.filled` is what the worker meant to write; the
-    /// coordinator counts what landed, and the photos it could not write are `failed`.
+    /// coordinator counts what landed (`filled`), what its own pass found nothing to write for because
+    /// something changed the photo since the lookup (`had_place`) and what it could not write (`failed`).
     PlaceNamesDone {
         job: JobId,
         report: crate::PlaceNamesReport,
+        cancelled: bool,
+    },
+    /// A preview of finding place names is over, finished or cancelled: nothing was written and there is no
+    /// step to record, so it only forgets the job and reports.
+    PlaceNamesPreviewDone {
+        job: JobId,
+        preview: crate::PlacePreview,
         cancelled: bool,
     },
 }
@@ -393,6 +401,11 @@ struct Refresh {
 struct BatchJob {
     /// The changes its items have made so far, in the order they landed.
     changes: Vec<Change>,
+    /// The items that left the photo as it was (it already was as asked: for the place names, something changed
+    /// the photo between the lookup and the write).
+    unchanged: usize,
+    /// The items that could not be applied (the photo left meanwhile, or could not be written).
+    failed: usize,
     kind: BatchJobKind,
 }
 
@@ -598,12 +611,17 @@ impl Coordinator {
                     backfill,
                 } => self.handle_imported(photo.map(|p| *p), stat, backfill),
                 Inbound::BatchItem { job, edit, ack } => {
-                    if let Ok(Some(change)) = self.apply_edit(&edit)
-                        && let Some(state) = self.batch_jobs.get_mut(&job)
-                    {
-                        state.changes.push(change);
-                    } // an Err (the photo left meanwhile) or a no-op edit is simply skipped: no rollback,
-                    // matching remove_job/index_job's own "what was done stays done" precedent.
+                    // An Err (the photo left meanwhile) or a no-op edit is skipped: no rollback, matching
+                    // remove_job/index_job's own "what was done stays done" precedent. Both are counted, for
+                    // the jobs whose report says them (the place names').
+                    let result = self.apply_edit(&edit);
+                    if let Some(state) = self.batch_jobs.get_mut(&job) {
+                        match result {
+                            Ok(Some(change)) => state.changes.push(change),
+                            Ok(None) => state.unchanged += 1,
+                            Err(_) => state.failed += 1,
+                        }
+                    }
                     let _ = ack.send(());
                 }
                 Inbound::BatchDone { job } => self.finish_batch_job(job),
@@ -612,16 +630,35 @@ impl Coordinator {
                     mut report,
                     cancelled,
                 } => {
-                    let landed = self
-                        .batch_jobs
-                        .get(&job)
-                        .map_or(0, |state| state.changes.len());
+                    // What the worker meant to write, as the coordinator found it when it came to write it.
+                    let (landed, unchanged, failed) =
+                        self.batch_jobs.get(&job).map_or((0, 0, 0), |state| {
+                            (state.changes.len(), state.unchanged, state.failed)
+                        });
                     self.finish_batch_job(job);
-                    report.failed += report.filled.saturating_sub(landed);
                     report.filled = landed;
+                    report.had_place += unchanged;
+                    report.failed += failed;
                     let _ = self.events.send(Event::PlaceNamesFound {
                         job,
                         report,
+                        cancelled,
+                    });
+                    let _ = self.events.send(if cancelled {
+                        Event::JobCancelled(job)
+                    } else {
+                        Event::JobFinished(job)
+                    });
+                }
+                Inbound::PlaceNamesPreviewDone {
+                    job,
+                    preview,
+                    cancelled,
+                } => {
+                    self.jobs.remove(&job);
+                    let _ = self.events.send(Event::PlaceNamesPreview {
+                        job,
+                        preview,
                         cancelled,
                     });
                     let _ = self.events.send(if cancelled {
@@ -807,7 +844,13 @@ impl Coordinator {
                 pack,
                 language,
                 refresh,
-            } => self.start_place_names(scope, pack, language, refresh),
+            } => self.start_place_names(scope, pack, language, refresh, false),
+            Command::PreviewPlaceNames {
+                scope,
+                pack,
+                language,
+                refresh,
+            } => self.start_place_names(scope, pack, language, refresh, true),
             Command::RemoveSource { source_id } => self.start_remove(source_id),
             Command::Import {
                 source_root,
@@ -898,7 +941,7 @@ impl Coordinator {
                 if before != *value {
                     field.set(m, value.clone());
                 }
-                let place = place_names::released(m, field, was);
+                let place = place_names::released(m, field, was, &before, value);
                 (before != *value || place.is_some()).then(|| Change::Metadata {
                     photo: *photo_id,
                     field: field.clone(),
@@ -1039,6 +1082,8 @@ impl Coordinator {
                 job,
                 BatchJob {
                     changes: Vec::new(),
+                    unchanged: 0,
+                    failed: 0,
                     kind: BatchJobKind::Batch,
                 },
             );
@@ -1433,6 +1478,8 @@ impl Coordinator {
                 job,
                 BatchJob {
                     changes: Vec::new(),
+                    unchanged: 0,
+                    failed: 0,
                     kind: BatchJobKind::DeleteKeyword {
                         keyword_id,
                         branch: branch.clone(),
@@ -2582,7 +2629,8 @@ impl Coordinator {
                         let after = text_field.get(meta);
                         if before != after {
                             // (Another application wrote it: it is not Auroraw's to follow any more.)
-                            let place = place_names::released(meta, &text_field, was);
+                            let place =
+                                place_names::released(meta, &text_field, was, &before, &after);
                             changes.push(Change::Metadata {
                                 photo: photo_id,
                                 field: text_field,
@@ -2832,13 +2880,15 @@ impl Coordinator {
 
     /// Starts finding the place names (`Command::FindPlaceNames`, design note 008): checks the places
     /// file, resolves the photos of the scope and hands them to the worker. The edits it sends are
-    /// collected into one step of the history, like a large batch's.
+    /// collected into one step of the history, like a large batch's. With `preview`
+    /// (`Command::PreviewPlaceNames`) the worker writes nothing, so there is no step to collect.
     fn start_place_names(
         &mut self,
         scope: PlaceScope,
         pack: PathBuf,
         language: String,
         refresh: bool,
+        preview: bool,
     ) -> Result<Outcome> {
         auroraw_places::Places::open(&pack)?;
         let photos: Vec<PhotoId> = match scope {
@@ -2854,13 +2904,17 @@ impl Coordinator {
             }
         };
         let job = self.spawn_job();
-        self.batch_jobs.insert(
-            job,
-            BatchJob {
-                changes: Vec::new(),
-                kind: BatchJobKind::Batch,
-            },
-        );
+        if !preview {
+            self.batch_jobs.insert(
+                job,
+                BatchJob {
+                    changes: Vec::new(),
+                    unchanged: 0,
+                    failed: 0,
+                    kind: BatchJobKind::Batch,
+                },
+            );
+        }
         let count = photos.len();
         place_names::spawn(PlaceJob {
             job,
@@ -2869,6 +2923,7 @@ impl Coordinator {
             pack,
             language,
             refresh,
+            preview,
             events: self.events.clone(),
             inbound: self.inbound.clone(),
             cancel: self.jobs[&job].clone(),

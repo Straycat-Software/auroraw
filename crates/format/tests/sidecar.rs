@@ -267,6 +267,73 @@ fn a_person_writing_a_field_takes_it_out_of_the_record_and_the_record_goes_with_
 }
 
 #[test]
+fn a_person_emptying_a_field_is_an_answer_the_record_keeps_and_round_trips() {
+    // Design note 008 §4: "clearing a city is an answer, not a gap to refill". The record keeps the field with an
+    // empty text, so that the place job can tell it from a field that was never filled.
+    let mut meta = placed_photo().meta;
+    meta.set_place_field(PlaceField::City, None);
+    assert!(meta.release_place_field(PlaceField::City));
+    meta.decline_place_field(PlaceField::City);
+    let record = meta.place_filled.as_ref().expect("the other three remain");
+    assert!(record.is_cleared(PlaceField::City));
+    assert_eq!(record.get(PlaceField::City), Some(""));
+    assert!(
+        !record.is_cleared(PlaceField::Region),
+        "Auroraw's, not cleared"
+    );
+    assert!(!record.is_cleared(PlaceField::Country) && record.get(PlaceField::Country).is_some());
+    // A person writing a value afterwards takes the answer out: the field is theirs, written.
+    let mut later = meta.clone();
+    assert!(later.release_place_field(PlaceField::City));
+    assert!(!later.place_filled.unwrap().is_cleared(PlaceField::City));
+    // A record that holds only answers is a record: it is what keeps the fields from being filled again.
+    let mut only = Metadata::default();
+    only.decline_place_field(PlaceField::Country);
+    only.decline_place_field(PlaceField::CountryCode);
+    assert!(only.place_filled.as_ref().is_some_and(|r| !r.is_empty()));
+    // And it goes with the last of them.
+    only.release_place_field(PlaceField::Country);
+    only.release_place_field(PlaceField::CountryCode);
+    assert_eq!(only.place_filled, None);
+}
+
+#[test]
+fn the_fields_a_person_emptied_match_their_fixture_and_read_back_empty() {
+    // No position: only the answers. The empty texts must survive the XMP and come back as emptied fields, not as
+    // fields that were never filled.
+    let mut photo = PhotoSidecar::new(photo_id());
+    photo.meta.region = Some("Quebec".into());
+    photo.meta.place_filled = Some(PlaceFilled {
+        city: Some(String::new()),
+        region: Some("Quebec".into()),
+        country_code: Some(String::new()),
+        ..PlaceFilled::default()
+    });
+    photo.imported = Some("2026-09-21T14:02:11Z".parse().unwrap());
+    let bytes = photo.to_bytes();
+    check_fixture("photo-places-emptied.xmp", &bytes);
+    let back = current(PhotoSidecar::from_bytes(&bytes).unwrap());
+    assert_eq!(back, photo);
+    assert_eq!(back.to_bytes(), bytes);
+    let record = back.meta.place_filled.expect("the record");
+    assert!(record.is_cleared(PlaceField::City) && record.is_cleared(PlaceField::CountryCode));
+    assert!(
+        !record.is_cleared(PlaceField::Country),
+        "never filled is not emptied"
+    );
+    assert_eq!(record.get(PlaceField::Country), None);
+    assert_eq!(
+        (record.latitude.as_str(), record.longitude.as_str()),
+        ("", "")
+    );
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(
+        !text.contains("aur:Latitude"),
+        "no position to give: {text}"
+    );
+}
+
+#[test]
 fn what_a_newer_version_adds_to_the_record_is_kept() {
     let mut photo = placed_photo();
     let record = photo.meta.place_filled.as_mut().unwrap();

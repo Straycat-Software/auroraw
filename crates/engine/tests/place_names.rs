@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use auroraw_catalogue::Catalogue;
 use auroraw_engine::{
     Command, Engine, EngineError, Event, EventReceiver, JobId, LabelKind, MetadataField, Outcome,
-    PlaceNamesReport, PlaceScope,
+    PlaceField, PlaceNamesReport, PlacePreview, PlaceScope,
 };
 use auroraw_format::sidecar::{Metadata, Overlay, OverlayGps, PhotoSidecar};
 use auroraw_places::{Level, NewArea, NewPlace, PackBuilder};
@@ -190,6 +190,43 @@ impl Fixture {
                 None => assert!(Instant::now() < deadline, "the run never ended"),
             }
         }
+    }
+
+    /// Previews a run and waits for what it would do.
+    fn preview_of(&self, scope: PlaceScope, language: &str, refresh: bool) -> (PlacePreview, bool) {
+        let Outcome::PlaceNamesStarted { job, .. } = self
+            .engine
+            .submit_and_wait(Command::PreviewPlaceNames {
+                scope,
+                pack: self.pack.clone(),
+                language: language.into(),
+                refresh,
+            })
+            .unwrap()
+        else {
+            panic!("expected PlaceNamesStarted");
+        };
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let mut found = None;
+        loop {
+            match self.events.recv_timeout(Duration::from_millis(100)) {
+                Some(Event::PlaceNamesPreview {
+                    job: j,
+                    preview,
+                    cancelled,
+                }) if j == job => found = Some((preview, cancelled)),
+                Some(Event::JobFinished(j) | Event::JobCancelled(j)) if j == job => {
+                    return found.expect("the preview comes before the end");
+                }
+                Some(event) => self.note(&event),
+                None => assert!(Instant::now() < deadline, "the preview never ended"),
+            }
+        }
+    }
+
+    fn preview(&self, photos: &[PhotoId], language: &str, refresh: bool) -> PlacePreview {
+        self.preview_of(PlaceScope::Photos(photos.to_vec()), language, refresh)
+            .0
     }
 
     fn find(&self, photos: &[PhotoId], language: &str, refresh: bool) -> Found {
@@ -393,7 +430,7 @@ fn a_field_a_person_writes_leaves_the_record_and_undoing_the_write_brings_it_bac
 }
 
 #[test]
-fn clearing_a_field_and_writing_it_in_a_batch_release_it_the_same_way() {
+fn writing_a_field_in_a_batch_releases_it_and_emptying_one_is_an_answer_not_a_gap() {
     let photo = photo_at(5.0, 2.0);
     let id = photo.photo_id;
     let f = fixture(&[photo]);
@@ -419,17 +456,26 @@ fn clearing_a_field_and_writing_it_in_a_batch_release_it_the_same_way() {
     assert_eq!(meta.region.as_deref(), Some("Mon coin"));
     assert_eq!(meta.country, None);
     let record = meta.place_filled.unwrap();
-    assert_eq!((record.region, record.country), (None, None));
+    assert_eq!(record.region, None, "written: theirs, out of the record");
+    assert!(record.is_cleared(PlaceField::Country), "emptied: an answer");
     assert_eq!(record.city.as_deref(), Some("Westville"));
     assert_eq!(record.country_code.as_deref(), Some("AA"));
 
-    // Cleared, a field is empty: the next run fills it again, and only it.
-    f.find(&[id], "fr", false);
-    let meta = f.meta(id);
-    assert_eq!(meta.country.as_deref(), Some("Alandie"));
-    assert_eq!(meta.region.as_deref(), Some("Mon coin"));
+    // The answer stands: the next run, with or without a refresh, leaves the country empty (design note 008
+    // §4: "clearing a city is an answer, not a gap to refill"), and finds nothing to do.
+    for refresh in [false, true] {
+        let again = f.find(&[id], "fr", refresh);
+        assert_eq!(
+            (again.report.filled, again.report.had_place),
+            (0, 1),
+            "refresh {refresh}"
+        );
+        let meta = f.meta(id);
+        assert_eq!(meta.country, None, "refresh {refresh}");
+        assert_eq!(meta.region.as_deref(), Some("Mon coin"));
+    }
 
-    // Every field written by a person: the record is gone.
+    // Every field written by a person: the record is gone, the answer with the rest.
     for (field, value) in [
         (MetadataField::City, "x"),
         (MetadataField::Country, "y"),
@@ -438,6 +484,156 @@ fn clearing_a_field_and_writing_it_in_a_batch_release_it_the_same_way() {
         f.set(id, field, value);
     }
     assert!(f.meta(id).place_filled.is_none());
+}
+
+#[test]
+fn emptying_a_field_can_be_undone_is_not_repeated_and_ends_when_a_person_writes_it() {
+    let photo = photo_at(5.0, 2.0);
+    let id = photo.photo_id;
+    let f = fixture(&[photo]);
+    f.find(&[id], "fr", false);
+
+    f.set(id, MetadataField::City, "");
+    assert_eq!(f.meta(id).city, None);
+    assert!(
+        f.meta(id)
+            .place_filled
+            .unwrap()
+            .is_cleared(PlaceField::City)
+    );
+    assert_eq!(f.undo_label(), Some((LabelKind::MetaCity, 1)));
+
+    // Emptying what is empty already says nothing: no second step, and the answer stands.
+    f.set(id, MetadataField::City, "");
+    f.engine.undo().unwrap();
+    let back = f.meta(id);
+    assert_eq!(back.city.as_deref(), Some("Westville"));
+    assert_eq!(
+        back.place_filled.as_ref().unwrap().city.as_deref(),
+        Some("Westville"),
+        "one undo takes the answer back: the name is Auroraw's again"
+    );
+    f.engine.redo().unwrap();
+    assert!(
+        f.meta(id)
+            .place_filled
+            .unwrap()
+            .is_cleared(PlaceField::City)
+    );
+
+    // A person writing the field ends the answer: it is theirs, with a text.
+    f.set(id, MetadataField::City, "Chez moi");
+    let meta = f.meta(id);
+    assert_eq!(meta.city.as_deref(), Some("Chez moi"));
+    assert!(!meta.place_filled.unwrap().is_cleared(PlaceField::City));
+    // And emptying it again is a new answer.
+    f.set(id, MetadataField::City, "");
+    assert!(
+        f.meta(id)
+            .place_filled
+            .unwrap()
+            .is_cleared(PlaceField::City)
+    );
+    assert_eq!(f.find(&[id], "fr", true).report.filled, 0);
+    assert_eq!(f.meta(id).city, None);
+}
+
+#[test]
+fn a_field_a_person_typed_and_then_emptied_is_an_answer_too_even_without_a_record() {
+    // A photo Auroraw never filled: a person types a city, clears it. It stays empty when the source is run.
+    let mut photo = photo_at(5.0, 2.0);
+    photo.meta.city = Some("Chez moi".into());
+    let id = photo.photo_id;
+    let f = fixture(&[photo]);
+    f.set(id, MetadataField::City, "");
+    let meta = f.meta(id);
+    assert!(
+        meta.place_filled
+            .as_ref()
+            .unwrap()
+            .is_cleared(PlaceField::City)
+    );
+    assert_eq!(
+        (
+            meta.place_filled.as_ref().unwrap().latitude.as_str(),
+            meta.place_filled.as_ref().unwrap().longitude.as_str()
+        ),
+        ("", ""),
+        "a record of an answer has no position"
+    );
+    let found = f.find(&[id], "fr", false);
+    assert_eq!(
+        found.report.filled, 1,
+        "the region, country and code are filled"
+    );
+    let meta = f.meta(id);
+    assert_eq!(meta.city, None, "the city is not");
+    assert_eq!(meta.region.as_deref(), Some("Ouest"));
+    let record = meta.place_filled.unwrap();
+    assert!(record.is_cleared(PlaceField::City));
+    assert!(
+        record.latitude.starts_with("5.0"),
+        "the position comes with the first fill"
+    );
+}
+
+#[test]
+fn a_preview_shows_what_a_run_would_do_grouped_and_writes_nothing() {
+    let (west, west2, east) = (photo_at(5.0, 2.0), photo_at(5.0, 2.1), photo_at(5.0, 8.0));
+    let (none, sea) = (PhotoSidecar::new(PhotoId::random()), photo_at(-40.0, 0.0));
+    let ids = [
+        west.photo_id,
+        west2.photo_id,
+        east.photo_id,
+        none.photo_id,
+        sea.photo_id,
+    ];
+    let f = fixture(&[west, west2, east, none, sea]);
+
+    let preview = f.preview(&ids, "fr", false);
+    assert_eq!(
+        preview.report,
+        PlaceNamesReport {
+            photos: 5,
+            filled: 3,
+            had_place: 0,
+            no_position: 1,
+            open_water: 1,
+            failed: 0,
+        },
+        "the counts a run would report"
+    );
+    let shown: Vec<(PlaceField, Option<&str>, Option<&str>, usize)> = preview
+        .groups
+        .iter()
+        .map(|g| (g.field, g.before.as_deref(), g.after.as_deref(), g.photos))
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            (PlaceField::Country, None, Some("Alandie"), 3),
+            (PlaceField::CountryCode, None, Some("AA"), 3),
+            (PlaceField::City, None, Some("Westville"), 2),
+            (PlaceField::Region, None, Some("Ouest"), 2),
+            (PlaceField::City, None, Some("Eastburg"), 1),
+            (PlaceField::Region, None, Some("Est"), 1),
+        ],
+        "the biggest first, ties by field and then by text"
+    );
+    assert_eq!(preview.groups_total, 6);
+    // A few of the photos of a group, in the order they were looked at.
+    assert_eq!(preview.groups[0].examples, ids[..3], "all three, in order");
+    assert_eq!(preview.groups[2].examples, ids[..2]);
+
+    // Nothing was written, and there is nothing to undo.
+    for id in ids {
+        assert_eq!(places(&f.meta(id)), [None; 4]);
+        assert!(f.meta(id).place_filled.is_none());
+    }
+    assert_eq!(f.undo_label(), None);
+    // The run that follows does what the preview said.
+    let found = f.find(&ids, "fr", false);
+    assert_eq!(found.report, preview.report);
 }
 
 #[test]
@@ -625,4 +821,156 @@ fn ten_thousand_photos_are_filled_as_one_step_and_undone_as_one() {
 
     f.engine.undo().unwrap();
     assert!(ids.iter().all(|id| f.meta(*id).place_filled.is_none()));
+}
+
+#[test]
+fn a_preview_of_a_refresh_names_the_names_it_would_replace_and_the_run_does_that() {
+    let photo = photo_at(5.0, 2.0);
+    let id = photo.photo_id;
+    let f = fixture(&[photo]);
+    f.find(&[id], "fr", false);
+    // The photographer corrects the position, to the east.
+    moved(&f, id, 5.0, 8.0);
+
+    // Without a refresh, there is nothing to do, and the preview says so.
+    let plain = f.preview(&[id], "fr", false);
+    assert!(plain.groups.is_empty());
+    assert_eq!((plain.report.filled, plain.report.had_place), (0, 1));
+
+    // With one: the city and the region follow, the country and the code are the same words.
+    let refresh = f.preview(&[id], "fr", true);
+    let shown: Vec<(PlaceField, Option<&str>, Option<&str>)> = refresh
+        .groups
+        .iter()
+        .map(|g| (g.field, g.before.as_deref(), g.after.as_deref()))
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            (PlaceField::City, Some("Westville"), Some("Eastburg")),
+            (PlaceField::Region, Some("Ouest"), Some("Est")),
+        ]
+    );
+    assert_eq!(
+        f.meta(id).city.as_deref(),
+        Some("Westville"),
+        "still nothing written"
+    );
+
+    let found = f.find(&[id], "fr", true);
+    assert_eq!(found.report, refresh.report, "the run does what was shown");
+    assert_eq!(f.meta(id).city.as_deref(), Some("Eastburg"));
+    // The run is one step, the first fill is another, and the previews were none: two undos reach the start.
+    f.engine.undo().unwrap();
+    assert_eq!(f.meta(id).city.as_deref(), Some("Westville"));
+    f.engine.undo().unwrap();
+    assert_eq!(f.meta(id).city, None);
+}
+
+#[test]
+fn a_preview_leaves_out_what_a_person_wrote_and_what_a_person_emptied() {
+    let photo = photo_at(5.0, 2.0);
+    let id = photo.photo_id;
+    let f = fixture(&[photo]);
+    f.set(id, MetadataField::City, "Chez moi");
+    f.set(id, MetadataField::Region, "Mon coin");
+    f.set(id, MetadataField::Region, "");
+    let preview = f.preview(&[id], "fr", true);
+    let fields: Vec<PlaceField> = preview.groups.iter().map(|g| g.field).collect();
+    assert_eq!(fields, [PlaceField::Country, PlaceField::CountryCode]);
+}
+
+#[test]
+fn a_preview_can_be_cancelled_and_covers_the_photos_it_got_to() {
+    let n = 2_000;
+    let photos: Vec<PhotoSidecar> = (0..n)
+        .map(|i| photo_at(1.0 + (i % 8) as f64, 2.0))
+        .collect();
+    let ids: Vec<PhotoId> = photos.iter().map(|p| p.photo_id).collect();
+    let f = fixture(&photos);
+    let Outcome::PlaceNamesStarted { job, .. } = f
+        .engine
+        .submit_and_wait(Command::PreviewPlaceNames {
+            scope: PlaceScope::Photos(ids.clone()),
+            pack: f.pack.clone(),
+            language: "fr".into(),
+            refresh: false,
+        })
+        .unwrap()
+    else {
+        panic!("expected PlaceNamesStarted");
+    };
+    f.engine.submit(Command::CancelJob { job_id: job }).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(60);
+    let (preview, cancelled) = loop {
+        match f.events.recv_timeout(Duration::from_millis(100)) {
+            Some(Event::PlaceNamesPreview {
+                preview, cancelled, ..
+            }) => break (preview, cancelled),
+            Some(_) => {}
+            None => assert!(Instant::now() < deadline, "the preview never ended"),
+        }
+    };
+    assert!(
+        cancelled && preview.report.photos < n,
+        "the cancel caught it short: {}",
+        preview.report.photos
+    );
+    assert_eq!(f.undo_label(), None);
+    assert!(
+        ids.iter().all(|id| f.meta(*id).country.is_none()),
+        "nothing was written"
+    );
+}
+
+#[test]
+fn a_preview_with_a_places_file_that_cannot_be_used_is_refused_at_once() {
+    let photo = photo_at(5.0, 2.0);
+    let id = photo.photo_id;
+    let f = fixture(&[photo]);
+    let err = f
+        .engine
+        .submit_and_wait(Command::PreviewPlaceNames {
+            scope: PlaceScope::Photos(vec![id]),
+            pack: f.dir.path().join("missing.sqlite"),
+            language: "fr".into(),
+            refresh: false,
+        })
+        .unwrap_err();
+    assert!(matches!(err, EngineError::Places(_)), "{err:?}");
+}
+
+#[test]
+fn two_runs_on_the_same_photos_count_each_photo_once_and_a_lost_race_is_not_a_failure() {
+    // Both workers look every photo up before either has written it; the coordinator applies the first and finds
+    // nothing left to write for the second. That is "already had their place", not "could not be updated".
+    let n = 600;
+    let photos: Vec<PhotoSidecar> = (0..n)
+        .map(|i| photo_at(1.0 + (i % 8) as f64, 2.0))
+        .collect();
+    let ids: Vec<PhotoId> = photos.iter().map(|p| p.photo_id).collect();
+    let f = fixture(&photos);
+    let a = f.start(PlaceScope::Photos(ids.clone()), "fr", false);
+    let b = f.start(PlaceScope::Photos(ids.clone()), "fr", false);
+    let (mut first, mut second) = (None, None);
+    let deadline = Instant::now() + Duration::from_secs(60);
+    while first.is_none() || second.is_none() {
+        match f.events.recv_timeout(Duration::from_millis(100)) {
+            Some(Event::PlaceNamesFound { job, report, .. }) if job == a => first = Some(report),
+            Some(Event::PlaceNamesFound { job, report, .. }) if job == b => second = Some(report),
+            Some(event) => f.note(&event),
+            None => assert!(Instant::now() < deadline, "the runs never ended"),
+        }
+    }
+    let (first, second) = (first.unwrap(), second.unwrap());
+    assert_eq!(
+        first.filled + second.filled,
+        n,
+        "each photo was filled by one of them"
+    );
+    assert_eq!(first.failed + second.failed, 0, "{first:?} {second:?}");
+    assert_eq!(first.photos, n);
+    assert_eq!(second.photos, n);
+    assert_eq!(first.filled + first.had_place, n);
+    assert_eq!(second.filled + second.had_place, n);
 }

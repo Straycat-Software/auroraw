@@ -480,8 +480,26 @@ pub enum Command {
         /// Whether the fields Auroraw filled earlier follow the position.
         refresh: bool,
     },
+    /// Shows what [`Command::FindPlaceNames`] **would** do, and writes nothing (design note 008 §4: a refresh is
+    /// "offered, never silent, with the before and after shown"). The same lookups, the same rule and the same
+    /// reads, as a background job that reports [`crate::Outcome::PlaceNamesStarted`] at once and
+    /// [`crate::Event::PlaceNamesPreview`] at the end: the counts the run would report and the changes it would
+    /// make, grouped by field, old text and new text (`City: Westville → Eastburg, 400 photos`). No step is
+    /// added to the history. A run that follows recomputes, so what it does can differ from the preview by the
+    /// photos that changed in between.
+    PreviewPlaceNames {
+        /// Which photos.
+        scope: crate::PlaceScope,
+        /// The places file.
+        pack: std::path::PathBuf,
+        /// The language of the names.
+        language: String,
+        /// Whether the fields Auroraw filled earlier would follow the position.
+        refresh: bool,
+    },
     /// Writes what a lookup found into one photo, by the rule of design note 008: only a field that is empty
-    /// is filled, and a field Auroraw filled earlier follows only on `fill.refresh`. What
+    /// (and that a person has not emptied) is filled, and a field Auroraw filled earlier follows only on
+    /// `fill.refresh`. What
     /// [`Command::FindPlaceNames`] sends for each photo; an edit like the others (it can be part of a
     /// batch and is undone as one).
     FillPlace {

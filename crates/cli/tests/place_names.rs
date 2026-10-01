@@ -101,8 +101,36 @@ fn the_place_names_of_a_photo_are_written_in_the_asked_language() {
     let held = Workspace::open(&workspace).unwrap();
     let out = ok(&cli(&["place-names", ws, cat, pack, &a]));
     assert!(out.contains("1 photo(s): 0 filled"), "{out}");
-    assert!(out.contains("1 failed"), "{out}");
+    assert!(
+        out.contains("1 failed (could not be read or written)"),
+        "{out}"
+    );
     drop(held);
+
+    // A preview says what a run would change, and writes nothing.
+    let out = ok(&cli(&[
+        "place-names",
+        ws,
+        cat,
+        pack,
+        "--language",
+        "fr",
+        "--preview",
+        &a,
+        &b,
+    ]));
+    assert!(out.contains("nothing is written"), "{out}");
+    assert!(
+        out.contains("city: (empty) -> Westville  (1 photo(s))"),
+        "{out}"
+    );
+    assert!(out.contains("country: (empty) -> Alandie"), "{out}");
+    assert!(out.contains("2 photo(s): 1 filled"), "{out}");
+    assert_eq!(
+        meta_of(&workspace, located).country,
+        None,
+        "still nothing written"
+    );
 
     let out = ok(&cli(&[
         "place-names",

@@ -1031,3 +1031,52 @@ fn a_place_field_another_application_wrote_is_no_longer_ours_to_follow() {
         Some("Westville")
     );
 }
+
+/// Another application emptying a place field is an answer, like a person's: the record keeps the field empty.
+#[test]
+fn a_place_field_another_application_emptied_stays_empty_for_the_place_names() {
+    let s = setup();
+    let (source, photo, folder) = one_tracked(&s, 4, "Heron", &[]);
+    s.engine
+        .submit_and_wait(Command::FillPlace {
+            photo_id: photo,
+            fill: auroraw_engine::PlaceFill {
+                latitude: "5.00000".into(),
+                longitude: "2.00000".into(),
+                city: Some("Westville".into()),
+                region: Some("West".into()),
+                country: None,
+                country_code: None,
+                refresh: false,
+            },
+        })
+        .unwrap();
+    // The file says another city; accepted (it is a conflict with what Auroraw wrote, settled in the file's favour).
+    write_xmp_with(
+        &folder.join("a.xmp"),
+        Some(4),
+        "Heron",
+        &[],
+        "+0.10",
+        r#" photoshop:City="Elsewhere""#,
+    );
+    assert_eq!(rescan_waiting(&s, source), 1);
+    accept(
+        &s,
+        &[photo],
+        &[(photo, auroraw_engine::ExternalField::City)],
+    );
+    assert_eq!(meta(&s, photo).city.as_deref(), Some("Elsewhere"));
+    // Then the application empties it.
+    write_xmp_with(&folder.join("a.xmp"), Some(4), "Heron", &[], "+0.10", "");
+    assert_eq!(rescan_waiting(&s, source), 1);
+    accept(&s, &[photo], &[]);
+    let after = meta(&s, photo);
+    assert_eq!(after.city, None);
+    let record = after.place_filled.expect("the region is Auroraw's still");
+    assert!(
+        record.is_cleared(auroraw_engine::PlaceField::City),
+        "an answer, not a gap: {record:?}"
+    );
+    assert_eq!(record.region.as_deref(), Some("West"));
+}
