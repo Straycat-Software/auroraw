@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import org.auroraw.ui
 
@@ -278,6 +279,62 @@ AppTestCase {
         dialog.close()
         undoAll("IMG_0007", "country")
         compare(field("IMG_0007", "country"), "")
+    }
+
+    function test_the_place_menu_of_the_filter_bar_follows_a_run_and_filters_the_grid() {
+        const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
+        const menu = app.library.placeMenu
+        verify(menu.available && menu.visible, "the grid answers for the engine: the menu is in the bar")
+        tryVerify(() => menu.facets.placed === 0)
+        verify(!menu.button.enabled, "no photo has a place yet")
+        verify(menu.button.ToolTip.text.indexOf("Find place names") >= 0)
+        // A run gives six photos a place. The photos in view are the same, only their places changed: the menu is told.
+        selectOnly(...six)
+        const dialog = openDialog()
+        runFind(dialog)
+        dialog.close()
+        tryVerify(() => menu.facets.placed === 6, 5000, "the tree was read again after the run")
+        verify(menu.button.enabled)
+        compare(app.photos.count, 12)
+        // The tree as the engine counts it: Aland 6, in its regions West 4 and East 2, the cities under them.
+        compare(menu.facets.countries.length, 1)
+        const aland = menu.facets.countries[0]
+        compare(aland.label, "Aland")
+        compare(aland.count, 6)
+        compare(aland.children.map(node => node.label + " " + node.count).sort(), ["East 2", "West 4"])
+        const west = aland.children.find(node => node.label === "West")
+        compare(west.children.map(node => node.label + " " + node.count), ["Westville 4"])
+        // Choosing West lists its four photos, and the tree stays one to move around in: East is still there.
+        app.photos.setPlaceFilter(JSON.stringify(west.filter))
+        tryCompare(app.photos, "count", 4)
+        compare(JSON.parse(app.photos.placeFilter), west.filter, "the filter in force is what was given back")
+        compare(menu.choiceText, "West")
+        verify(menu.button.highlighted)
+        wait(350)
+        compare(menu.facets.countries[0].children.length, 2, "the counts leave the place filter out: East is still there")
+        compare(menu.facets.placed, 6)
+        // A text that says nothing lifts it, and so does an empty one.
+        app.photos.setPlaceFilter("not a filter")
+        tryCompare(app.photos, "count", 12)
+        compare(app.photos.placeFilter, "")
+        app.photos.setPlaceFilter(JSON.stringify(west.filter))
+        tryCompare(app.photos, "count", 4)
+        app.photos.setPlaceFilter("")
+        tryCompare(app.photos, "count", 12)
+        compare(menu.choiceText, "Any place")
+        // Undo takes the places away from the photos in view, which are the same: the menu is told that too.
+        undoAll("IMG_0000", "country")
+        compare(field("IMG_0000", "country"), "")
+        tryVerify(() => menu.facets.placed === 0, 5000, "the tree was read again after Undo")
+        verify(!menu.button.enabled)
+    }
+
+    function test_the_places_filled_in_a_catalogue_made_before_they_were_kept_reach_the_menu() {
+        const told = createTemporaryQmlObject('import QtTest; SignalSpy { }', app)
+        told.target = app.photos
+        told.signalName = "placesChanged"
+        Bus.placeColumnsFilled()
+        compare(told.count, 1, "the grid says it")
     }
 
     function test_the_progress_says_how_far_it_is() {
