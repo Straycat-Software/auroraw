@@ -285,18 +285,23 @@ AppTestCase {
         const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
         const menu = app.library.placeMenu
         verify(menu.available && menu.visible, "the grid answers for the engine: the menu is in the bar")
-        tryVerify(() => menu.facets.placed === 0)
-        verify(!menu.button.enabled, "no photo has a place yet")
-        verify(menu.button.ToolTip.text.indexOf("Find place names") >= 0)
+        // The machine's one photo with a place is `IMG_0004`, whose city a person typed (no country): it is under "(no country)",
+        // and it alone enables the button.
+        tryVerify(() => menu.facets.placed === 1)
+        verify(menu.button.enabled)
+        compare(menu.facets.countries.length, 0)
+        compare(menu.facets.noCountry.count, 1)
+        compare(menu.facets.noCountry.children.map(node => node.label), ["Mine"])
         // A run gives six photos a place. The photos in view are the same, only their places changed: the menu is told.
         selectOnly(...six)
         const dialog = openDialog()
         runFind(dialog)
         dialog.close()
-        tryVerify(() => menu.facets.placed === 6, 5000, "the tree was read again after the run")
-        verify(menu.button.enabled)
+        tryVerify(() => menu.facets.placed === 7, 5000, "the tree was read again after the run")
         compare(app.photos.count, 12)
-        // The tree as the engine counts it: Aland 6, in its regions West 4 and East 2, the cities under them.
+        // The tree as the engine counts it: Aland 6, in its regions West 4 and East 2, the cities under them; and the photo
+        // with no country, still apart.
+        compare(menu.facets.noCountry.count, 1)
         compare(menu.facets.countries.length, 1)
         const aland = menu.facets.countries[0]
         compare(aland.label, "Aland")
@@ -310,9 +315,11 @@ AppTestCase {
         compare(JSON.parse(app.photos.placeFilter), west.filter, "the filter in force is what was given back")
         compare(menu.choiceText, "West")
         verify(menu.button.highlighted)
-        wait(350)
+        // (The tree is read again now rather than after the menu's pause: what is asked is that the counts leave the place
+        // filter out.)
+        menu.refresh()
         compare(menu.facets.countries[0].children.length, 2, "the counts leave the place filter out: East is still there")
-        compare(menu.facets.placed, 6)
+        compare(menu.facets.placed, 7)
         // A text that says nothing lifts it, and so does an empty one.
         app.photos.setPlaceFilter("not a filter")
         tryCompare(app.photos, "count", 12)
@@ -322,11 +329,34 @@ AppTestCase {
         app.photos.setPlaceFilter("")
         tryCompare(app.photos, "count", 12)
         compare(menu.choiceText, "Any place")
-        // Undo takes the places away from the photos in view, which are the same: the menu is told that too.
+        // "(no country)": the photo whose country is not there, by the engine's filter given back untouched.
+        app.photos.setPlaceFilter(JSON.stringify(menu.facets.noCountry.filter))
+        tryCompare(app.photos, "count", 1)
+        compare(menu.choiceText, "(no country)")
+        app.photos.setPlaceFilter(JSON.stringify(menu.facets.noCountry.children[0].filter))
+        tryCompare(app.photos, "count", 1)
+        compare(menu.choicePath, "(no country), Mine")
+        app.photos.setPlaceFilter("")
+        tryCompare(app.photos, "count", 12)
+        // Undo takes the places away from the photos in view, which are the same: the menu is told that too. What a person
+        // typed is not part of that step, so the photo with no country stays.
         undoAll("IMG_0000", "country")
         compare(field("IMG_0000", "country"), "")
-        tryVerify(() => menu.facets.placed === 0, 5000, "the tree was read again after Undo")
-        verify(!menu.button.enabled)
+        tryVerify(() => menu.facets.placed === 1, 5000, "the tree was read again after Undo")
+        compare(menu.facets.countries.length, 0)
+    }
+
+    function test_the_no_country_row_is_said_in_the_interfaces_language() {
+        const menu = app.library.placeMenu
+        tryVerify(() => menu.facets.placed === 1)
+        tryVerify(() => menu.noCountry !== null && menu.noCountry.label === "(no country)")
+        app.launcher.chooseLanguage("fr")
+        tryVerify(() => menu.noCountry !== null && menu.noCountry.label === "(sans pays)", 5000, "the row is said in French")
+        app.photos.setPlaceFilter(JSON.stringify(menu.facets.noCountry.filter))
+        tryCompare(app.photos, "count", 1)
+        tryVerify(() => menu.choiceText === "(sans pays)")
+        app.photos.setPlaceFilter("")
+        tryCompare(app.photos, "count", 12)
     }
 
     function test_the_places_filled_in_a_catalogue_made_before_they_were_kept_reach_the_menu() {
