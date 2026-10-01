@@ -97,7 +97,8 @@ fn all() -> Filter {
     }
 }
 
-/// `label count` for the whole tree, indented, in the order it comes.
+/// `label count` for the whole tree, indented, in the order it comes; the "(no country)" node, which has no label of
+/// its own, is shown as the menu says it and comes last.
 fn outline(facets: &PlaceFacets) -> Vec<String> {
     fn walk(nodes: &[PlaceNode], depth: usize, out: &mut Vec<String>) {
         for node in nodes {
@@ -112,6 +113,12 @@ fn outline(facets: &PlaceFacets) -> Vec<String> {
     }
     let mut out = Vec::new();
     walk(&facets.countries, 0, &mut out);
+    if let Some(node) = &facets.no_country {
+        assert_eq!(node.label, "", "the menu says it, not the engine");
+        assert_eq!(node.filter.country.as_deref(), Some(""));
+        out.push(format!("(no country) {}", node.count));
+        walk(&node.children, 1, &mut out);
+    }
     out
 }
 
@@ -131,7 +138,7 @@ fn world() -> Vec<Spot> {
         spot("Singapore", "", "Singapore").with_code("SG"),
         // A country and a region, no city.
         spot("Canada", "Ontario", "").with_code("CA"),
-        // A city and nothing else: in no node.
+        // A city and nothing else: under "(no country)", as a city with no region.
         spot("", "", "Reykjavík").written(Some("Reykjavík"), None, None),
         // Nothing at all.
         spot("", "", ""),
@@ -143,8 +150,8 @@ fn the_tree_has_the_countries_the_regions_and_the_cities_with_their_counts() {
     let (cat, _dir, _) = built(&world());
     let facets = cat.place_facets(&all()).unwrap();
     assert_eq!(
-        facets.placed, 9,
-        "the photos that have a country; a city alone is not one"
+        facets.placed, 10,
+        "the photos that have a place: nine with a country, one with a city alone; none for the photo with nothing"
     );
     assert_eq!(
         outline(&facets),
@@ -160,6 +167,8 @@ fn the_tree_has_the_countries_the_regions_and_the_cities_with_their_counts() {
             "  Paris 2",
             "Singapore 1",
             " Singapore 1",
+            "(no country) 1",
+            " Reykjavík 1",
         ]
     );
 }
@@ -170,6 +179,13 @@ fn what_a_node_says_selects_exactly_the_photos_under_it() {
     let (cat, _dir, ids) = built(&spots);
     let facets = cat.place_facets(&all()).unwrap();
     check(&cat, &spots, &ids, &facets.countries, &mut Vec::new());
+    check(
+        &cat,
+        &spots,
+        &ids,
+        facets.no_country.as_slice(),
+        &mut Vec::new(),
+    );
 }
 
 /// The logical places, by the labels the tree shows: a node's photos are those whose logical path starts with its own
@@ -183,20 +199,32 @@ fn check(
 ) {
     for node in nodes {
         path.push(node.label.clone());
+        // A node at depth 2 is a region (a city is under it) or, when its filter says "no region", a city under the
+        // country itself: Berlin the region and Berlin the city are two nodes of one label.
+        let city_without_region = path.len() == 2 && node.filter.region.as_deref() == Some("");
+        // (A node is labelled by the spelling most of its photos have, which in a node of a few photos can be a
+        // variant in capitals or lower case: the places are the same by their folded text.)
+        let same = |logical: &str, label: &str| {
+            auroraw_catalogue::fold_place(logical) == auroraw_catalogue::fold_place(label)
+        };
         let expected: BTreeSet<PhotoId> = spots
             .iter()
             .zip(ids)
             .filter(|(s, _)| {
-                let wanted: Vec<&str> = path.iter().map(String::as_str).collect();
-                // A region-less photo's city is at depth 1, under its country.
-                let deep: Vec<&str> = if s.region.is_empty() && wanted.len() > 1 {
-                    vec![&s.country, &s.city]
+                // The "(no country)" node has the empty label and holds the photos that have a region or a city and
+                // no country; a country holds the photos that name it.
+                let in_tree = if path[0].is_empty() {
+                    s.country.is_empty() && (!s.region.is_empty() || !s.city.is_empty())
                 } else {
-                    vec![&s.country, &s.region, &s.city]
+                    same(&s.country, &path[0])
                 };
-                !s.country.is_empty()
-                    && deep.len() >= wanted.len()
-                    && deep[..wanted.len()] == wanted[..]
+                in_tree
+                    && match path.len() {
+                        1 => true,
+                        2 if city_without_region => s.region.is_empty() && same(&s.city, &path[1]),
+                        2 => same(&s.region, &path[1]),
+                        _ => same(&s.region, &path[1]) && same(&s.city, &path[2]),
+                    }
             })
             .map(|(_, id)| *id)
             .collect();
@@ -591,13 +619,25 @@ fn writing_a_photos_metadata_moves_it_in_the_tree() {
         ["Canada 2", " Québec 2", "  Montréal 2"]
     );
 
-    // Its country emptied: it leaves the tree, and the filter no longer selects it.
+    // Its country emptied (the region and the city stay): it leaves Canada for "(no country)", where the filter
+    // finds it; and with its city and region emptied too it is in no node at all.
     photo.meta.country = None;
     cat.apply_photo_metadata(&photo, SidecarStat::of_bytes(&photo.to_bytes()), None)
         .unwrap();
     let facets = cat.place_facets(&all()).unwrap();
-    assert_eq!(facets.placed, 1);
-    assert_eq!(outline(&facets), ["Canada 1", " Québec 1", "  Montréal 1"]);
+    assert_eq!(facets.placed, 2, "still a place, for the two of them");
+    assert_eq!(
+        outline(&facets),
+        [
+            "Canada 1",
+            " Québec 1",
+            "  Montréal 1",
+            "(no country) 1",
+            " Québec 1",
+            // (A node whose only photo is written in capitals shows capitals.)
+            "  MONTREAL 1"
+        ]
+    );
     let canada = Filter {
         place: Some(PlaceFilter {
             country: Some("CA".into()),
@@ -606,6 +646,117 @@ fn writing_a_photos_metadata_moves_it_in_the_tree() {
         ..all()
     };
     assert_eq!(every_row(&cat, &canada), vec![ids[1]]);
+    let none = Filter {
+        place: facets.no_country.as_ref().map(|n| n.filter.clone()),
+        ..all()
+    };
+    assert_eq!(every_row(&cat, &none), vec![ids[0]]);
+    photo.meta.region = None;
+    photo.meta.city = None;
+    cat.apply_photo_metadata(&photo, SidecarStat::of_bytes(&photo.to_bytes()), None)
+        .unwrap();
+    let facets = cat.place_facets(&all()).unwrap();
+    assert_eq!(facets.placed, 1);
+    assert!(facets.no_country.is_none());
+    assert_eq!(every_row(&cat, &none), Vec::<PhotoId>::new());
+}
+
+#[test]
+fn the_photos_with_a_region_or_a_city_and_no_country_are_one_node_after_the_countries() {
+    // Issue #60: a person emptied the country of a photo Auroraw had filled, or another application never wrote one.
+    let (cat, _dir, ids) = built(&[
+        spot("Canada", "Québec", "Montréal").with_code("CA"),
+        spot("", "Québec", "Montréal").written(Some("Montréal"), Some("Québec"), None),
+        spot("", "Québec", "Laval").written(Some("Laval"), Some("québec"), None),
+        spot("", "Québec", "").written(None, Some("Québec"), None),
+        spot("", "", "Reykjavík")
+            .written(Some("Reykjavík"), None, None)
+            .rated(5),
+        // Nothing at all: in no node, and not counted.
+        spot("", "", ""),
+        // A code and no name: a country, labelled by its code (not a photo of the node).
+        spot("", "", "").with_code("IS").written(None, None, None),
+    ]);
+    let facets = cat.place_facets(&all()).unwrap();
+    assert_eq!(
+        outline(&facets),
+        [
+            "Canada 1",
+            " Québec 1",
+            "  Montréal 1",
+            "IS 1",
+            "(no country) 4",
+            " Québec 3",
+            "  Laval 1",
+            "  Montréal 1",
+            " Reykjavík 1",
+        ],
+        "the node is last, and holds regions and cities as a country does"
+    );
+    assert_eq!(
+        facets.placed, 6,
+        "the photos with a place: two with a country, four without one"
+    );
+    // Its filter is the empty country key, and it selects exactly the four.
+    let node = facets.no_country.clone().unwrap();
+    assert_eq!(node.filter.to_json(), r#"{"country":""}"#);
+    let selects = |filter: &PlaceFilter| -> BTreeSet<PhotoId> {
+        every_row(
+            &cat,
+            &Filter {
+                place: Some(filter.clone()),
+                ..all()
+            },
+        )
+        .into_iter()
+        .collect()
+    };
+    assert_eq!(selects(&node.filter), ids[1..5].iter().copied().collect());
+    // Its children select what they say: a region, a city in it, and a city with no region.
+    let quebec = &node.children[0];
+    assert_eq!(
+        quebec.filter.to_json(),
+        r#"{"country":"","region":"quebec"}"#
+    );
+    assert_eq!(selects(&quebec.filter), ids[1..4].iter().copied().collect());
+    let laval = &quebec.children[0];
+    assert_eq!(
+        laval.filter.to_json(),
+        r#"{"city":"laval","country":"","region":"quebec"}"#
+    );
+    assert_eq!(selects(&laval.filter), BTreeSet::from([ids[2]]));
+    let reykjavik = &node.children[1];
+    assert_eq!(
+        reykjavik.filter.to_json(),
+        r#"{"city":"reykjavik","country":"","region":""}"#
+    );
+    assert_eq!(selects(&reykjavik.filter), BTreeSet::from([ids[4]]));
+    // The JSON the menu reads: the node apart from the countries, the label empty.
+    let value: Value = serde_json::from_str(&facets.to_json()).unwrap();
+    assert_eq!(value["noCountry"]["count"], json!(4));
+    assert_eq!(value["noCountry"]["label"], json!(""));
+    assert_eq!(value["noCountry"]["filter"], json!({ "country": "" }));
+    assert_eq!(value["countries"].as_array().unwrap().len(), 2);
+    // The other filters compose as for a country, and choosing the node still shows it (the tree leaves out the
+    // filter's own place).
+    let rated = Filter {
+        min_rating: 4,
+        ..all()
+    };
+    let facets_rated = cat.place_facets(&rated).unwrap();
+    assert_eq!(outline(&facets_rated), ["(no country) 1", " Reykjavík 1"]);
+    assert_eq!(
+        facets_rated.placed, 1,
+        "the button is enabled by them alone"
+    );
+    let chosen = Filter {
+        place: Some(node.filter.clone()),
+        ..all()
+    };
+    assert_eq!(
+        cat.place_facets(&chosen).unwrap(),
+        cat.place_facets(&all()).unwrap()
+    );
 }
 
 #[test]
@@ -652,6 +803,7 @@ fn the_tree_is_json_in_the_shape_the_menu_reads() {
         json!({
             "placed": 2,
             "pending": false,
+            "noCountry": null,
             "countries": [
                 { "label": "Canada", "count": 1, "filter": { "country": "CA" }, "children": [
                     { "label": "Québec", "count": 1, "filter": { "country": "CA", "region": "quebec" }, "children": [
@@ -679,7 +831,7 @@ fn an_empty_catalogue_has_an_empty_tree() {
     assert_eq!(facets, PlaceFacets::default());
     assert_eq!(
         facets.to_json(),
-        r#"{"countries":[],"pending":false,"placed":0}"#
+        r#"{"countries":[],"noCountry":null,"pending":false,"placed":0}"#
     );
 }
 
@@ -693,17 +845,23 @@ fn expected_outline(spots: &[Spot], min_rating: u8) -> (u64, Vec<String>) {
     }
     let mut countries: BTreeMap<String, Node> = BTreeMap::new();
     let mut placed = 0;
-    for s in spots
-        .iter()
-        .filter(|s| s.rating >= min_rating && !s.country.is_empty())
-    {
+    // A photo is in the tree if it has a country, or a region or a city to be under "(no country)", the empty key here.
+    for s in spots.iter().filter(|s| {
+        s.rating >= min_rating
+            && (!s.country.is_empty() || !s.region.is_empty() || !s.city.is_empty())
+    }) {
         placed += 1;
         let country = countries.entry(s.country.clone()).or_default();
         country.count += 1;
         if s.region.is_empty() {
-            // A city with no region: under the country, as itself.
+            // A city with no region: under the country, as itself. (It is not the region of the same name: Berlin the
+            // city and Berlin the region are two nodes, so the key of the first is marked.)
             if !s.city.is_empty() {
-                country.children.entry(s.city.clone()).or_default().count += 1;
+                country
+                    .children
+                    .entry(format!("\u{1}{}", s.city))
+                    .or_default()
+                    .count += 1;
             }
         } else {
             let region = country.children.entry(s.region.clone()).or_default();
@@ -714,7 +872,10 @@ fn expected_outline(spots: &[Spot], min_rating: u8) -> (u64, Vec<String>) {
         }
     }
     fn lines(nodes: &BTreeMap<String, Node>, depth: usize, out: &mut Vec<String>) {
-        let mut sorted: Vec<(&String, &Node)> = nodes.iter().collect();
+        let mut sorted: Vec<(&str, &Node)> = nodes
+            .iter()
+            .map(|(label, node)| (label.trim_start_matches('\u{1}'), node))
+            .collect();
         sorted.sort_by(|a, b| {
             auroraw_catalogue::fold_place(a.0)
                 .cmp(&auroraw_catalogue::fold_place(b.0))
@@ -725,8 +886,13 @@ fn expected_outline(spots: &[Spot], min_rating: u8) -> (u64, Vec<String>) {
             lines(&node.children, depth + 1, out);
         }
     }
+    let none = countries.remove("");
     let mut out = Vec::new();
     lines(&countries, 0, &mut out);
+    if let Some(none) = none {
+        out.push(format!("(no country) {}", none.count));
+        lines(&none.children, 1, &mut out);
+    }
     (placed, out)
 }
 
@@ -808,6 +974,17 @@ fn a_larger_catalogue_gives_the_tree_its_logical_places_say_and_every_node_selec
             1 => spot("", "", city)
                 .written((!city.is_empty()).then_some(city), None, None)
                 .rated(rating),
+            // A region, and a city if there is one, and no country (a person emptied it, or another application never
+            // wrote it).
+            2 => spot("", region, city)
+                .written(
+                    (!city.is_empty()).then(|| variant(city, &mut r)).as_deref(),
+                    (!region.is_empty())
+                        .then(|| variant(region, &mut r))
+                        .as_deref(),
+                    None,
+                )
+                .rated(rating),
             _ => {
                 let city_written = (!city.is_empty()).then(|| variant(city, &mut r));
                 let region_written = (!region.is_empty()).then(|| variant(region, &mut r));
@@ -848,4 +1025,15 @@ fn a_larger_catalogue_gives_the_tree_its_logical_places_say_and_every_node_selec
     }
     let facets = cat.place_facets(&all()).unwrap();
     check(&cat, &spots, &ids, &facets.countries, &mut Vec::new());
+    assert!(
+        facets.no_country.is_some(),
+        "this world has photos under it"
+    );
+    check(
+        &cat,
+        &spots,
+        &ids,
+        facets.no_country.as_slice(),
+        &mut Vec::new(),
+    );
 }

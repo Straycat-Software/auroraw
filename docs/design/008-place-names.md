@@ -232,27 +232,35 @@ only has to write the sidecar, as it does, and the columns follow. What was deci
   **the photos that pass every filter but the place** (so that choosing Québec still shows Ontario). A node carries its
   label, its count, the filter that selects exactly its photos, and its children. A photo with a country and a city but
   **no region** is a city directly under its country, whose filter has the empty region key (so that it is told apart
-  from the same city in a region). A photo with **no country is in no node**, and the filter cannot select it; so it is not
-  counted in `placed`, the number of photos in view that have a country. (With a field a person emptied staying empty,
-  §4, such photos are a settled state and no longer a gap the next run fills; a "(no country)" node would reach them,
-  and is not built.)
+  from the same city in a region). A photo with a **region or a city and no country** (a person emptied the country, which
+  stays empty, §4: a settled answer, no longer a gap the next run fills; or another application never wrote one) is under
+  **one more node, after the countries**: Patrick, on issue #60, "Let's go with a no country node". It is
+  `PlaceFacets::no_country` and `"noCountry"` in the JSON, `null` when no photo in view needs it, a Node as the others
+  with regions and cities under it, and an **empty label** (the menu says "(no country)" in the interface's language, and
+  puts it after the countries). Its filter is `{ "country": "" }`: the empty country key, like the empty key of a region
+  or a city, means "none", and here "none, with a region or a city" (the photos with nothing at all are in no node and
+  not in `placed`). `placed` counts the photos of the node, so that the button is enabled by them alone.
 - **The label of a node** is the spelling most photos have; on a tie, the best written: mixed case before capitals or lower
   case, then the most accents kept, then the smallest text. It is computed from the photos in view, so a node whose
   only photos in view are written in capitals shows capitals. A country's **code** labels it only when no photo in view
   names it (three photos with the code alone do not label the node `CA` over two that say `Canada`). The nodes are sorted
   by their folded label, made once for each node.
 - **The contract of the library's menu is the catalogue's**: `PlaceFacets::to_json()` is the text the menu reads
-  (`{ "placed": N, "pending": bool, "countries": [ { "label", "count", "filter", "children": [..] } ] }`),
+  (`{ "placed": N, "pending": bool, "countries": [ { "label", "count", "filter", "children": [..] } ], "noCountry": Node | null }`),
   `PlaceFilter::from_json` and `to_json` are the text it gives back, so the interface wires three calls and writes no JSON
   of its own. **`pending`** is true while the place columns are being filled (the first open after the upgrade, or after
   a change of the keys): the tree is then a part of the places, or none, `placed: 0` does not mean that no photo has a
   place, and the menu says it is reading them instead of saying there is nothing (the review of #62).
 - **An index that holds the tree**: the tree is read from a partial covering index (`photo_place`, only the photos that
   have a country: the keys, the four texts, the flag and the rating), so that the common case does not touch the table.
-  Measured on 100,000 photos, 46,000 of them placed, 2,400 nodes in the tree, in release: **17 ms** for the tree without
-  a filter and 12 ms with a rating filter (120 ms and 41 ms with an index on the keys alone, a table row looked up for
-  each photo), 28 ms with the JSON; the first page of a region's photos 0.6 ms and of the biggest country's 6 ms (the
-  same, within noise, with the table of countries in the keys). A
+  The node of the photos with no country has a second, smaller one (`photo_place_nocountry`, `WHERE place_country IS NULL
+  AND (place_region IS NOT NULL OR place_city IS NOT NULL)`), which the tree's query and the filter's read because they
+  state its condition (a test holds it with `EXPLAIN QUERY PLAN`); schema 6 carries both, the migration makes both.
+  Measured on 100,000 photos, 46,000 of them placed (2,300 of them under "(no country)"), 3,655 nodes in the tree
+  (the node of the photos with no country holds the places of every country), in release: **20 ms** for the tree
+  without a filter and 14 ms with a rating filter (it was 17 and 12 ms before the node, and 120 and 41 ms with an index
+  on the keys alone, a table row looked up for each photo), 37 ms with the JSON (28 before: more nodes to write); the
+  first page of a region's photos 0.5 ms and of the biggest country's 6 ms. A
   filter on keywords, labels, series or a collection is not in the index and costs a lookup a photo. It runs on the
   caller's thread: a frame and a bit at 100,000 photos, nothing at 20,000.
 - **A catalogue made before schema 6** has the columns empty. A rebuild fills them; and so does one pass over the

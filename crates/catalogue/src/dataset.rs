@@ -83,6 +83,12 @@ impl Dataset {
             let m = &mut photo.meta;
             m.country = Some(shout(format!("Country {country:02}"), &mut r));
             m.country_code = (!country.is_multiple_of(7)).then(|| format!("C{country:02}"));
+            // One photo in twenty has had its country emptied (or never had one): it keeps its region and city, and
+            // the tree gathers it under the "(no country)" node.
+            if r.u8(0..20) == 0 {
+                m.country = None;
+                m.country_code = None;
+            }
             m.region = region.map(|region| shout(format!("Région {country:02}-{region}"), &mut r));
             m.city = Some(shout(
                 format!("Cité {country:02}-{}-{city}", region.unwrap_or(0)),

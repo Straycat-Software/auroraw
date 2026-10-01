@@ -152,6 +152,10 @@ fn the_place_filter_at_scale() {
             nodes.iter().map(|n| 1 + count(&n.children)).sum()
         }
         count(&tree.countries)
+            + tree
+                .no_country
+                .as_ref()
+                .map_or(0, |node| 1 + count(&node.children))
     };
     let facets = time(&|| {
         cat.place_facets(&default).unwrap();
@@ -180,8 +184,9 @@ fn the_place_filter_at_scale() {
     let first_page_country = time(&|| {
         cat.list_filtered(&by_country, None, 200).unwrap();
     });
+    let without = tree.no_country.as_ref().map_or(0, |node| node.count);
     println!(
-        "{n} photos, {} placed, {nodes} nodes in the tree\n  place_facets {facets:.1} ms ({facets_rated:.1} ms with a rating filter, {json:.1} ms with the JSON)\n  first page of a region {first_page:.2} ms, of the biggest country {first_page_country:.2} ms",
+        "{n} photos, {} placed ({without} of them under \"(no country)\"), {nodes} nodes in the tree\n  place_facets {facets:.1} ms ({facets_rated:.1} ms with a rating filter, {json:.1} ms with the JSON)\n  first page of a region {first_page:.2} ms, of the biggest country {first_page_country:.2} ms",
         tree.placed
     );
 }

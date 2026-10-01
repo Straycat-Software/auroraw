@@ -69,6 +69,11 @@ fn outline(f: &Fixture) -> Vec<String> {
         .unwrap();
     let mut out = Vec::new();
     walk(&facets.countries, 0, &mut out);
+    // The photos with a region or a city and no country, after the countries (issue #60); the menu says its label.
+    if let Some(node) = &facets.no_country {
+        out.push(format!("(no country) {}", node.count));
+        walk(&node.children, 1, &mut out);
+    }
     out
 }
 
@@ -311,4 +316,57 @@ fn the_pass_counts_the_photos_it_cannot_read_and_does_not_start_again_for_them()
         "and the next open does not start the pass again"
     );
     drop(engine);
+}
+
+#[test]
+fn a_photo_whose_country_is_emptied_moves_to_the_no_country_node_and_back() {
+    // Issue #60: since an emptied field stays empty, a person who empties a country does it on purpose, and the photo
+    // keeps its city and region: the place filter still reaches it.
+    let f = fixture(&[
+        ("Canada", "Québec", "Montréal"),
+        ("Canada", "Québec", "Montréal"),
+    ]);
+    assert_eq!(outline(&f), ["Canada 2", " Québec 2", "  Montréal 2"]);
+    f.engine
+        .submit_and_wait(Command::SetMetadataField {
+            photo_id: f.photos[0],
+            field: MetadataField::Country,
+            value: String::new(),
+        })
+        .unwrap();
+    assert_eq!(
+        outline(&f),
+        [
+            "Canada 1",
+            " Québec 1",
+            "  Montréal 1",
+            "(no country) 1",
+            " Québec 1",
+            "  Montréal 1"
+        ]
+    );
+    // The node's filter selects that photo, and only it.
+    let catalogue = f.engine.read_catalogue().unwrap();
+    let facets = catalogue.place_facets(&Filter::default()).unwrap();
+    let node = facets.no_country.unwrap();
+    let selected = catalogue
+        .list_filtered(
+            &Filter {
+                place: Some(node.filter),
+                flags: FlagFilter::All,
+                ..Filter::default()
+            },
+            None,
+            10,
+        )
+        .unwrap();
+    assert_eq!(
+        selected.iter().map(|row| row.id).collect::<Vec<_>>(),
+        vec![f.photos[0]]
+    );
+    drop(catalogue);
+
+    // One Undo gives the country back, and the node is gone.
+    f.engine.submit_and_wait(Command::Undo).unwrap();
+    assert_eq!(outline(&f), ["Canada 2", " Québec 2", "  Montréal 2"]);
 }

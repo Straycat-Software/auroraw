@@ -13,8 +13,10 @@
 //! key back and never makes one.
 //!
 //! **The tree** is country, then region, then city. A photo with a country and a city but no region is under its
-//! country directly, as a city whose region is the empty key. A photo with no country is in no node (it has a
-//! place field or two, but the tree is rooted at countries): the filter cannot select it.
+//! country directly, as a city whose region is the empty key. A photo with a region or a city and **no country** is
+//! under one more node, after the countries, whose filter has the empty country key (issue #60; the menu says it as
+//! "(no country)" in the interface's language, so its label is empty); it has regions and cities as a country has. A
+//! photo with none of the three is in no node: the filter cannot select it, and it is not counted in `placed`.
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -145,9 +147,17 @@ impl PlaceColumns {
     }
 }
 
+/// The photos with a region or a city and **no country**, which the tree gathers under its last node, "(no country)"
+/// (issue #60). The same condition is the `WHERE` of the index `photo_place_nocountry`, so that the tree and the
+/// filter read that index alone (SQLite uses a partial index when the query states the index's condition).
+pub(crate) const NO_COUNTRY: &str =
+    "p.place_country IS NULL AND (p.place_region IS NOT NULL OR p.place_city IS NOT NULL)";
+
 /// A place to filter by, from the most general down: a country, a region of it, a city of it. Each is a **key** as the
 /// catalogue made it ([`PlaceFacets`] gives them). A level left out is not constrained; the empty key of a region
-/// or a city means "none": the photos of the country that have no region.
+/// or a city means "none": the photos of the country that have no region. The empty key of the **country** is the
+/// "(no country)" node: the photos that have a region or a city and no country (not the photos with no place at all,
+/// which no node holds).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PlaceFilter {
     /// The country's key.
@@ -212,6 +222,11 @@ impl PlaceFilter {
         ] {
             match key {
                 None => {}
+                // The empty country key is the "(no country)" node, which has a place; the empty key of a region or a
+                // city is "none" and nothing more.
+                Some(key) if key.is_empty() && column == "p.place_country" => {
+                    conditions.push(NO_COUNTRY.to_string())
+                }
                 Some(key) if key.is_empty() => conditions.push(format!("{column} IS NULL")),
                 Some(key) => {
                     conditions.push(format!("{column} = ?"));
@@ -250,10 +265,14 @@ impl PlaceNode {
 /// The places the photos in view are in: the answer of [`Catalogue::place_facets`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PlaceFacets {
-    /// How many photos in view have a country.
+    /// How many photos in view have a place: a country, or a region or a city without one.
     pub placed: u64,
     /// The countries, by label.
     pub countries: Vec<PlaceNode>,
+    /// The photos that have a region or a city and no country, as a node of their own (its filter's country is the
+    /// empty key; its label is empty, for the menu to say in the interface's language); `None` when no photo in view
+    /// needs it. It is not among the countries, since the menu puts it after them.
+    pub no_country: Option<PlaceNode>,
     /// Whether the place columns are still being filled from the sidecars (the first open after the upgrade to
     /// schema 6, or after a change of the folding): the tree is then a part of the places, or none, and `placed: 0`
     /// does not mean that no photo has a place.
@@ -261,13 +280,14 @@ pub struct PlaceFacets {
 }
 
 impl PlaceFacets {
-    /// The tree as the JSON text the library's place menu reads: `{ "placed": N, "pending": bool, "countries": [Node] }`,
-    /// a Node being `{ "label", "count", "filter", "children": [Node] }`.
+    /// The tree as the JSON text the library's place menu reads: `{ "placed": N, "pending": bool, "countries": [Node],
+    /// "noCountry": Node | null }`, a Node being `{ "label", "count", "filter", "children": [Node] }`.
     pub fn to_json(&self) -> String {
         json!({
             "placed": self.placed,
             "pending": self.pending,
             "countries": self.countries.iter().map(PlaceNode::to_json).collect::<Vec<_>>(),
+            "noCountry": self.no_country.as_ref().map(PlaceNode::to_json),
         })
         .to_string()
     }
@@ -349,6 +369,77 @@ fn sort_nodes(nodes: &mut [PlaceNode]) {
     nodes.sort_by_cached_key(|node| (fold_place(&node.label), node.label.clone()));
 }
 
+impl Branch {
+    /// Counts `photos` photos at a place under this branch: a region (and the city under it), or a city directly under
+    /// it; the empty key is "no region".
+    fn add_place(
+        &mut self,
+        region_key: Option<String>,
+        city_key: Option<String>,
+        region: Option<String>,
+        city: Option<String>,
+        photos: u64,
+    ) {
+        let region_branch = self
+            .children
+            .entry(region_key.clone().unwrap_or_default())
+            .or_default();
+        if region_key.is_some() {
+            region_branch.count += photos;
+            region_branch.spellings.add(region.as_deref(), photos);
+        }
+        if let Some(city_key) = city_key {
+            let city_branch = region_branch.children.entry(city_key).or_default();
+            city_branch.count += photos;
+            city_branch.spellings.add(city.as_deref(), photos);
+        }
+    }
+}
+
+/// The node of a country (or, for the empty key, of the photos that have no country): its regions, then the cities of
+/// a region, and the cities of a region-less group directly under it.
+fn country_node(country_key: &str, branch: Branch) -> PlaceNode {
+    let label = branch.label(country_key);
+    let count = branch.count;
+    let mut children: Vec<PlaceNode> = Vec::new();
+    for (region_key, region_branch) in branch.children {
+        if region_key.is_empty() {
+            // Cities with no region: under the country, selected by "no region" and the city.
+            children.extend(nodes(region_branch.children, &|city| PlaceFilter {
+                country: Some(country_key.to_string()),
+                region: Some(String::new()),
+                city: Some(city.to_string()),
+            }));
+            continue;
+        }
+        let region_node = PlaceNode {
+            label: region_branch.label(&region_key),
+            count: region_branch.count,
+            filter: PlaceFilter {
+                country: Some(country_key.to_string()),
+                region: Some(region_key.clone()),
+                city: None,
+            },
+            children: nodes(region_branch.children, &|city| PlaceFilter {
+                country: Some(country_key.to_string()),
+                region: Some(region_key.clone()),
+                city: Some(city.to_string()),
+            }),
+        };
+        children.push(region_node);
+    }
+    sort_nodes(&mut children);
+    PlaceNode {
+        label,
+        count,
+        filter: PlaceFilter {
+            country: Some(country_key.to_string()),
+            ..PlaceFilter::default()
+        },
+        children,
+    }
+}
+
 impl Catalogue {
     /// The tree of places the photos a [`Filter`] lets through are in, **leaving out the filter's own place**: so that
     /// the tree stays one to move around in while a place is chosen (choosing Quebec still shows Ontario, with its
@@ -357,14 +448,18 @@ impl Catalogue {
         let mut conditions: Vec<String> = Vec::new();
         let mut values: Vec<rusqlite::types::Value> = Vec::new();
         filter.conditions(false, &mut conditions, &mut values);
-        conditions.push("p.place_country IS NOT NULL".into());
+        let mut placed = 0;
+
+        // The countries.
+        let mut with_country = conditions.clone();
+        with_country.push("p.place_country IS NOT NULL".into());
         let sql = format!(
             "SELECT p.place_country, p.place_region, p.place_city, p.country, p.region, p.city, p.country_code, COUNT(*)
              FROM photo p WHERE {} GROUP BY 1, 2, 3, 4, 5, 6, 7",
-            conditions.join(" AND ")
+            with_country.join(" AND ")
         );
         let mut statement = self.conn.prepare(&sql)?;
-        let rows = statement.query_map(rusqlite::params_from_iter(values), |row| {
+        let rows = statement.query_map(rusqlite::params_from_iter(values.clone()), |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, Option<String>>(1)?,
@@ -376,7 +471,6 @@ impl Catalogue {
                 row.get::<_, i64>(7)? as u64,
             ))
         })?;
-        let mut placed = 0;
         let mut countries: BTreeMap<String, Branch> = BTreeMap::new();
         for row in rows {
             let (country_key, region_key, city_key, country, region, city, code, photos) = row?;
@@ -388,72 +482,44 @@ impl Catalogue {
                 Some(name) => country_branch.spellings.add(Some(name), photos),
                 None => country_branch.codes.add(code.as_deref(), photos),
             }
-            // A region (and the city under it), or a city directly under the country: the empty key is "no region".
-            let region_branch = country_branch
-                .children
-                .entry(region_key.clone().unwrap_or_default())
-                .or_default();
-            if region_key.is_some() {
-                region_branch.count += photos;
-                region_branch.spellings.add(region.as_deref(), photos);
-            }
-            if let Some(city_key) = city_key {
-                let city_branch = region_branch.children.entry(city_key).or_default();
-                city_branch.count += photos;
-                city_branch.spellings.add(city.as_deref(), photos);
-            }
+            country_branch.add_place(region_key, city_key, region, city, photos);
         }
-        // The tree: the regions of a country, then the cities of a region, and the cities of a region-less group
-        // directly under the country.
-        let mut tree = Vec::new();
-        for (country_key, country_branch) in countries {
-            let country_filter = PlaceFilter {
-                country: Some(country_key.clone()),
-                ..PlaceFilter::default()
-            };
-            let mut children: Vec<PlaceNode> = Vec::new();
-            let label = country_branch.label(&country_key);
-            let count = country_branch.count;
-            for (region_key, region_branch) in country_branch.children {
-                if region_key.is_empty() {
-                    // Cities with no region: under the country, selected by "no region" and the city.
-                    children.extend(nodes(region_branch.children, &|city| PlaceFilter {
-                        country: Some(country_key.clone()),
-                        region: Some(String::new()),
-                        city: Some(city.to_string()),
-                    }));
-                    continue;
-                }
-                let region_filter = PlaceFilter {
-                    country: Some(country_key.clone()),
-                    region: Some(region_key.clone()),
-                    city: None,
-                };
-                let mut region_node = PlaceNode {
-                    label: region_branch.label(&region_key),
-                    count: region_branch.count,
-                    filter: region_filter,
-                    children: nodes(region_branch.children, &|city| PlaceFilter {
-                        country: Some(country_key.clone()),
-                        region: Some(region_key.clone()),
-                        city: Some(city.to_string()),
-                    }),
-                };
-                region_node.children.shrink_to_fit();
-                children.push(region_node);
-            }
-            sort_nodes(&mut children);
-            tree.push(PlaceNode {
-                label,
-                count,
-                filter: country_filter,
-                children,
-            });
-        }
+        let mut tree: Vec<PlaceNode> = countries
+            .into_iter()
+            .map(|(key, branch)| country_node(&key, branch))
+            .collect();
         sort_nodes(&mut tree);
+
+        // The photos with a region or a city and no country: one more node, after the countries (issue #60).
+        let mut without_country = conditions;
+        without_country.push(NO_COUNTRY.into());
+        let sql = format!(
+            "SELECT p.place_region, p.place_city, p.region, p.city, COUNT(*)
+             FROM photo p WHERE {} GROUP BY 1, 2, 3, 4",
+            without_country.join(" AND ")
+        );
+        let mut statement = self.conn.prepare(&sql)?;
+        let rows = statement.query_map(rusqlite::params_from_iter(values), |row| {
+            Ok((
+                row.get::<_, Option<String>>(0)?,
+                row.get::<_, Option<String>>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, i64>(4)? as u64,
+            ))
+        })?;
+        let mut none = Branch::default();
+        for row in rows {
+            let (region_key, city_key, region, city, photos) = row?;
+            placed += photos;
+            none.count += photos;
+            none.add_place(region_key, city_key, region, city, photos);
+        }
+        let no_country = (none.count > 0).then(|| country_node("", none));
         Ok(PlaceFacets {
             placed,
             countries: tree,
+            no_country,
             pending: self.place_columns_stale()?,
         })
     }
@@ -677,6 +743,35 @@ mod tests {
             ..Metadata::default()
         };
         assert_eq!(PlaceColumns::of(&empty), PlaceColumns::default());
+    }
+
+    #[test]
+    fn the_tree_and_the_filter_of_the_no_country_node_read_their_own_index() {
+        // SQLite uses a partial index when the query states the index's condition; this holds that it does, for the
+        // tree's query and for the filter's (issue #60: the countries' index holds only the photos with a country).
+        let cat = Catalogue::open_in_memory(auroraw_types::WorkspaceId::random()).unwrap();
+        for sql in [
+            format!(
+                "SELECT p.place_region, p.place_city, p.region, p.city, COUNT(*) FROM photo p WHERE {NO_COUNTRY} \
+                 GROUP BY 1, 2, 3, 4"
+            ),
+            format!("SELECT p.id FROM photo p WHERE {NO_COUNTRY} AND p.place_region = 'x'"),
+        ] {
+            let mut statement = cat
+                .conn
+                .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+                .unwrap();
+            let plan: Vec<String> = statement
+                .query_map([], |row| row.get::<_, String>(3))
+                .unwrap()
+                .map(|line| line.unwrap())
+                .collect();
+            assert!(
+                plan.iter()
+                    .any(|line| line.contains("photo_place_nocountry")),
+                "{sql}: {plan:?}"
+            );
+        }
     }
 
     #[test]

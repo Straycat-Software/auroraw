@@ -296,6 +296,9 @@ impl Catalogue {
                        ON photo(place_country, place_region, place_city, country, region, city, country_code,
                                 effective_flag, effective_rating)
                        WHERE place_country IS NOT NULL;
+                     CREATE INDEX IF NOT EXISTS photo_place_nocountry
+                       ON photo(place_region, place_city, region, city, effective_flag, effective_rating)
+                       WHERE place_country IS NULL AND (place_region IS NOT NULL OR place_city IS NOT NULL);
                      INSERT OR REPLACE INTO meta(key, value) VALUES ('place_columns', 'stale');",
                 )?;
                 self.conn.pragma_update(None, "user_version", 6)?;
@@ -469,7 +472,9 @@ mod tests {
         {
             let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
             // Made as schema 5 would have it: no place columns, no index, an older version stamped.
-            cat.conn.execute_batch("DROP INDEX photo_place").unwrap();
+            cat.conn
+                .execute_batch("DROP INDEX photo_place; DROP INDEX photo_place_nocountry")
+                .unwrap();
             for column in [
                 "country",
                 "region",
@@ -495,6 +500,17 @@ mod tests {
             cat.place_columns_stale().unwrap(),
             "the columns exist and are empty: they are to be filled"
         );
+        for index in ["photo_place", "photo_place_nocountry"] {
+            let present: i64 = cat
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?1",
+                    [index],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(present, 1, "the migration makes the index {index}");
+        }
         // The columns are usable, and the tree is empty until they are filled.
         assert_eq!(cat.place_facets(&Default::default()).unwrap().placed, 0);
         cat.mark_place_columns_fresh().unwrap();
