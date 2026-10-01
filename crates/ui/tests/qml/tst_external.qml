@@ -60,6 +60,28 @@ AppTestCase {
         drawn(app.externalDialog.contentItem)
     }
 
+    SignalSpy { id: acceptClicks; signalName: "clicked" }
+    SignalSpy { id: engineAnswers; target: Bus; signalName: "externalChanges" }
+
+    // Clicks "Accept all" and waits for the list to empty. When it does not, the message says what happened: whether the
+    // click reached the button, and whether the engine's answer reached the window (issue #63, a failure seen on macOS
+    // only, with nothing to tell the two apart).
+    function acceptAllAndWait(dialog) {
+        const button = dialog.acceptAllButton
+        acceptClicks.target = button
+        acceptClicks.clear()
+        engineAnswers.clear()
+        click(button)
+        const deadline = Date.now() + 5000
+        while (dialog.entries.length > 0 && Date.now() < deadline)
+            wait(50)
+        verify(dialog.entries.length === 0, "Accept all did not empty the list: clicks that reached the button "
+               + acceptClicks.count + ", answers of the engine " + engineAnswers.count + ", button enabled " + button.enabled
+               + " visible " + button.visible + " size " + button.width + "x" + button.height + ", window visible "
+               + dialog.visible + " active " + dialog.active + ", entries " + dialog.entries.length + ", banner "
+               + app.externalBanner.count)
+    }
+
     // Writes `name`.xmp beside its original and lets a rescan see it, as another application's edit.
     function edit(name, title, rating) {
         files.write(home + "/Card/" + name + ".xmp", xmp(title, rating))
@@ -220,8 +242,7 @@ AppTestCase {
         verify(dialog.answersLabel.visible && dialog.answersLabel.text.indexOf("Accept applies") === 0, dialog.answersLabel.text)
         verify(dialog.answersLabel.text.indexOf("Ignore keeps the photo as it is") > 0)
         verify(dialog.safetyLabel.visible && dialog.safetyLabel.text.indexOf("Nothing is applied until you choose") === 0)
-        click(dialog.acceptAllButton)
-        tryCompare(dialog.entries, "length", 0)
+        acceptAllAndWait(dialog)
         compare(dialog.introLabel.text, "Nothing is waiting.")
         verify(!dialog.answersLabel.visible && !dialog.safetyLabel.visible, "nothing to explain when nothing waits")
         dialog.close()
