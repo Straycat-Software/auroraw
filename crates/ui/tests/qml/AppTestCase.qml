@@ -126,10 +126,13 @@ TestCase {
     // Waits until the review of external changes lists `count` photos. (Not `tryCompare(app.externalDialog.entries,
     // "length", count)`: `entries` is a new array at each refresh, and `tryCompare` reads the array once, when it is
     // called, so it keeps waiting on a list nobody updates; the test passed whenever the engine answered within the
-    // pause of a click, and on a slow macOS runner it did not: issue #63.)
+    // pause of a click, and on a slow macOS runner it did not: issue #63. Nor `tryVerify` with a message: the message
+    // is built before the wait, and would say what the window listed at the start.)
     function tryEntries(count) {
-        tryVerify(() => app.externalDialog.entries.length === count,
-                  5000, "the review lists " + app.externalDialog.entries.length + " photos, not " + count)
+        const deadline = Date.now() + 5000
+        while (app.externalDialog.entries.length !== count && Date.now() < deadline)
+            wait(20)
+        compare(app.externalDialog.entries.length, count, "the review lists the wrong number of photos")
     }
 
     // Clicks the centre of an item as a person would.
