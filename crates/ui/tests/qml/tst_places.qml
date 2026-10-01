@@ -62,6 +62,13 @@ AppTestCase {
         tryVerify(() => dialog.phase === "done", 30000, "the run ended: " + JSON.stringify(dialog.report))
     }
 
+    // Asks for a refresh and waits for what it would do (nothing is written yet).
+    function previewRefresh(dialog) {
+        dialog.refreshBox.checked = true
+        click(dialog.findButton)
+        tryVerify(() => dialog.phase === "preview", 30000, "the preview ended, phase " + dialog.phase)
+    }
+
     // Takes back what the runs of a test did.
     function undoAll(name, key) {
         for (let n = 0; n < 4 && field(name, key) !== ""; n++) {
@@ -174,15 +181,87 @@ AppTestCase {
         runFind(dialog)
         compare(field("IMG_0006", "region"), "Ouest")
         dialog.close()
-        // With one it follows (the language is a reason: a name found by Auroraw is Auroraw's to update).
+        // With one it follows (the language is a reason: a name found by Auroraw is Auroraw's to update), once it has been
+        // shown and applied.
         dialog = openDialog()
-        dialog.refreshBox.checked = true
-        runFind(dialog)
+        previewRefresh(dialog)
+        compare(field("IMG_0006", "region"), "Ouest", "shown, not done")
+        click(dialog.applyButton)
+        tryVerify(() => dialog.phase === "done", 30000)
         compare(field("IMG_0006", "region"), "West")
         compare(field("IMG_0006", "country"), "Aland")
         dialog.close()
         undoAll("IMG_0006", "country")
         compare(field("IMG_0006", "country"), "")
+    }
+
+    function test_a_refresh_is_shown_grouped_before_it_is_done_and_applied_on_request() {
+        const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
+        app.launcher.chooseLanguage("fr")
+        wait(250)
+        selectOnly(...six)
+        let dialog = openDialog()
+        runFind(dialog)
+        compare(dialog.report.filled, 6, "a first fill goes straight to the run: there is nothing to decide")
+        dialog.close()
+        app.launcher.chooseLanguage("en")
+        wait(250)
+        selectOnly(...six)
+        dialog = openDialog()
+        previewRefresh(dialog)
+        // What it would do, grouped, the biggest first: the country's name in all six, the region's in four and two. The
+        // cities and the code are the same words in both languages: not changes.
+        compare(dialog.preview.report.filled, 6)
+        compare(dialog.preview.groups.length, 3)
+        compare(dialog.preview.groupsTotal, 3)
+        compare(dialog.changeText(dialog.preview.groups[0]), "Country: Alandie → Aland, 6 photos")
+        compare(dialog.changeText(dialog.preview.groups[1]), "Region: Ouest → West, 4 photos")
+        compare(dialog.changeText(dialog.preview.groups[2]), "Region: Est → East, 2 photos")
+        compare(dialog.preview.groups[0].examples.length, 3, "a few of the six, to say what it is about")
+        verify(dialog.applyButton.visible && dialog.backButton.visible && dialog.closeButton.visible)
+        verify(!dialog.findButton.visible && !dialog.stopButton.visible)
+        compare(dialog.closeButton.text, "Cancel")
+        compare(dialog.previewTitle.text, "The refresh would change 6 photos.")
+        // Nothing was written, and nothing is a step of the history yet.
+        compare(field("IMG_0000", "country"), "Alandie")
+        compare(field("IMG_0002", "region"), "Est")
+        drawn(dialog.contentItem)
+        snapshot("place-names-preview")
+        // Back leaves it undone, and the form is as it was.
+        click(dialog.backButton)
+        compare(dialog.phase, "form")
+        verify(dialog.refreshBox.checked)
+        compare(field("IMG_0000", "country"), "Alandie")
+        // Apply makes the changes, and the usual report follows.
+        previewRefresh(dialog)
+        click(dialog.applyButton)
+        tryVerify(() => dialog.phase === "done", 30000)
+        compare(dialog.report.filled, 6)
+        compare(field("IMG_0000", "country"), "Aland")
+        compare(field("IMG_0002", "region"), "East")
+        dialog.close()
+        undoAll("IMG_0000", "country")
+        compare(field("IMG_0000", "country"), "")
+    }
+
+    function test_a_refresh_that_would_change_nothing_says_so_and_has_nothing_to_apply() {
+        selectOnly("IMG_0007")
+        let dialog = openDialog()
+        runFind(dialog)
+        dialog.close()
+        selectOnly("IMG_0007")
+        dialog = openDialog()
+        previewRefresh(dialog)
+        compare(dialog.preview.report.filled, 0)
+        compare(dialog.preview.groups.length, 0)
+        compare(dialog.previewTitle.text, "The refresh would change nothing.")
+        verify(!dialog.applyButton.visible, "nothing to apply")
+        verify(dialog.backButton.visible)
+        click(dialog.backButton)
+        compare(dialog.phase, "form")
+        dialog.close()
+        undoAll("IMG_0007", "country")
+        compare(field("IMG_0007", "country"), "")
     }
 
     function test_the_progress_says_how_far_it_is() {
@@ -215,6 +294,8 @@ AppTestCase {
         verify(app.aboutDialog.placesLabel.visible, "the places file is installed")
         verify(app.aboutDialog.placesLabel.text.indexOf("GeoNames") >= 0)
         verify(app.aboutDialog.placesLabel.text.indexOf("Creative Commons Attribution 4.0") >= 0)
+        verify(app.aboutDialog.placesLabel.text.indexOf("https://creativecommons.org/licenses/by/4.0/") >= 0, "a link to the licence")
+        verify(app.aboutDialog.placesLabel.text.indexOf("adapted from GeoNames") >= 0, "and that the data was modified")
         verify(app.aboutDialog.placesLabel.text.indexOf("Natural Earth") >= 0)
         verify(app.aboutDialog.placesLabel.text.indexOf("default worldview") >= 0)
         app.aboutDialog.close()

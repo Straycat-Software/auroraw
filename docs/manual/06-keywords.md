@@ -90,18 +90,25 @@ internet.
   French); the city is written the way the place spells it (*Montréal*, whatever the language).
 - **Also update the names Auroraw found earlier.** For photos whose position was corrected since (a GPS track
   matched, a hand correction), or when you changed the language: the names Auroraw wrote and you have not touched
-  follow the new position. A name you edited or typed is still left as it is.
+  follow the new position. A name you edited or typed is still left as it is. Nothing is changed before you have
+  seen it: Auroraw first shows what the refresh would do, grouped ("City: Westville → Eastburg, 400 photos"), and
+  **Apply** makes the changes; **Back** leaves them undone. (Without this box, a run only fills what is empty, so it
+  goes straight ahead.)
 - **One step.** The whole run is a single step, whatever the number of photos, and `Ctrl+Z` takes it back for all
   of them. You can stop it with **Stop**; what it found stays, as one step.
 - **What it says at the end**: how many photos got names, how many already had their place, how many have no
   position, and how many are in no country (open water, a pole).
 
+![What a refresh would change, shown before it is applied](images/place-names-preview.png)
+
 ![The end of a run: names found, and the photos that have none](images/place-names-done.png)
 
-The **city is the nearest town** to the position, not the municipality that contains it: a photo taken in a borough
-of a large city reads as that city, and an independent town inside it as the city around it. Near a border the answer
-can be wrong by a kilometre or two, because the boundaries are simplified. A photo far from any town has a region and
-a country and no city, which is true.
+The **city is the town the position belongs to**, not the municipality that contains it: the biggest town whose
+reach covers the position (a town reaches about 10 m for each square root of its inhabitants, 13 km for Montréal, 350 m
+for a village of 1,200), otherwise the nearest one within 25 km. A photo taken in a borough of a large city reads as that
+city, and an independent town inside it as the city around it. Near a border the answer can be wrong by a kilometre
+or two, because the boundaries are simplified. A photo far from any town has a region and a country and no city, which
+is true.
 
 **At import.** The Import dialog has a check box, **Find the place names of the imported photos**, off until you turn
 it on and remembered after that. It looks the names up once the import has finished, for the photos that entered the
@@ -110,10 +117,11 @@ catalogue, as one step.
 **If the file of places is not there** (a copy of Auroraw built without it), the dialog says *Place names are not
 installed* and the rest of the application is unaffected.
 
-**Where the data comes from.** The towns are GeoNames' (Creative Commons Attribution 4.0, <https://www.geonames.org/>);
-the countries and regions are Natural Earth's (public domain). The borders are drawn as Natural Earth draws them, in its
-default worldview: Auroraw takes no position on a disputed border, and a name you correct is never overwritten. The
-**About** window says so too.
+**Where the data comes from.** The towns are adapted from GeoNames
+([Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/), <https://www.geonames.org/>): the
+list is filtered and joined to the polygons of the countries and regions, which are Natural Earth's (public domain).
+The borders are drawn as Natural Earth draws them, in its default worldview, and Auroraw takes no position on a
+disputed border. A name you correct is never overwritten. The **About** window says so too.
 
 ## Collections
 

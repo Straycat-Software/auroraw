@@ -54,7 +54,7 @@ AppDialog {
             wrapMode: Text.Wrap
             color: Theme.quiet
             visible: dialog.placesInstalled
-            text: qsTr("Place names: towns from GeoNames (Creative Commons Attribution 4.0, https://www.geonames.org/); countries and regions from Natural Earth (public domain), with its boundaries as they stand on the ground, in its default worldview. Auroraw takes no position on a disputed border: a name you correct is never overwritten. The data is not code, and the GPL is not its licence.")
+            text: qsTr("Place names: towns adapted from GeoNames (Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/; https://www.geonames.org/), countries and regions from Natural Earth (public domain), with its boundaries as they stand on the ground, in its default worldview. Auroraw takes no position on a disputed border. A name you correct is never overwritten. The data is not code, and the GPL is not its licence.")
         }
         Label {
             text: "https://auroraw.org"

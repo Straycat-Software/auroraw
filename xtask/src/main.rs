@@ -136,6 +136,7 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("xmp-export", "xmp-export"),
     ("xmp-export-held-back", "xmp-export-held-back"),
     ("place-names", "place-names"),
+    ("place-names-preview", "place-names-preview"),
     ("place-names-done", "place-names-done"),
     ("metadata-en", "metadata"),
     ("info-en", "info"),

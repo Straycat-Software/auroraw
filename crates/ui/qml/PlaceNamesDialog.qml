@@ -6,9 +6,13 @@ import org.auroraw.ui
 
 // Finding the place names of photos (spec §5.7, design note 008, D-147): from where each photo was taken, offline, its
 // city, region and country, written into the fields that are empty. On explicit request only: nothing is looked up until
-// Find is pressed, and a field a person typed, or another application wrote, is never changed. Four steps in one dialog:
+// Find is pressed, and a field a person typed, or another application wrote, is never changed. Steps in one dialog:
 // "not installed" (the places file is not there: said, and nothing else is affected), the form, the progress, and what
 // happened. The whole run is one undoable step (the Edit menu's Undo), whatever the number of photos.
+//
+// A refresh (the names Auroraw found earlier follow the position) is never silent (note 008 §4): Find first asks the
+// engine what it would do, and the dialog shows the changes grouped ("City: Westville → Eastburg, 400 photos") with
+// nothing written; Apply then runs it. A first fill can only add, so it goes straight to the run.
 //
 // The body is as tall as the step asks, up to the window, and scrolls on a small screen (as the export dialog's does).
 AppDialog {
@@ -29,9 +33,13 @@ AppDialog {
     property alias stopButton: stopButton
     property alias closeButton: closeButton
     property alias progressBar: progress
+    property alias applyButton: applyButton
+    property alias previewTitle: previewTitle
+    property alias backButton: backButton
     property alias body: scroller
 
-    // unavailable (no places file), form, running, done.
+    // unavailable (no places file), form, previewing (looking up what a refresh would do), preview (shown, to apply or
+    // not), running, done.
     property string phase: "form"
     property string job: ""
     property real share: 0
@@ -40,6 +48,8 @@ AppDialog {
     property bool stopped: false
     property string failure: ""
     property var report: ({})
+    // What a refresh would do (the engine's preview: `report`, `groups`, `groupsTotal`), once it has been asked for.
+    property var preview: ({})
     property var sourceNames: []
     property var sourceIds: []
     readonly property int selectedCount: dialog.photoGrid.selectedCount
@@ -47,7 +57,7 @@ AppDialog {
                                     || (sourceScope.checked && dialog.sourceIds.length > 0)
     readonly property string refreshHint: qsTr("For photos whose position was corrected since. A name you edited or typed is left as it is.")
 
-    closePolicy: dialog.phase === "running" ? Popup.NoAutoClose : Popup.CloseOnEscape
+    closePolicy: dialog.phase === "running" || dialog.phase === "previewing" ? Popup.NoAutoClose : Popup.CloseOnEscape
 
     // What a choice means, under it and in step with its text (a check box's own text does not wrap).
     component Hint: Label {
@@ -82,14 +92,23 @@ AppDialog {
         dialog.stopped = false
         dialog.failure = ""
         dialog.report = ({})
+        dialog.preview = ({})
     }
 
     onAboutToShow: dialog.fillForm()
 
-    function start() {
+    // Find: a refresh is shown before it is done, a first fill is done.
+    function find() {
+        dialog.launch(refreshBox.checked)
+    }
+
+    // Starts the lookup, or, with `previewOnly`, only the look at what it would do (nothing is written).
+    function launch(previewOnly) {
         const selection = selectionScope.checked
         const target = selection ? dialog.photoGrid.selectedIds() : dialog.sourceIds[sourceBox.currentIndex]
-        const started = dialog.finder.start(selection ? "selection" : "source", target, dialog.language, refreshBox.checked)
+        const scope = selection ? "selection" : "source"
+        const started = previewOnly ? dialog.finder.startPreview(scope, target, dialog.language, refreshBox.checked)
+                                    : dialog.finder.start(scope, target, dialog.language, refreshBox.checked)
         if (started.indexOf("error:") === 0) {
             dialog.failure = started.substring(6)
             dialog.phase = "done"
@@ -99,7 +118,7 @@ AppDialog {
         dialog.share = 0
         dialog.done = 0
         dialog.total = 0
-        dialog.phase = "running"
+        dialog.phase = previewOnly ? "previewing" : "running"
     }
 
     Connections {
@@ -118,6 +137,35 @@ AppDialog {
             dialog.stopped = cancelled
             dialog.phase = "done"
         }
+        function onPlaceNamesPreview(job, preview, cancelled) {
+            if (job !== dialog.job)
+                return
+            dialog.job = ""
+            // Stopped before the end, it has nothing worth deciding on: back to the form, nothing was written.
+            if (cancelled) {
+                dialog.phase = "form"
+                return
+            }
+            dialog.preview = JSON.parse(preview)
+            dialog.phase = "preview"
+        }
+    }
+
+    function fieldLabel(key) {
+        switch (key) {
+        case "city": return qsTr("City")
+        case "region": return qsTr("Region")
+        case "country": return qsTr("Country")
+        default: return qsTr("Country code")
+        }
+    }
+
+    // One change a refresh would make, on one line a screen reader reads whole: the field, what it says and what it
+    // would say, and how many photos.
+    function changeText(group) {
+        const before = group.before === null ? qsTr("(empty)") : group.before
+        const after = group.after === null ? qsTr("(empty)") : group.after
+        return qsTr("%1: %2 → %3, %n photo(s)", "", group.photos).arg(dialog.fieldLabel(group.field)).arg(before).arg(after)
     }
 
     // What happened, one line for each thing that did. `attention` marks what went wrong: the others are good news, or
@@ -232,10 +280,10 @@ AppDialog {
                 }
             }
 
-            // ---- the progress
+            // ---- the progress (a refresh is looked at first: the same bar, nothing is written yet)
             ColumnLayout {
                 Layout.fillWidth: true
-                visible: dialog.phase === "running"
+                visible: dialog.phase === "running" || dialog.phase === "previewing"
                 spacing: 8
                 Label {
                     Layout.fillWidth: true
@@ -251,6 +299,59 @@ AppDialog {
                 }
             }
 
+            // ---- what a refresh would change
+            ColumnLayout {
+                id: previewStep
+                Layout.fillWidth: true
+                visible: dialog.phase === "preview"
+                spacing: 6
+                readonly property int changing: dialog.preview.report ? dialog.preview.report.filled : 0
+                readonly property int total: dialog.preview.report ? dialog.preview.report.photos : 0
+                readonly property var groups: dialog.preview.groups ? dialog.preview.groups : []
+                Label {
+                    id: previewTitle
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    font.bold: true
+                    text: previewStep.changing > 0 ? qsTr("The refresh would change %n photo(s).", "", previewStep.changing)
+                                                   : qsTr("The refresh would change nothing.")
+                }
+                Repeater {
+                    model: previewStep.groups
+                    Label {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        text: dialog.changeText(modelData)
+                    }
+                }
+                Label {
+                    id: previewMore
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    color: Theme.quiet
+                    visible: dialog.preview.groupsTotal > previewStep.groups.length
+                    text: qsTr("… and %n more change(s), the smaller ones.", "", dialog.preview.groupsTotal - previewStep.groups.length)
+                }
+                Label {
+                    id: previewRest
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    wrapMode: Text.Wrap
+                    color: Theme.quiet
+                    visible: previewStep.total > previewStep.changing
+                    text: qsTr("The other %n photo(s) would stay as they are.", "", previewStep.total - previewStep.changing)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    Layout.topMargin: 6
+                    wrapMode: Text.Wrap
+                    color: Theme.quiet
+                    visible: previewStep.changing > 0
+                    text: qsTr("Nothing has been written. Apply makes these changes as one step, and Undo takes them back.")
+                }
+            }
+
             // ---- what happened
             ColumnLayout {
                 Layout.fillWidth: true
@@ -261,7 +362,8 @@ AppDialog {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     font.bold: true
-                    text: dialog.stopped ? qsTr("Stopped. What was found stays, as one step.")
+                    text: dialog.stopped ? (dialog.report.filled > 0 ? qsTr("Stopped. What was found stays, as one step.")
+                                                                      : qsTr("Stopped. Nothing was written."))
                                          : (dialog.lines.length > 0 ? qsTr("Done.") : qsTr("Nothing to look up."))
                 }
                 Repeater {
@@ -295,19 +397,34 @@ AppDialog {
             highlighted: true
             enabled: dialog.canFind
             DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
-            onClicked: dialog.start()
+            onClicked: dialog.find()
+        }
+        AppButton {
+            id: applyButton
+            visible: dialog.phase === "preview" && previewStep.changing > 0
+            text: qsTr("Apply")
+            highlighted: true
+            DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
+            onClicked: dialog.launch(false)
+        }
+        AppButton {
+            id: backButton
+            visible: dialog.phase === "preview"
+            text: qsTr("Back")
+            DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
+            onClicked: dialog.phase = "form"
         }
         AppButton {
             id: stopButton
-            visible: dialog.phase === "running"
+            visible: dialog.phase === "running" || dialog.phase === "previewing"
             text: qsTr("Stop")
             DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
             onClicked: dialog.finder.cancel()
         }
         AppButton {
             id: closeButton
-            visible: dialog.phase !== "running"
-            text: dialog.phase === "form" ? qsTr("Cancel") : qsTr("Close")
+            visible: dialog.phase !== "running" && dialog.phase !== "previewing"
+            text: dialog.phase === "form" || dialog.phase === "preview" ? qsTr("Cancel") : qsTr("Close")
             DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
             onClicked: dialog.close()
         }

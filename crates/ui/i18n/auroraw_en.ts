@@ -35,7 +35,7 @@
     </message>
     <message>
         <location line="+10"/>
-        <source>Place names: towns from GeoNames (Creative Commons Attribution 4.0, https://www.geonames.org/); countries and regions from Natural Earth (public domain), with its boundaries as they stand on the ground, in its default worldview. Auroraw takes no position on a disputed border: a name you correct is never overwritten. The data is not code, and the GPL is not its licence.</source>
+        <source>Place names: towns adapted from GeoNames (Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/; https://www.geonames.org/), countries and regions from Natural Earth (public domain), with its boundaries as they stand on the ground, in its default worldview. Auroraw takes no position on a disputed border. A name you correct is never overwritten. The data is not code, and the GPL is not its licence.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1544,7 +1544,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-372"/>
+        <location line="-377"/>
         <source>Looks up where each photo was taken, without the internet, and fills in its city, region and country where they are empty. For the photos that enter the catalogue.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1612,7 +1612,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+17"/>
+        <location line="+20"/>
         <source>Place names: stopped.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2692,17 +2692,51 @@
 <context>
     <name>PlaceNamesDialog</name>
     <message>
-        <location filename="../qml/PlaceNamesDialog.qml" line="+22"/>
+        <location filename="../qml/PlaceNamesDialog.qml" line="+26"/>
         <source>Find place names</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+26"/>
+        <location line="+32"/>
         <source>For photos whose position was corrected since. A name you edited or typed is left as it is.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+81"/>
+        <location line="+98"/>
+        <source>City</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Region</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Country</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Country code</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <location line="+1"/>
+        <source>(empty)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location line="+1"/>
+        <source>%1: %2 → %3, %n photo(s)</source>
+        <translation>
+            <numerusform>%1: %2 → %3, %n photo</numerusform>
+            <numerusform>%1: %2 → %3, %n photos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>The place names could not be looked up: %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2814,9 +2848,48 @@
         <source>Place names progress</source>
         <translation type="unfinished"></translation>
     </message>
+    <message numerus="yes">
+        <location line="+18"/>
+        <source>The refresh would change %n photo(s).</source>
+        <translation>
+            <numerusform>The refresh would change %n photo.</numerusform>
+            <numerusform>The refresh would change %n photos.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The refresh would change nothing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location line="+17"/>
+        <source>… and %n more change(s), the smaller ones.</source>
+        <translation>
+            <numerusform>… and %n more change, a smaller one.</numerusform>
+            <numerusform>… and %n more changes, the smaller ones.</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+9"/>
+        <source>The other %n photo(s) would stay as they are.</source>
+        <translation>
+            <numerusform>The other photo would stay as it is.</numerusform>
+            <numerusform>The other %n photos would stay as they are.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Nothing has been written. Apply makes these changes as one step, and Undo takes them back.</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message>
         <location line="+14"/>
         <source>Stopped. What was found stays, as one step.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Stopped. Nothing was written.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2841,6 +2914,16 @@
     </message>
     <message>
         <location line="+9"/>
+        <source>Apply</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Back</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Stop</source>
         <translation type="unfinished"></translation>
     </message>

@@ -194,6 +194,9 @@ AppDialog {
                     dialog.placeJob = started
                     dialog.status = dialog.importStatus + " " + qsTr("Finding the place names…")
                 }
+            } else {
+                // Nobody asked: what the import registered is not kept for a run that will not come.
+                dialog.placeNames.forgetImport(job)
             }
             // A destination made a source for this import: its other photos, if any, are scanned now
             // (the imported ones are known already).
@@ -217,6 +220,7 @@ AppDialog {
             if (job !== dialog.form.job)
                 return
             dialog.form.job = ""
+            dialog.placeNames.forgetImport(job)
             dialog.status = qsTr("The import stopped: %1").arg(reason)
         }
         function onJobCancelled(job) {
@@ -224,6 +228,7 @@ AppDialog {
                 return
             dialog.form.job = ""
             dialog.finished = true
+            dialog.placeNames.forgetImport(job)
             dialog.status = qsTr("Import cancelled. Running it again resumes where it stopped.")
         }
     }

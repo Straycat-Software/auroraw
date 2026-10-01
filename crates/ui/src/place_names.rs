@@ -26,7 +26,9 @@ const FILE: &str = "places.sqlite";
 
 /// The places file this run of the application can use, or `None`. `AURORAW_PLACES` names it and is the only
 /// place looked at when it is set (a test says where its fixture is, and a missing one is "not installed", not
-/// "use another"); else the file beside the program; else, in a checkout, `testdata/places/places.sqlite`.
+/// "use another"); else the file beside the program; else, **in a debug build only**, the checkout's
+/// `testdata/places/places.sqlite`, found from where this crate's source is and not from the working directory (a
+/// shipped Auroraw run from a folder that happens to hold such a file must not use it).
 pub fn pack_path() -> Option<PathBuf> {
     if let Some(named) = std::env::var_os("AURORAW_PLACES") {
         let named = PathBuf::from(named);
@@ -35,15 +37,20 @@ pub fn pack_path() -> Option<PathBuf> {
     let beside = std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join(FILE)));
-    let checkout = PathBuf::from("testdata").join("places").join(FILE);
-    [beside, Some(checkout)]
+    let checkout = cfg!(debug_assertions).then(|| {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testdata/places")
+            .join(FILE)
+    });
+    [beside, checkout]
         .into_iter()
         .flatten()
         .find(|path| path.is_file())
 }
 
 /// The photos each running import has registered so far, by job: what the import's events say, kept for the
-/// run of place names that may follow it. Taken (and so forgotten) when the import has finished.
+/// run of place names that may follow it. Taken when the import has finished and the person asked for the run, and
+/// forgotten (`forgetImport`) when the import ended and nobody did: cancelled, aborted, or without the option.
 static IMPORTED: Mutex<Option<HashMap<String, Vec<PhotoId>>>> = Mutex::new(None);
 
 /// Notes that the import `job` (its identifier as the bus gives it) registered `photo`: called from the bus, on the
@@ -96,6 +103,18 @@ pub mod qobject {
             refresh: bool,
         ) -> QString;
 
+        /// Shows what the same run would do, and writes nothing (`Command::PreviewPlaceNames`, note 008 §4): the
+        /// job's identifier, or `error:` and why not. Its end arrives as `placeNamesPreview`; `cancel` stops it.
+        #[qinvokable]
+        #[cxx_name = "startPreview"]
+        fn start_preview(
+            self: &PlaceNames,
+            scope: &QString,
+            target: &QString,
+            language: &QString,
+            refresh: bool,
+        ) -> QString;
+
         /// Starts a run on the photos that the import `import_job` registered, if there were any: its job's
         /// identifier, or an empty text when there is nothing to do, or `error:` and why not.
         #[qinvokable]
@@ -106,7 +125,13 @@ pub mod qobject {
             language: &QString,
         ) -> QString;
 
-        /// Cancels the run `start` began, if it is still running (what it found stays, as one step).
+        /// Forgets the photos that the import `import_job` registered: it ended and no run was asked for.
+        #[qinvokable]
+        #[cxx_name = "forgetImport"]
+        fn forget_import(self: &PlaceNames, import_job: &QString);
+
+        /// Cancels the run (or the preview) `start` began, if it is still running (what a run found stays, as one
+        /// step).
         #[qinvokable]
         fn cancel(self: &PlaceNames);
     }
@@ -123,20 +148,31 @@ fn text(value: &str) -> QString {
 }
 
 impl PlaceNamesRust {
-    /// Starts the run for `scope`, and remembers its job.
-    fn run(&self, scope: PlaceScope, language: &str, refresh: bool) -> QString {
+    /// Starts the run for `scope` (or, with `preview`, what it would do), and remembers its job.
+    fn run(&self, scope: PlaceScope, language: &str, refresh: bool, preview: bool) -> QString {
         let Some(session) = session::current() else {
             return text("error:no workspace is open");
         };
         let Some(pack) = pack_path() else {
             return text("error:place names are not installed");
         };
-        match session.engine.submit_and_wait(Command::FindPlaceNames {
-            scope,
-            pack,
-            language: language.to_string(),
-            refresh,
-        }) {
+        let language = language.to_string();
+        let command = if preview {
+            Command::PreviewPlaceNames {
+                scope,
+                pack,
+                language,
+                refresh,
+            }
+        } else {
+            Command::FindPlaceNames {
+                scope,
+                pack,
+                language,
+                refresh,
+            }
+        };
+        match session.engine.submit_and_wait(command) {
             Ok(Outcome::PlaceNamesStarted { job, .. }) => {
                 *self.job.lock().unwrap() = Some(job);
                 text(&job.to_string())
@@ -159,6 +195,27 @@ impl qobject::PlaceNames {
         language: &QString,
         refresh: bool,
     ) -> QString {
+        self.begin(scope, target, language, refresh, false)
+    }
+
+    pub fn start_preview(
+        &self,
+        scope: &QString,
+        target: &QString,
+        language: &QString,
+        refresh: bool,
+    ) -> QString {
+        self.begin(scope, target, language, refresh, true)
+    }
+
+    fn begin(
+        &self,
+        scope: &QString,
+        target: &QString,
+        language: &QString,
+        refresh: bool,
+        preview: bool,
+    ) -> QString {
         let scope = match scope.to_string().as_str() {
             "selection" => PlaceScope::Photos(
                 target
@@ -174,7 +231,8 @@ impl qobject::PlaceNames {
             },
             other => return text(&format!("error:unknown scope {other}")),
         };
-        self.rust().run(scope, &language.to_string(), refresh)
+        self.rust()
+            .run(scope, &language.to_string(), refresh, preview)
     }
 
     pub fn start_after_import(&self, import_job: &QString, language: &QString) -> QString {
@@ -182,8 +240,16 @@ impl qobject::PlaceNames {
         if photos.is_empty() {
             return QString::default();
         }
-        self.rust()
-            .run(PlaceScope::Photos(photos), &language.to_string(), false)
+        self.rust().run(
+            PlaceScope::Photos(photos),
+            &language.to_string(),
+            false,
+            false,
+        )
+    }
+
+    pub fn forget_import(&self, import_job: &QString) {
+        take_imported(&import_job.to_string());
     }
 
     pub fn cancel(&self) {
