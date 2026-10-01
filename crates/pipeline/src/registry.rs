@@ -157,7 +157,12 @@ impl OperationRegistry {
     /// leaves the engine without a registry**. A built-in operation is never refused.
     ///
     /// **Duplicates**: the first declaration of an identifier is kept, and a later one (or a plugin
-    /// taking a built-in's identifier) is refused.
+    /// taking a built-in's identifier) is refused. A built-in always wins; between two plugins, **which one
+    /// wins is the order of `external`**. The caller, which knows which plugin each declaration came from
+    /// (a declaration does not say), must therefore pass them in an order that does not depend on the
+    /// machine (sorted by plugin identifier, not in the order the directory listing happened to return
+    /// them), or leave both out: otherwise the same installation can give a different image on another
+    /// computer.
     pub fn load(definition: &'static Definition, external: Vec<OperationInfo>) -> Loaded {
         let mut refused = Vec::new();
         let mut entries: BTreeMap<OperationId, Entry> = BTreeMap::new();
