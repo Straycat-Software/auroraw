@@ -37,6 +37,8 @@ mod keyword_list;
 mod launcher;
 #[allow(unsafe_code)]
 mod models;
+#[allow(unsafe_code)]
+mod place_names;
 mod reveal;
 mod selection;
 mod session;

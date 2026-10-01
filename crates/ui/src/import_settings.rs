@@ -26,6 +26,9 @@ pub struct Settings {
     /// Whether to add a destination that is not in the catalogue as a source (the checkbox's
     /// last state).
     pub add_destination: bool,
+    /// Whether to find the place names of the photos the import registers, once it has finished (design note 008
+    /// §4: an option of the import, off by default).
+    pub find_places: bool,
 }
 
 impl Default for Settings {
@@ -37,6 +40,7 @@ impl Default for Settings {
             source: String::new(),
             layout: "template".into(),
             add_destination: true,
+            find_places: false,
         }
     }
 }
@@ -122,6 +126,21 @@ mod tests {
         std::fs::write(&path, br#"{"archive": "/a", "somethingNew": 1}"#).unwrap();
         // A file written when the folder was still called the archive keeps working.
         assert_eq!(Settings::load(&path).destination, "/a");
+    }
+
+    #[test]
+    fn finding_place_names_is_off_until_it_is_asked_for_and_is_remembered() {
+        // (Design note 008 §4: the option of the import is off by default; a file from before it has no such field.)
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, br#"{"destination": "/photos"}"#).unwrap();
+        assert!(!Settings::load(&path).find_places);
+        let on = Settings {
+            find_places: true,
+            ..Settings::default()
+        };
+        on.save(&path);
+        assert!(Settings::load(&path).find_places);
     }
 
     #[test]
