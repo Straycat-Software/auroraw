@@ -59,6 +59,7 @@ impl Catalogue {
         if changed == 0 {
             return Err(CatalogueError::NotFound { kind: "photo", id });
         }
+        crate::place::set_columns(&tx, &id, &crate::place::PlaceColumns::of(&photo.meta))?;
 
         tx.execute("DELETE FROM photo_keyword WHERE photo_id = ?1", [&id])?;
         for keyword_id in &photo.meta.keyword_ids {

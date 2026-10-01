@@ -115,7 +115,17 @@ CREATE TABLE photo(
   -- The 64-bit perceptual hash of the photo's thumbnail (the bits of a u64), for the similar-photo suggestions
   -- (WP9, D-105). Added by schema 2. A cache of what the thumbnail shows: a rebuild leaves it unset and the
   -- thumbnail workers make it again.
-  phash INTEGER
+  phash INTEGER,
+  -- The place of the photo (design note 008 §5, schema 6): the four fields as the sidecar says them, and the keys the place
+  -- filter groups and selects by (the text folded for case and diacritics, `place_country` being the ISO code when the photo
+  -- has one). A copy of what the sidecar says: a rebuild fills them, and so does a write to the photo's metadata.
+  country TEXT,
+  region TEXT,
+  city TEXT,
+  country_code TEXT,
+  place_country TEXT,
+  place_region TEXT,
+  place_city TEXT
 );
 
 -- A reconcile looks a found file up by fingerprint (design note 004 §6.4) and a scan pages
