@@ -301,6 +301,10 @@ pub(crate) enum Inbound {
     /// entry either way, and, for a `DeleteKeyword` sweep, the vocabulary branch too, once every photo
     /// has lost it).
     BatchDone { job: JobId },
+    /// The next batch of the one pass over the sidecars that fills the place columns of a catalogue made before
+    /// schema 6 (design note 008 §5): the coordinator sends it to itself, so that the commands of the person get
+    /// their turn between two batches.
+    IndexPlaces,
 }
 
 fn keyword_set(meta: &auroraw_format::sidecar::Metadata) -> KeywordSet {
@@ -356,6 +360,10 @@ pub(crate) struct Coordinator {
     refresh_running: bool,
     /// The largest gap between two photos of one series, in seconds (D-101).
     series_gap: u32,
+    /// The photos whose place columns the pass over the sidecars has still to fill (none once it is done).
+    place_queue: VecDeque<PhotoId>,
+    /// How many photos that pass covers in all, for its event.
+    place_total: usize,
 }
 
 /// A path refresh waiting for its turn.
@@ -415,13 +423,53 @@ impl Coordinator {
             refresh_queue: VecDeque::new(),
             refresh_running: false,
             series_gap: crate::series_detect::DEFAULT_GAP,
+            place_queue: VecDeque::new(),
+            place_total: 0,
+        }
+    }
+
+    /// A catalogue made before schema 6 has no place columns: the photos are read once, a batch at a time between
+    /// the commands of the person (a rebuild fills them itself, and ends the pass).
+    fn start_place_index(&mut self) {
+        if self.catalogue.place_columns_stale().unwrap_or(false)
+            && let Ok(ids) = self.catalogue.photo_ids()
+        {
+            self.place_total = ids.len();
+            self.place_queue = ids.into();
+            let _ = self.inbound.send(Inbound::IndexPlaces);
+        }
+    }
+
+    /// One batch of that pass. The sidecar is read here, when the columns are written, so that a photo edited
+    /// meanwhile is never overwritten with what it said before.
+    fn index_places(&mut self) {
+        const BATCH: usize = 200;
+        for _ in 0..BATCH {
+            let Some(id) = self.place_queue.pop_front() else {
+                break;
+            };
+            if let Ok((photo, _)) = self.read_photo(&id) {
+                let _ = self
+                    .catalogue
+                    .apply_place_columns(&id, &auroraw_catalogue::PlaceColumns::of(&photo.meta));
+            }
+        }
+        if self.place_queue.is_empty() {
+            let _ = self.catalogue.mark_place_columns_fresh();
+            let _ = self.events.send(Event::PlaceColumnsFilled {
+                photos: self.place_total,
+            });
+        } else {
+            let _ = self.inbound.send(Inbound::IndexPlaces);
         }
     }
 
     /// Runs until the channel closes (every `Engine` handle and every job's sender dropped).
     pub(crate) fn run(mut self, rx: mpsc::Receiver<Inbound>) {
+        self.start_place_index();
         for message in rx {
             match message {
+                Inbound::IndexPlaces => self.index_places(),
                 Inbound::Stop => {
                     for token in self.jobs.values() {
                         token.cancel();
@@ -1653,6 +1701,8 @@ impl Coordinator {
         // `rebuild_to_file` renames the freshly built catalogue over it.
         self.catalogue = Catalogue::open_in_memory(workspace_id)?;
         self.catalogue = auroraw_catalogue::rebuild_to_file(&path, workspace_id, &input)?;
+        // (A rebuild fills the place columns itself: a pass over the sidecars that was under way has nothing left to do.)
+        self.place_queue.clear();
         let _ = self.events.send(Event::RebuildFinished {
             photos: photo_count,
             versions: version_count,

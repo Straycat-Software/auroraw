@@ -12,6 +12,7 @@ use rusqlite::{OptionalExtension, Row, params};
 
 use crate::error::Result;
 use crate::open::Catalogue;
+use crate::place::PlaceFilter;
 
 /// One row of the grid: enough to display and sort a photo without a further lookup.
 #[derive(Debug, Clone, PartialEq)]
@@ -153,6 +154,8 @@ pub struct Filter {
     pub series: SeriesFilter,
     /// Photos in this collection or in any collection under it (WP10, slice 3).
     pub collection: Option<CollectionId>,
+    /// Photos in this place: a country, a region of it, a city of it (design note 008 §5).
+    pub place: Option<PlaceFilter>,
 }
 
 /// Which photos a listing keeps by series (WP9).
@@ -186,6 +189,67 @@ pub struct KeywordRow {
     pub synonyms: Vec<String>,
     /// How many photos carry it directly.
     pub photos: u64,
+}
+
+impl Filter {
+    /// The conditions of this filter on the photo row `p`, and their values, in the order the placeholders come.
+    /// `with_place` is whether the place is one of them: the place menu counts the photos that pass every filter
+    /// **but** the place (design note 008 §5).
+    pub(crate) fn conditions(
+        &self,
+        with_place: bool,
+        conditions: &mut Vec<String>,
+        values: &mut Vec<rusqlite::types::Value>,
+    ) {
+        use rusqlite::types::Value;
+        if self.min_rating > 0 {
+            conditions.push("p.effective_rating >= ?".into());
+            values.push(Value::Integer(i64::from(self.min_rating)));
+        }
+        match self.flags {
+            FlagFilter::NotRejected => conditions.push("p.effective_flag != 2".into()),
+            FlagFilter::All => {}
+            FlagFilter::Picked => conditions.push("p.effective_flag = 1".into()),
+            FlagFilter::Rejected => conditions.push("p.effective_flag = 2".into()),
+        }
+        match self.series {
+            SeriesFilter::Any => {}
+            SeriesFilter::InSeries => conditions.push("p.series_id IS NOT NULL".into()),
+            SeriesFilter::Unresolved => {
+                conditions.push("p.series_id IN (SELECT id FROM series WHERE resolved = 0)".into())
+            }
+            SeriesFilter::Resolved => {
+                conditions.push("p.series_id IN (SELECT id FROM series WHERE resolved = 1)".into())
+            }
+        }
+        if let Some(label) = &self.label {
+            conditions.push("p.label = ? COLLATE NOCASE".into());
+            values.push(Value::Text(label.clone()));
+        }
+        if let Some(keyword) = &self.keyword {
+            conditions.push(
+                "p.id IN (SELECT pk.photo_id FROM photo_keyword pk JOIN keyword k ON k.id = pk.keyword_id
+                          WHERE k.id = ? OR k.path LIKE (SELECT path || '|%' FROM keyword WHERE id = ?))"
+                    .into(),
+            );
+            values.push(Value::Text(keyword.to_string()));
+            values.push(Value::Text(keyword.to_string()));
+        }
+        if let Some(collection) = &self.collection {
+            conditions.push(
+                "p.id IN (WITH RECURSIVE branch(id) AS (
+                              SELECT ? UNION ALL
+                              SELECT c.id FROM collection c JOIN branch b ON c.parent_id = b.id)
+                          SELECT photo_id FROM collection_member
+                          WHERE collection_id IN (SELECT id FROM branch))"
+                    .into(),
+            );
+            values.push(Value::Text(collection.to_string()));
+        }
+        if with_place && let Some(place) = &self.place {
+            place.conditions(conditions, values);
+        }
+    }
 }
 
 impl PhotoRow {
@@ -231,50 +295,7 @@ impl Catalogue {
         use rusqlite::types::Value;
         let mut conditions: Vec<String> = Vec::new();
         let mut values: Vec<Value> = Vec::new();
-        if filter.min_rating > 0 {
-            conditions.push("p.effective_rating >= ?".into());
-            values.push(Value::Integer(i64::from(filter.min_rating)));
-        }
-        match filter.flags {
-            FlagFilter::NotRejected => conditions.push("p.effective_flag != 2".into()),
-            FlagFilter::All => {}
-            FlagFilter::Picked => conditions.push("p.effective_flag = 1".into()),
-            FlagFilter::Rejected => conditions.push("p.effective_flag = 2".into()),
-        }
-        match filter.series {
-            SeriesFilter::Any => {}
-            SeriesFilter::InSeries => conditions.push("p.series_id IS NOT NULL".into()),
-            SeriesFilter::Unresolved => {
-                conditions.push("p.series_id IN (SELECT id FROM series WHERE resolved = 0)".into())
-            }
-            SeriesFilter::Resolved => {
-                conditions.push("p.series_id IN (SELECT id FROM series WHERE resolved = 1)".into())
-            }
-        }
-        if let Some(label) = &filter.label {
-            conditions.push("p.label = ? COLLATE NOCASE".into());
-            values.push(Value::Text(label.clone()));
-        }
-        if let Some(keyword) = &filter.keyword {
-            conditions.push(
-                "p.id IN (SELECT pk.photo_id FROM photo_keyword pk JOIN keyword k ON k.id = pk.keyword_id
-                          WHERE k.id = ? OR k.path LIKE (SELECT path || '|%' FROM keyword WHERE id = ?))"
-                    .into(),
-            );
-            values.push(Value::Text(keyword.to_string()));
-            values.push(Value::Text(keyword.to_string()));
-        }
-        if let Some(collection) = &filter.collection {
-            conditions.push(
-                "p.id IN (WITH RECURSIVE branch(id) AS (
-                              SELECT ? UNION ALL
-                              SELECT c.id FROM collection c JOIN branch b ON c.parent_id = b.id)
-                          SELECT photo_id FROM collection_member
-                          WHERE collection_id IN (SELECT id FROM branch))"
-                    .into(),
-            );
-            values.push(Value::Text(collection.to_string()));
-        }
+        filter.conditions(true, &mut conditions, &mut values);
         if let Some(c) = after {
             conditions.push("(p.capture_time, p.id) < (?, ?)".into());
             values.push(Value::Integer(c.capture_time));

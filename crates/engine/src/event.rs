@@ -102,6 +102,13 @@ pub enum Event {
         /// Whether it stopped early.
         cancelled: bool,
     },
+    /// The engine read the sidecars once to fill the place columns of a catalogue made before they existed (schema 6,
+    /// design note 008 §5): the places of the photos can now be listed and filtered by. Sent once, when it is done;
+    /// nothing is sent for the photos one by one.
+    PlaceColumnsFilled {
+        /// How many photos it covered.
+        photos: usize,
+    },
     /// A background job made progress.
     JobProgress {
         /// The job.

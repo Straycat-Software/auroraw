@@ -10,7 +10,7 @@ const SCHEMA: &str = include_str!("schema.sql");
 const INDEXES: &str = include_str!("indexes.sql");
 
 /// The schema version this crate reads and writes, written to `PRAGMA user_version`.
-pub const CURRENT_SCHEMA: u32 = 5;
+pub const CURRENT_SCHEMA: u32 = 6;
 
 /// An open catalogue.
 pub struct Catalogue {
@@ -90,6 +90,9 @@ impl Catalogue {
         }
         if found < 5 {
             cat.migrate_to_5()?;
+        }
+        if found < 6 {
+            cat.migrate_to_6()?;
         }
         Ok(cat)
     }
@@ -231,6 +234,60 @@ impl Catalogue {
         }
     }
 
+    /// Schema 6 (D-147, WP10, design note 008 §5): the place of a photo, as the four fields and the three keys the place
+    /// filter uses, with an index. The columns of the photos already there are empty: a rebuild fills them, and so does
+    /// the engine's one pass over the sidecars, which `meta.place_columns = 'stale'` asks for until it has run. Made under
+    /// an immediate transaction that looks again at the version, so that two connections opening an older file at once
+    /// do not both add the columns.
+    fn migrate_to_6(&self) -> Result<()> {
+        self.conn.execute_batch("BEGIN IMMEDIATE")?;
+        let result = (|| -> Result<()> {
+            let found: u32 = self
+                .conn
+                .query_row("PRAGMA user_version", [], |r| r.get(0))?;
+            if found < 6 {
+                // (A column is added only if the file lacks it: a file made older by hand, in a test, already has
+                // them, and `ALTER TABLE` has no `IF NOT EXISTS`.)
+                for column in [
+                    "country",
+                    "region",
+                    "city",
+                    "country_code",
+                    "place_country",
+                    "place_region",
+                    "place_city",
+                ] {
+                    let present: i64 = self.conn.query_row(
+                        "SELECT COUNT(*) FROM pragma_table_info('photo') WHERE name = ?1",
+                        [column],
+                        |r| r.get(0),
+                    )?;
+                    if present == 0 {
+                        self.conn.execute_batch(&format!(
+                            "ALTER TABLE photo ADD COLUMN {column} TEXT"
+                        ))?;
+                    }
+                }
+                self.conn.execute_batch(
+                    "CREATE INDEX IF NOT EXISTS photo_place
+                       ON photo(place_country, place_region, place_city, country, region, city, country_code,
+                                effective_flag, effective_rating)
+                       WHERE place_country IS NOT NULL;
+                     INSERT OR REPLACE INTO meta(key, value) VALUES ('place_columns', 'stale');",
+                )?;
+                self.conn.pragma_update(None, "user_version", 6)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(self.conn.execute_batch("COMMIT")?),
+            Err(e) => {
+                let _ = self.conn.execute_batch("ROLLBACK");
+                Err(e)
+            }
+        }
+    }
+
     /// The path of the catalogue file, or `None` for an in-memory catalogue.
     pub fn path(&self) -> Option<&Path> {
         self.path.as_deref()
@@ -337,6 +394,52 @@ mod tests {
             })
             .unwrap();
         assert_eq!(synonyms, "");
+    }
+
+    #[test]
+    fn a_schema_5_file_gains_the_place_columns_on_open_and_asks_for_them_to_be_filled() {
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("c.db");
+        {
+            let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
+            // Made as schema 5 would have it: no place columns, no index, an older version stamped.
+            cat.conn.execute_batch("DROP INDEX photo_place").unwrap();
+            for column in [
+                "country",
+                "region",
+                "city",
+                "country_code",
+                "place_country",
+                "place_region",
+                "place_city",
+            ] {
+                cat.conn
+                    .execute_batch(&format!("ALTER TABLE photo DROP COLUMN {column}"))
+                    .unwrap();
+            }
+            cat.conn.pragma_update(None, "user_version", 5).unwrap();
+        }
+        let cat = Catalogue::open(&path).unwrap();
+        let version: u32 = cat
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(version, CURRENT_SCHEMA);
+        assert!(
+            cat.place_columns_stale().unwrap(),
+            "the columns exist and are empty: they are to be filled"
+        );
+        // The columns are usable, and the tree is empty until they are filled.
+        assert_eq!(cat.place_facets(&Default::default()).unwrap().placed, 0);
+        cat.mark_place_columns_fresh().unwrap();
+        assert!(!cat.place_columns_stale().unwrap());
+        // Opening it again does not migrate twice, nor ask again.
+        drop(cat);
+        let cat = Catalogue::open(&path).unwrap();
+        assert!(!cat.place_columns_stale().unwrap());
+        // A catalogue made at schema 6 never asks.
+        let fresh = Catalogue::open_in_memory(WorkspaceId::random()).unwrap();
+        assert!(!fresh.place_columns_stale().unwrap());
     }
 
     #[test]

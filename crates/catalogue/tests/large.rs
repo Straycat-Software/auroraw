@@ -113,3 +113,75 @@ fn queries_at_scale() {
         in_window.get()
     );
 }
+
+#[test]
+#[ignore = "a measurement: run on demand with AUR_LARGE=<photos>"]
+fn the_place_filter_at_scale() {
+    use auroraw_catalogue::{Filter, PlaceFilter};
+    let n: usize = std::env::var("AUR_LARGE")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(20_000);
+    let mut data = dataset::generate(n, 100);
+    data.place_photos(100);
+    let dir = temp_dir();
+    let cat = rebuild_to_file(
+        &dir.path().join("catalogue.db"),
+        WorkspaceId::random(),
+        &data.as_rebuild_input(),
+    )
+    .unwrap();
+    let time = |f: &dyn Fn()| {
+        let mut v = Vec::with_capacity(15);
+        for _ in 0..15 {
+            let t = Instant::now();
+            f();
+            v.push(ms(t.elapsed()));
+        }
+        v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        v[v.len() / 2]
+    };
+    let default = Filter::default();
+    let rated = Filter {
+        min_rating: 4,
+        ..Filter::default()
+    };
+    let tree = cat.place_facets(&default).unwrap();
+    let nodes: usize = {
+        fn count(nodes: &[auroraw_catalogue::PlaceNode]) -> usize {
+            nodes.iter().map(|n| 1 + count(&n.children)).sum()
+        }
+        count(&tree.countries)
+    };
+    let facets = time(&|| {
+        cat.place_facets(&default).unwrap();
+    });
+    let facets_rated = time(&|| {
+        cat.place_facets(&rated).unwrap();
+    });
+    let json = time(&|| {
+        cat.place_facets(&default).unwrap().to_json();
+    });
+    let city = tree.countries[0].children[0].filter.clone();
+    let by_place = Filter {
+        place: Some(city),
+        ..Filter::default()
+    };
+    let first_page = time(&|| {
+        cat.list_filtered(&by_place, None, 200).unwrap();
+    });
+    let by_country = Filter {
+        place: Some(PlaceFilter {
+            country: tree.countries[0].filter.country.clone(),
+            ..PlaceFilter::default()
+        }),
+        ..Filter::default()
+    };
+    let first_page_country = time(&|| {
+        cat.list_filtered(&by_country, None, 200).unwrap();
+    });
+    println!(
+        "{n} photos, {} placed, {nodes} nodes in the tree\n  place_facets {facets:.1} ms ({facets_rated:.1} ms with a rating filter, {json:.1} ms with the JSON)\n  first page of a region {first_page:.2} ms, of the biggest country {first_page_country:.2} ms",
+        tree.placed
+    );
+}

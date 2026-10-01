@@ -1264,6 +1264,8 @@ impl qobject::PhotoGrid {
                 .map(|colour| colour.name().to_string()),
             collection: auroraw_types::CollectionId::from_str(&self.collection_filter.to_string())
                 .ok(),
+            // (The place menu of the filter bar sets it: the interface's part of design note 008 §5.)
+            place: None,
         }
     }
 

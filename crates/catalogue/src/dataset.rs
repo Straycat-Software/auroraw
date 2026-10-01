@@ -57,6 +57,41 @@ pub struct Dataset {
 }
 
 impl Dataset {
+    /// Puts the photos in places, for the place filter's tests and measurements (design note 008 §5): about two
+    /// photos in three get a place, from a world of 30 countries (a few without regions, a few with a code only), up to
+    /// 8 regions each and up to 20 cities a region, a few countries having most of the photos; one place in ten is
+    /// written in capitals, so that the filter has spellings to fold. A generator of its own, so that the rest of the
+    /// dataset (and every test that depends on it) is the same with or without places.
+    pub fn place_photos(&mut self, seed: u64) {
+        let mut r = fastrand::Rng::with_seed(seed ^ 0x0070_6c61_6365);
+        for (photo, stat) in &mut self.photos {
+            if r.u8(0..3) == 0 {
+                continue;
+            }
+            // A few countries have most of the photos.
+            let country = r.usize(0..30).min(r.usize(0..30));
+            let regions = country % 9; // 0 to 8: some countries have none
+            let region = (regions > 0).then(|| r.usize(0..regions));
+            let city = r.usize(0..20);
+            let shout = |text: String, r: &mut fastrand::Rng| {
+                if r.u8(0..10) == 0 {
+                    text.to_uppercase()
+                } else {
+                    text
+                }
+            };
+            let m = &mut photo.meta;
+            m.country = Some(shout(format!("Country {country:02}"), &mut r));
+            m.country_code = (!country.is_multiple_of(7)).then(|| format!("C{country:02}"));
+            m.region = region.map(|region| shout(format!("Région {country:02}-{region}"), &mut r));
+            m.city = Some(shout(
+                format!("Cité {country:02}-{}-{city}", region.unwrap_or(0)),
+                &mut r,
+            ));
+            *stat = stat_of(&photo.to_bytes());
+        }
+    }
+
     /// A [`crate::RebuildInput`] borrowing this dataset.
     pub fn as_rebuild_input(&self) -> crate::RebuildInput<'_> {
         crate::RebuildInput {

@@ -178,6 +178,53 @@ The catalogue is derived from the sidecars and can be rebuilt, so it may keep wh
   section of the filter panel when WP11 builds it; the choice is Bob's. It is the same facet that WP11's
   smart collections will save.
 
+### 5.1 As built: slice 3, the engine's side
+
+The catalogue is at **schema 6**, and the tree and the filter are in the `catalogue` crate (`place.rs`); the engine
+only has to write the sidecar, as it does, and the columns follow. What was decided building it:
+
+- **The photo row keeps the four fields** as the sidecar says them (`country`, `region`, `city`, `country_code`) **and
+  three keys** (`place_country`, `place_region`, `place_city`) that the filter selects and groups by. A key is the text
+  *folded* (`fold_place`): case and diacritics dropped through Unicode decomposition (`icu_normalizer`, already in the
+  build through `idna`, so no new package), `ß` as `ss`, `æ`, `œ`, `ø`, `đ`, `ł`, `ħ` as their plain letters, hyphens, dashes,
+  apostrophes and white space made one, so that `Trois-Rivières` and `Trois Rivieres` are one place. **A country's key is
+  its ISO code when the photo has one** (upper-case), else its folded name: `Germany`, `Allemagne` and `Deutschland` next
+  to `DE`, written by three tools, are one country. A photo of the same country written by a tool that gave no code is a
+  node of its own, by name, and the tree then shows two of them; the alternative (matching the names of photos that
+  have a code) would make a key depend on the order the photos are read, which a rebuild must not.
+- **A key is opaque.** Whoever shows a place gives the key back and never makes one. `Filter.place` is a
+  `PlaceFilter { country, region, city }` of keys, each optional, from the most general down; the empty key of a region
+  or a city means "none".
+- **The tree** is `Catalogue::place_facets(&Filter)`: country, region, city, with the number of photos at each node, of
+  **the photos that pass every filter but the place** (so that choosing Québec still shows Ontario). A node carries its
+  label, its count, the filter that selects exactly its photos, and its children. A photo with a country and a city but
+  **no region** is a city directly under its country, whose filter has the empty region key (so that it is told apart
+  from the same city in a region). A photo with **no country is in no node**, and the filter cannot select it; so it is not
+  counted in `placed`, the number of photos in view that have a country. (With a field a person emptied staying empty,
+  §4, such photos are a settled state and no longer a gap the next run fills; a "(no country)" node would reach them,
+  and is not built.)
+- **The label of a node** is the spelling most photos have; on a tie, the best written: mixed case before capitals or lower
+  case, then the most accents kept, then the smallest text. It is computed from the photos in view, so a node whose
+  only photos in view are written in capitals shows capitals.
+- **The contract of the library's menu is the catalogue's**: `PlaceFacets::to_json()` is the text the menu reads
+  (`{ "placed": N, "countries": [ { "label", "count", "filter", "children": [..] } ] }`), `PlaceFilter::from_json` and
+  `to_json` are the text it gives back, so the interface wires three calls and writes no JSON of its own.
+- **An index that holds the tree**: the tree is read from a partial covering index (`photo_place`, only the photos that
+  have a country: the keys, the four texts, the flag and the rating), so that the common case does not touch the table.
+  Measured on 100,000 photos, 46,000 of them placed, 2,400 nodes in the tree, in release: **19 ms** for the tree without
+  a filter and 12 ms with a rating filter (120 ms and 41 ms with an index on the keys alone, a table row looked up for
+  each photo), 28 ms with the JSON; the first page of a region's photos 0.5 ms and of the biggest country's 6 ms. A
+  filter on keywords, labels, series or a collection is not in the index and costs a lookup a photo. It runs on the
+  caller's thread: a frame and a bit at 100,000 photos, nothing at 20,000.
+- **A catalogue made before schema 6** has the columns empty. A rebuild fills them; and so does one pass over the
+  sidecars that the engine does when it opens the catalogue (`meta.place_columns = 'stale'` asks for it, until it is
+  done): the coordinator walks the photos 200 at a time between the commands of the person, reading each sidecar when it
+  writes the columns so that a photo edited meanwhile is never overwritten with what it said before, and sends
+  `Event::PlaceColumnsFilled` once, for the interface to read the tree again.
+
+What is left of slice 3 is the interface's: wiring the three calls into the grid, and telling the menu when the places of
+the photos in view change without the photos changing (D-151, the review of #58).
+
 ## 6. Slices [proposed]
 
 Each a pull request, with its tests:
