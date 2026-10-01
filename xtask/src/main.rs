@@ -135,6 +135,8 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("duplicates-en", "duplicates"),
     ("xmp-export", "xmp-export"),
     ("xmp-export-held-back", "xmp-export-held-back"),
+    ("place-names", "place-names"),
+    ("place-names-done", "place-names-done"),
     ("metadata-en", "metadata"),
     ("info-en", "info"),
     ("collections-en", "collections"),

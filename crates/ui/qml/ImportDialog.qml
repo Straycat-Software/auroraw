@@ -14,6 +14,9 @@ AppDialog {
     required property var sources
     required property var flow
     required property var host
+    required property var placeNames
+    // The interface's language (`en`, `fr`): the names are given in it.
+    required property string language
     property var hostWindow: null
 
     preferredWidth: 880
@@ -31,6 +34,7 @@ AppDialog {
     property alias templateButton: templateButton
     property alias foldersButton: foldersButton
     property alias addDestinationBox: addDestinationBox
+    property alias findPlacesBox: findPlacesBox
     property alias sourcePicker: sourcePicker
     property alias destinationPicker: destinationPicker
     property alias backupPicker: backupPicker
@@ -40,6 +44,13 @@ AppDialog {
     // "template" (the folders and names below) or "folders" (the card's own).
     property string layoutChoice: "template"
     property bool addDestination: true
+    // Find the place names of the photos this import registers, once it has finished (design note 008 §4): off until
+    // the person turns it on, and only with the places file (`placeNames.installed()`).
+    property bool findPlaces: false
+    property bool placesInstalled: false
+    // The run of place names that follows an import that asked for it, and what the import itself said.
+    property string placeJob: ""
+    property string importStatus: ""
     // What the fields mean for the catalogue (see `ImportForm.inspect`).
     property bool hasFolders: false
     property string folders: ""
@@ -53,6 +64,10 @@ AppDialog {
     property bool finished: false
     property string status: ""
     property real progress: 0
+
+    readonly property string findPlacesHint: placesInstalled
+        ? qsTr("Looks up where each photo was taken, without the internet, and fills in its city, region and country where they are empty. For the photos that enter the catalogue.")
+        : qsTr("Place names are not installed.")
 
     readonly property string destinationNote: {
         if (kind === "covered")
@@ -77,6 +92,10 @@ AppDialog {
         templateField.text = saved.template
         layoutChoice = saved.layout
         addDestination = saved.add_destination
+        findPlaces = saved.find_places === true
+        placesInstalled = dialog.placeNames.installed()
+        placeJob = ""
+        importStatus = ""
         finished = false
         status = ""
         progress = 0
@@ -120,7 +139,8 @@ AppDialog {
             backup: backupField.text.trim(),
             template: templateField.text.trim(),
             layout: layoutChoice,
-            add_destination: addDestination
+            add_destination: addDestination,
+            find_places: findPlaces
         }
     }
 
@@ -164,6 +184,17 @@ AppDialog {
                 ? qsTr("All %n file(s) copied and verified.", "", copied)
                 : qsTr("%1 copied, %2 already in the library, %3 failed. Run it again to retry.")
                     .arg(copied).arg(skipped).arg(failed)
+            // The place names of what it registered, when the person asked for them: one run, one undoable step.
+            dialog.importStatus = dialog.status
+            if (dialog.findPlaces && dialog.placesInstalled) {
+                const started = dialog.placeNames.startAfterImport(job, dialog.language)
+                if (started.indexOf("error:") === 0) {
+                    dialog.status = dialog.importStatus + " " + qsTr("The place names could not be looked up: %1").arg(started.substring(6))
+                } else if (started !== "") {
+                    dialog.placeJob = started
+                    dialog.status = dialog.importStatus + " " + qsTr("Finding the place names…")
+                }
+            }
             // A destination made a source for this import: its other photos, if any, are scanned now
             // (the imported ones are known already).
             const added = dialog.form.takeAddedSource()
@@ -171,6 +202,16 @@ AppDialog {
                 dialog.flow.scanFolder(added)
             else
                 dialog.sources.refresh()
+        }
+        function onPlaceNamesFound(job, report, cancelled) {
+            if (job !== dialog.placeJob)
+                return
+            dialog.placeJob = ""
+            const r = JSON.parse(report)
+            dialog.status = dialog.importStatus + " "
+                + (cancelled ? qsTr("Place names: stopped.")
+                   : r.filled > 0 ? qsTr("Place names found for %n photo(s).", "", r.filled)
+                                  : qsTr("No place names were found: the photos have no position, or are in no country."))
         }
         function onImportAborted(job, reason) {
             if (job !== dialog.form.job)
@@ -343,6 +384,24 @@ AppDialog {
                 Accessible.name: qsTr("Browse for: %1").arg(qsTr("Backup folder (optional)"))
                 enabled: !dialog.browsing && !dialog.importing
                 onClicked: backupPicker.pick()
+            }
+
+            AppCheckBox {
+                id: findPlacesBox
+                Layout.columnSpan: 3
+                enabled: !dialog.importing && dialog.placesInstalled
+                text: qsTr("Find the place names of the imported photos")
+                checked: dialog.findPlaces
+                onToggled: dialog.findPlaces = checked
+                Accessible.description: dialog.findPlacesHint
+            }
+            Label {
+                Layout.columnSpan: 3
+                Layout.fillWidth: true
+                Layout.leftMargin: findPlacesBox.indicator.width + findPlacesBox.spacing
+                wrapMode: Text.Wrap
+                color: Theme.quiet
+                text: dialog.findPlacesHint
             }
 
             AppProgressBar {

@@ -73,6 +73,48 @@ does not carry (most photos have no GPS position, for instance) is left off the 
 
 ![The Info panel](images/info.png)
 
+## Place names
+
+**Tools ▸ Find place names…** (`Ctrl+Shift+L`) fills in the **City**, **Region**, **Country** and **Country code**
+fields of the Metadata tab from where a photo was taken. It uses the photo's position (the one in the file, or the
+one you corrected) and a file of places that comes with Auroraw, so nothing is sent anywhere and it works without the
+internet.
+
+![The Find place names dialog, with a photo selected](images/place-names.png)
+
+- **Which photos.** The selected photos, or every photo of one source.
+- **Only what is empty.** A field you typed, or that another application wrote, is never changed, and neither is
+  **Sublocation** (the market, *Chez Marie*). If you change one of the four fields afterwards, even by typing the
+  same word again or by clearing it, Auroraw takes that as your answer and does not touch it again.
+- **In which language.** The country and the region are named in the language of the interface (English or
+  French); the city is written the way the place spells it (*Montréal*, whatever the language).
+- **Also update the names Auroraw found earlier.** For photos whose position was corrected since (a GPS track
+  matched, a hand correction), or when you changed the language: the names Auroraw wrote and you have not touched
+  follow the new position. A name you edited or typed is still left as it is.
+- **One step.** The whole run is a single step, whatever the number of photos, and `Ctrl+Z` takes it back for all
+  of them. You can stop it with **Stop**; what it found stays, as one step.
+- **What it says at the end**: how many photos got names, how many already had their place, how many have no
+  position, and how many are in no country (open water, a pole).
+
+![The end of a run: names found, and the photos that have none](images/place-names-done.png)
+
+The **city is the nearest town** to the position, not the municipality that contains it: a photo taken in a borough
+of a large city reads as that city, and an independent town inside it as the city around it. Near a border the answer
+can be wrong by a kilometre or two, because the boundaries are simplified. A photo far from any town has a region and
+a country and no city, which is true.
+
+**At import.** The Import dialog has a check box, **Find the place names of the imported photos**, off until you turn
+it on and remembered after that. It looks the names up once the import has finished, for the photos that entered the
+catalogue, as one step.
+
+**If the file of places is not there** (a copy of Auroraw built without it), the dialog says *Place names are not
+installed* and the rest of the application is unaffected.
+
+**Where the data comes from.** The towns are GeoNames' (Creative Commons Attribution 4.0, <https://www.geonames.org/>);
+the countries and regions are Natural Earth's (public domain). The borders are drawn as Natural Earth draws them, in its
+default worldview: Auroraw takes no position on a disputed border, and a name you correct is never overwritten. The
+**About** window says so too.
+
 ## Collections
 
 The **Collections** tab groups photos by hand, for anything the vocabulary is not about — an album, a delivery,

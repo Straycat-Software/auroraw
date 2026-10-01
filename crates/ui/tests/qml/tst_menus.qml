@@ -43,7 +43,7 @@ AppTestCase {
         // History, then the clipboard, then Select all.
         compare(kinds(edit), ["Undo", "Redo", "-", "Cut", "Copy", "Paste", "Delete", "-", "Select all", "Select none", "Invert selection"])
         // Issue #14: Import, Keywords and Duplicate photos, grouped in their own section.
-        compare(kinds(tools), ["Import…", "Export XMP files…", "-", "Keywords", "-", "Duplicate photos…"])
+        compare(kinds(tools), ["Import…", "Export XMP files…", "Find place names…", "-", "Keywords", "-", "Duplicate photos…"])
     }
 
     function test_every_command_shows_its_shortcut_the_way_the_platform_writes_it() {
