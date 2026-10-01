@@ -408,7 +408,7 @@ Black levels are per channel (the spike averaged them), and highlight reconstruc
 - **Device loss** is handled by re-creating the device and replaying the render request.
 - wgpu's OpenGL back end is **not supported** (it lost the device in spike 1).
 - The adapter is the best real GPU (discrete, then integrated), with a setting to override.
-- On DirectX 12 the shader compiler is **FXC, fixed by the engine** (D-148), so that every machine behaves like the
+- On DirectX 12 the shader compiler is **FXC, fixed by the engine** (D-149), so that every machine behaves like the
   continuous-integration runner and nothing is shipped beside the application. It costs shader model 5.x: no `f16`
   arithmetic and no subgroup operations while it is the compiler.
 
