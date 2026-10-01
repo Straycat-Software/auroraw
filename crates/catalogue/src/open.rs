@@ -5,6 +5,7 @@ use auroraw_types::WorkspaceId;
 use rusqlite::{Connection, OptionalExtension};
 
 use crate::error::{CatalogueError, Result};
+use crate::place::PLACE_KEYS_VERSION;
 
 const SCHEMA: &str = include_str!("schema.sql");
 const INDEXES: &str = include_str!("indexes.sql");
@@ -94,7 +95,25 @@ impl Catalogue {
         if found < 6 {
             cat.migrate_to_6()?;
         }
+        cat.check_place_keys()?;
         Ok(cat)
+    }
+
+    /// Asks for the place columns to be filled again when the keys in them were made by another version of the keys
+    /// (design note 008 §5.1, [`PLACE_KEYS_VERSION`]): a file made before the version was recorded has none, and
+    /// is taken to have another.
+    fn check_place_keys(&self) -> Result<()> {
+        if self.meta("place_keys")?.as_deref() != Some(PLACE_KEYS_VERSION) {
+            self.conn.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES ('place_columns', 'stale')",
+                [],
+            )?;
+            self.conn.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES ('place_keys', ?1)",
+                [PLACE_KEYS_VERSION],
+            )?;
+        }
+        Ok(())
     }
 
     fn create_schema(&mut self, workspace_id: WorkspaceId) -> Result<()> {
@@ -104,6 +123,10 @@ impl Catalogue {
         tx.execute(
             "INSERT INTO meta(key, value) VALUES ('workspace_id', ?1)",
             [workspace_id.to_string()],
+        )?;
+        tx.execute(
+            "INSERT INTO meta(key, value) VALUES ('place_keys', ?1)",
+            [PLACE_KEYS_VERSION],
         )?;
         tx.pragma_update(None, "user_version", CURRENT_SCHEMA)?;
         tx.commit()?;
@@ -394,6 +417,49 @@ mod tests {
             })
             .unwrap();
         assert_eq!(synonyms, "");
+    }
+
+    #[test]
+    fn keys_made_by_another_version_of_the_keys_are_made_again() {
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("c.db");
+        {
+            let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
+            assert_eq!(
+                cat.meta("place_keys").unwrap().as_deref(),
+                Some(PLACE_KEYS_VERSION),
+                "a new catalogue records the version its keys are made with"
+            );
+            assert!(!cat.place_columns_stale().unwrap());
+            // Made by a program with other keys (or before the version was recorded: no value at all).
+            cat.conn
+                .execute(
+                    "UPDATE meta SET value = 'older' WHERE key = 'place_keys'",
+                    [],
+                )
+                .unwrap();
+        }
+        let cat = Catalogue::open(&path).unwrap();
+        assert!(
+            cat.place_columns_stale().unwrap(),
+            "the columns are to be filled again"
+        );
+        assert_eq!(
+            cat.meta("place_keys").unwrap().as_deref(),
+            Some(PLACE_KEYS_VERSION)
+        );
+        cat.mark_place_columns_fresh().unwrap();
+        drop(cat);
+        // Opened again by the same version: nothing to ask.
+        let cat = Catalogue::open(&path).unwrap();
+        assert!(!cat.place_columns_stale().unwrap());
+        // No version recorded at all is another version.
+        cat.conn
+            .execute("DELETE FROM meta WHERE key = 'place_keys'", [])
+            .unwrap();
+        drop(cat);
+        let cat = Catalogue::open(&path).unwrap();
+        assert!(cat.place_columns_stale().unwrap());
     }
 
     #[test]

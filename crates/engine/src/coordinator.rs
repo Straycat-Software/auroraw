@@ -388,6 +388,8 @@ pub(crate) struct Coordinator {
     place_queue: VecDeque<PhotoId>,
     /// How many photos that pass covers in all, for its event.
     place_total: usize,
+    /// How many of them it could not read or write, for its event.
+    place_failed: usize,
 }
 
 /// A path refresh waiting for its turn.
@@ -454,6 +456,7 @@ impl Coordinator {
             series_gap: crate::series_detect::DEFAULT_GAP,
             place_queue: VecDeque::new(),
             place_total: 0,
+            place_failed: 0,
         }
     }
 
@@ -464,6 +467,7 @@ impl Coordinator {
             && let Ok(ids) = self.catalogue.photo_ids()
         {
             self.place_total = ids.len();
+            self.place_failed = 0;
             self.place_queue = ids.into();
             let _ = self.inbound.send(Inbound::IndexPlaces);
         }
@@ -477,16 +481,23 @@ impl Coordinator {
             let Some(id) = self.place_queue.pop_front() else {
                 break;
             };
-            if let Ok((photo, _)) = self.read_photo(&id) {
-                let _ = self
-                    .catalogue
-                    .apply_place_columns(&id, &auroraw_catalogue::PlaceColumns::of(&photo.meta));
+            // A photo whose sidecar cannot be read (or whose row cannot be written) is counted, not retried: leaving
+            // the marker would read every sidecar of the library again at each open for the sake of one. Its columns
+            // are made when its sidecar is next read or written.
+            let done = self.read_photo(&id).ok().and_then(|(photo, _)| {
+                self.catalogue
+                    .apply_place_columns(&id, &auroraw_catalogue::PlaceColumns::of(&photo.meta))
+                    .ok()
+            });
+            if done.is_none() {
+                self.place_failed += 1;
             }
         }
         if self.place_queue.is_empty() {
             let _ = self.catalogue.mark_place_columns_fresh();
             let _ = self.events.send(Event::PlaceColumnsFilled {
                 photos: self.place_total,
+                failed: self.place_failed,
             });
         } else {
             let _ = self.inbound.send(Inbound::IndexPlaces);

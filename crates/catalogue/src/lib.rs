@@ -21,6 +21,7 @@
 //!   here from spike 3, M1 plan WP2).
 
 mod collections;
+mod country;
 mod effective;
 mod error;
 mod external;

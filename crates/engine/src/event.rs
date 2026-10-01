@@ -126,11 +126,15 @@ pub enum Event {
         cancelled: bool,
     },
     /// The engine read the sidecars once to fill the place columns of a catalogue made before they existed (schema 6,
-    /// design note 008 §5): the places of the photos can now be listed and filtered by. Sent once, when it is done;
-    /// nothing is sent for the photos one by one.
+    /// design note 008 §5), or made with other keys than this program makes (`PLACE_KEYS_VERSION`): the places of the
+    /// photos can now be listed and filtered by. Sent once, when it is done; nothing is sent for the photos one by one.
+    /// Until then the tree of places says it is `pending`.
     PlaceColumnsFilled {
         /// How many photos it covered.
         photos: usize,
+        /// How many of them it could not read (a sidecar that is gone or unreadable) or write. Their places are not in
+        /// the tree until their sidecars are next read or written.
+        failed: usize,
     },
     /// A background job made progress.
     JobProgress {

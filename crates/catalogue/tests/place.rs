@@ -299,7 +299,7 @@ fn a_tie_between_spellings_goes_to_the_best_written_so_that_the_label_does_not_f
 }
 
 #[test]
-fn a_country_is_its_code_when_the_photo_has_one_so_that_three_names_are_one_country() {
+fn a_country_is_its_code_so_that_names_in_any_language_are_one_country() {
     let (cat, _dir, _) = built(&[
         spot("Germany", "Bayern", "München").with_code("DE"),
         spot("Germany", "Bayern", "München").with_code("DE"),
@@ -313,7 +313,14 @@ fn a_country_is_its_code_when_the_photo_has_one_so_that_three_names_are_one_coun
             Some("Berlin"),
             Some("Deutschland"),
         ),
-        // The same country, written by a tool that gave no code: its own node, by name.
+        // The same country, written by a tool that gave no code: the table of countries knows the name.
+        spot("Germany", "Bayern", "München").written(
+            Some("München"),
+            Some("Bayern"),
+            Some("germany"),
+        ),
+        // A name the table does not know (Auroraw ships English and French), and no code: a node of its own, as it
+        // was before the table. The table can join nodes, never lose one.
         spot("Germany", "Bayern", "München").written(
             Some("München"),
             Some("Bayern"),
@@ -327,9 +334,9 @@ fn a_country_is_its_code_when_the_photo_has_one_so_that_three_names_are_one_coun
             "Deutschland 1",
             " Bayern 1",
             "  München 1",
-            "Germany 4",
-            " Bayern 2",
-            "  München 2",
+            "Germany 5",
+            " Bayern 3",
+            "  München 3",
             " Berlin 2",
             "  Berlin 2",
         ]
@@ -339,6 +346,119 @@ fn a_country_is_its_code_when_the_photo_has_one_so_that_three_names_are_one_coun
         facets.countries[0].filter.country.as_deref(),
         Some("deutschland")
     );
+}
+
+#[test]
+fn a_country_written_with_and_without_a_code_is_one_node() {
+    // What a library that mixes Auroraw's own fill and another application's holds (the review of the filter's engine):
+    // `Canada` with `CA`, `Canada` alone, the alpha-3 code the IPTC standard also allows, a code in the country field,
+    // and a code with no name.
+    let (cat, _dir, ids) = built(&[
+        spot("Canada", "Québec", "Montréal").with_code("CA"),
+        spot("Canada", "Québec", "Montréal").with_code("CA"),
+        spot("Canada", "Québec", "Montréal").with_code("CA"),
+        spot("Canada", "Ontario", "Toronto").written(
+            Some("Toronto"),
+            Some("Ontario"),
+            Some("Canada"),
+        ),
+        spot("Canada", "Ontario", "Toronto").written(
+            Some("Toronto"),
+            Some("Ontario"),
+            Some("CANADA"),
+        ),
+        spot("Canada", "Québec", "Montréal").with_code("CAN"),
+        spot("Canada", "Ontario", "Toronto").written(Some("Toronto"), Some("Ontario"), Some("CA")),
+        spot("Canada", "", "")
+            .with_code("CA")
+            .written(None, None, None),
+        spot("Germany", "Berlin", "Berlin").written(Some("Berlin"), Some("Berlin"), Some("DE")),
+        spot("Germany", "Berlin", "Berlin").written(
+            Some("Berlin"),
+            Some("Berlin"),
+            Some("Allemagne"),
+        ),
+        spot("Germany", "Berlin", "Berlin")
+            .with_code("DEU")
+            .written(Some("Berlin"), Some("Berlin"), Some("Germany")),
+        spot("United States", "California", "Los Angeles").written(
+            Some("Los Angeles"),
+            Some("California"),
+            Some("USA"),
+        ),
+        spot("United States", "California", "Los Angeles")
+            .with_code("US")
+            .written(Some("Los Angeles"), Some("California"), Some("États-Unis")),
+    ]);
+    let facets = cat.place_facets(&all()).unwrap();
+    assert_eq!(
+        outline(&facets),
+        // (The labels of Germany and the United States are ties between spellings, told apart by how well they are
+        // written, then by the smallest text: the rules have tests of their own.)
+        [
+            "Allemagne 3",
+            " Berlin 3",
+            "  Berlin 3",
+            "Canada 8",
+            " Ontario 3",
+            "  Toronto 3",
+            " Québec 4",
+            "  Montréal 4",
+            "États-Unis 2",
+            " California 2",
+            "  Los Angeles 2",
+        ],
+        "three countries, not seven"
+    );
+    let keys: Vec<_> = facets
+        .countries
+        .iter()
+        .map(|c| c.filter.country.clone().unwrap())
+        .collect();
+    assert_eq!(keys, ["DE", "CA", "US"]);
+    // And the node selects all of them, whatever the way each was written.
+    let canada = Filter {
+        place: Some(facets.countries[1].filter.clone()),
+        ..all()
+    };
+    let rows = every_row(&cat, &canada);
+    let expected: BTreeSet<_> = ids[..8].iter().copied().collect();
+    assert_eq!(rows.iter().copied().collect::<BTreeSet<_>>(), expected);
+}
+
+#[test]
+fn a_node_is_labelled_by_the_name_photos_give_it_not_by_a_code() {
+    let (cat, _dir, _) = built(&[
+        spot("", "", "").with_code("CA").written(None, None, None),
+        spot("", "", "").with_code("CA").written(None, None, None),
+        spot("", "", "").with_code("CA").written(None, None, None),
+        spot("Canada", "", "")
+            .with_code("CA")
+            .written(None, None, Some("Canada")),
+        spot("Canada", "", "")
+            .with_code("CA")
+            .written(None, None, Some("Canada")),
+    ]);
+    assert_eq!(
+        outline(&cat.place_facets(&all()).unwrap()),
+        ["Canada 5"],
+        "the code labels a node only when no photo names it"
+    );
+}
+
+#[test]
+fn while_the_columns_are_filled_the_tree_says_so() {
+    let (cat, _dir, _) = built(&[spot("Canada", "Québec", "Montréal").with_code("CA")]);
+    let facets = cat.place_facets(&all()).unwrap();
+    assert!(!facets.pending);
+    // The first open after the upgrade: the marker the engine's pass clears at its end.
+    cat.mark_place_columns_stale().unwrap();
+    let facets = cat.place_facets(&all()).unwrap();
+    assert!(facets.pending, "the answer may be a part of the places");
+    let value: Value = serde_json::from_str(&facets.to_json()).unwrap();
+    assert_eq!(value["pending"], json!(true));
+    cat.mark_place_columns_fresh().unwrap();
+    assert!(!cat.place_facets(&all()).unwrap().pending);
 }
 
 #[test]
@@ -379,7 +499,7 @@ fn the_other_filters_apply_and_the_places_own_does_not() {
     // Choosing Québec still shows Ontario and France: the tree leaves out the place it is asked for.
     let chosen = Filter {
         place: Some(PlaceFilter {
-            country: Some("canada".into()),
+            country: Some("CA".into()),
             region: Some("quebec".into()),
             city: None,
         }),
@@ -437,7 +557,7 @@ fn writing_a_photos_metadata_moves_it_in_the_tree() {
     assert_eq!(outline(&facets), ["Canada 1", " Québec 1", "  Montréal 1"]);
     let canada = Filter {
         place: Some(PlaceFilter {
-            country: Some("canada".into()),
+            country: Some("CA".into()),
             ..PlaceFilter::default()
         }),
         ..all()
@@ -488,6 +608,7 @@ fn the_tree_is_json_in_the_shape_the_menu_reads() {
         value,
         json!({
             "placed": 2,
+            "pending": false,
             "countries": [
                 { "label": "Canada", "count": 1, "filter": { "country": "CA" }, "children": [
                     { "label": "Québec", "count": 1, "filter": { "country": "CA", "region": "quebec" }, "children": [
@@ -513,7 +634,10 @@ fn an_empty_catalogue_has_an_empty_tree() {
     let (cat, _dir, _) = built(&[]);
     let facets = cat.place_facets(&Filter::default()).unwrap();
     assert_eq!(facets, PlaceFacets::default());
-    assert_eq!(facets.to_json(), r#"{"countries":[],"placed":0}"#);
+    assert_eq!(
+        facets.to_json(),
+        r#"{"countries":[],"pending":false,"placed":0}"#
+    );
 }
 
 /// The tree the logical places say, as the outline lines the catalogue's tree is read as.
@@ -569,7 +693,8 @@ type Country = (&'static str, &'static str, &'static [Region]);
 #[test]
 fn a_larger_catalogue_gives_the_tree_its_logical_places_say_and_every_node_selects_its_photos() {
     // 1,500 photos in a small world, written the way several hands write them: mostly as the place is spelt, a tenth in
-    // capitals or lower case, a country always with its code.
+    // capitals or lower case, a country with its code three times in four and with its name alone otherwise (a name the
+    // table of countries knows, so that it is the same country).
     let world: [Country; 6] = [
         (
             "Canada",
@@ -598,7 +723,7 @@ fn a_larger_catalogue_gives_the_tree_its_logical_places_say_and_every_node_selec
         ),
         ("Singapore", "SG", &[("", &["Singapore"])]),
         (
-            "Brasil",
+            "Brazil",
             "BR",
             &[
                 ("São Paulo", &["São Paulo", "Santos"]),
@@ -644,14 +769,16 @@ fn a_larger_catalogue_gives_the_tree_its_logical_places_say_and_every_node_selec
                 let city_written = (!city.is_empty()).then(|| variant(city, &mut r));
                 let region_written = (!region.is_empty()).then(|| variant(region, &mut r));
                 let country_written = variant(country, &mut r);
-                spot(country, region, city)
-                    .with_code(code)
-                    .written(
-                        city_written.as_deref(),
-                        region_written.as_deref(),
-                        Some(&country_written),
-                    )
-                    .rated(rating)
+                let spot = spot(country, region, city).written(
+                    city_written.as_deref(),
+                    region_written.as_deref(),
+                    Some(&country_written),
+                );
+                if r.u8(0..4) == 0 {
+                    spot.rated(rating)
+                } else {
+                    spot.with_code(code).rated(rating)
+                }
             }
         });
     }

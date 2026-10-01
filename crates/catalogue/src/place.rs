@@ -6,9 +6,11 @@
 //!
 //! **The keys.** The text of a place field comes from several hands (Auroraw, another application, a person), so
 //! `Montreal`, `Montréal` and `MONTRÉAL` must be one place: a key is the text [folded](fold_place) for case and
-//! diacritics. A country's key is its ISO code when the photo has one (so that `Germany`, `Allemagne` and
-//! `Deutschland`, written by three tools next to the same `DE`, are one country), else its folded name. A key is
-//! **opaque**: whoever shows a place gives the key back and never makes one.
+//! diacritics. A country's key is its ISO 3166-1 alpha-2 code, found from the photo's own fields: its code field if that
+//! says a country, else its name looked up in a fixed table of the names countries go by (`country.rs`),
+//! else the folded text (so that `Canada` with a code and `canada` without one are one country, and so are `Germany`,
+//! `Allemagne` and `Deutschland` written next to the same `DE`). A key is **opaque**: whoever shows a place gives the
+//! key back and never makes one.
 //!
 //! **The tree** is country, then region, then city. A photo with a country and a city but no region is under its
 //! country directly, as a city whose region is the empty key. A photo with no country is in no node (it has a
@@ -79,6 +81,14 @@ pub fn fold_place(text: &str) -> String {
     out
 }
 
+/// The version of the keys: of [`fold_place`] and of the table of countries (`country_names.tsv`). The keys are stored in
+/// the photo rows, so a correction of either (a letter that does not decompose, a country named another way) leaves the
+/// stored keys as they were until the columns are made again: the catalogue records the version it made them with
+/// (`meta.place_keys`) and, when it is opened by a program with another, asks for them to be filled again from the
+/// sidecars. **Raise it with any change that gives some text another key**; a test that holds a fixed list of keys
+/// fails until it is.
+pub const PLACE_KEYS_VERSION: &str = "1";
+
 /// What the photo row keeps of a photo's place: the four fields as the sidecar says them, and the keys the filter
 /// uses (see the module documentation). `None` for a field that is empty.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -91,7 +101,8 @@ pub struct PlaceColumns {
     pub country: Option<String>,
     /// `Iptc4xmpCore:CountryCode`.
     pub country_code: Option<String>,
-    /// The country's key: its ISO code, upper-case, else its folded name.
+    /// The country's key: its ISO alpha-2 code, from its code field or its name (see `country.rs`), else the
+    /// folded text.
     pub country_key: Option<String>,
     /// The region's key: its folded name.
     pub region_key: Option<String>,
@@ -121,10 +132,7 @@ impl PlaceColumns {
             non_empty(&meta.country),
             non_empty(&meta.country_code),
         );
-        let country_key = country_code
-            .as_ref()
-            .map(|code| code.to_uppercase())
-            .or_else(|| key_of(&country));
+        let country_key = crate::country::country_key(country_code.as_deref(), country.as_deref());
         PlaceColumns {
             region_key: key_of(&region),
             city_key: key_of(&city),
@@ -246,14 +254,19 @@ pub struct PlaceFacets {
     pub placed: u64,
     /// The countries, by label.
     pub countries: Vec<PlaceNode>,
+    /// Whether the place columns are still being filled from the sidecars (the first open after the upgrade to
+    /// schema 6, or after a change of the folding): the tree is then a part of the places, or none, and `placed: 0`
+    /// does not mean that no photo has a place.
+    pub pending: bool,
 }
 
 impl PlaceFacets {
-    /// The tree as the JSON text the library's place menu reads: `{ "placed": N, "countries": [Node] }`, a Node being
-    /// `{ "label", "count", "filter", "children": [Node] }`.
+    /// The tree as the JSON text the library's place menu reads: `{ "placed": N, "pending": bool, "countries": [Node] }`,
+    /// a Node being `{ "label", "count", "filter", "children": [Node] }`.
     pub fn to_json(&self) -> String {
         json!({
             "placed": self.placed,
+            "pending": self.pending,
             "countries": self.countries.iter().map(PlaceNode::to_json).collect::<Vec<_>>(),
         })
         .to_string()
@@ -296,7 +309,21 @@ impl Spellings {
 struct Branch {
     count: u64,
     spellings: Spellings,
+    /// The codes photos of the node give where they name no country: shown only when no photo names it, so that
+    /// three photos with the code alone do not label the node `CA` over two that say `Canada`.
+    codes: Spellings,
     children: BTreeMap<String, Branch>,
+}
+
+impl Branch {
+    /// The label of the node: its most common spelling, else its most common code, else `key`.
+    fn label(&self, key: &str) -> String {
+        if self.spellings.0.is_empty() {
+            self.codes.label(key)
+        } else {
+            self.spellings.label(key)
+        }
+    }
 }
 
 fn nodes(
@@ -306,18 +333,20 @@ fn nodes(
     let mut out: Vec<PlaceNode> = branches
         .into_iter()
         .map(|(key, branch)| PlaceNode {
-            label: branch.spellings.label(&key),
+            label: branch.label(&key),
             count: branch.count,
             filter: filter_of(&key),
             children: Vec::new(),
         })
         .collect();
-    out.sort_by(|a, b| {
-        fold_place(&a.label)
-            .cmp(&fold_place(&b.label))
-            .then_with(|| a.label.cmp(&b.label))
-    });
+    sort_nodes(&mut out);
     out
+}
+
+/// Puts nodes in the order of their labels as a person reads them (folded for case and accents, the text itself on a
+/// tie). The folded label is made once for each node, not at every comparison.
+fn sort_nodes(nodes: &mut [PlaceNode]) {
+    nodes.sort_by_cached_key(|node| (fold_place(&node.label), node.label.clone()));
 }
 
 impl Catalogue {
@@ -354,10 +383,11 @@ impl Catalogue {
             placed += photos;
             let country_branch = countries.entry(country_key).or_default();
             country_branch.count += photos;
-            // The name if the photo has one, else the code; the node's own key is the fallback.
-            country_branch
-                .spellings
-                .add(country.as_deref().or(code.as_deref()), photos);
+            // The name if the photo has one, else the code (a label of last resort); the node's key is the fallback.
+            match country.as_deref().filter(|name| !name.is_empty()) {
+                Some(name) => country_branch.spellings.add(Some(name), photos),
+                None => country_branch.codes.add(code.as_deref(), photos),
+            }
             // A region (and the city under it), or a city directly under the country: the empty key is "no region".
             let region_branch = country_branch
                 .children
@@ -382,7 +412,7 @@ impl Catalogue {
                 ..PlaceFilter::default()
             };
             let mut children: Vec<PlaceNode> = Vec::new();
-            let label = country_branch.spellings.label(&country_key);
+            let label = country_branch.label(&country_key);
             let count = country_branch.count;
             for (region_key, region_branch) in country_branch.children {
                 if region_key.is_empty() {
@@ -400,7 +430,7 @@ impl Catalogue {
                     city: None,
                 };
                 let mut region_node = PlaceNode {
-                    label: region_branch.spellings.label(&region_key),
+                    label: region_branch.label(&region_key),
                     count: region_branch.count,
                     filter: region_filter,
                     children: nodes(region_branch.children, &|city| PlaceFilter {
@@ -412,11 +442,7 @@ impl Catalogue {
                 region_node.children.shrink_to_fit();
                 children.push(region_node);
             }
-            children.sort_by(|a, b| {
-                fold_place(&a.label)
-                    .cmp(&fold_place(&b.label))
-                    .then_with(|| a.label.cmp(&b.label))
-            });
+            sort_nodes(&mut children);
             tree.push(PlaceNode {
                 label,
                 count,
@@ -424,14 +450,11 @@ impl Catalogue {
                 children,
             });
         }
-        tree.sort_by(|a, b| {
-            fold_place(&a.label)
-                .cmp(&fold_place(&b.label))
-                .then_with(|| a.label.cmp(&b.label))
-        });
+        sort_nodes(&mut tree);
         Ok(PlaceFacets {
             placed,
             countries: tree,
+            pending: self.place_columns_stale()?,
         })
     }
 
@@ -560,6 +583,41 @@ mod tests {
     }
 
     #[test]
+    fn the_keys_are_the_ones_the_version_says() {
+        // The keys are stored: if one of these changes on purpose, raise PLACE_KEYS_VERSION, so that the catalogues
+        // made with the old keys are filled again; then change the list.
+        assert_eq!(PLACE_KEYS_VERSION, "1");
+        for (text, key) in [
+            ("Montréal", "montreal"),
+            ("Trois-Rivières", "trois rivieres"),
+            ("L’Assomption", "l'assomption"),
+            ("Straße", "strasse"),
+            ("Łódź", "lodz"),
+            ("Hà Nội", "ha noi"),
+            ("İstanbul", "istanbul"),
+            ("Αθήνα", "αθηνα"),
+        ] {
+            assert_eq!(fold_place(text), key, "{text:?}");
+        }
+        for (code, name, key) in [
+            (Some("CA"), Some("Canada"), "CA"),
+            (None, Some("canada"), "CA"),
+            (Some("can"), None, "CA"),
+            (None, Some("États-Unis"), "US"),
+            (None, Some("Allemagne"), "DE"),
+            (None, Some("Deutschland"), "deutschland"),
+            (Some("zz"), None, "ZZ"),
+            (None, Some("Atlantis"), "atlantis"),
+        ] {
+            assert_eq!(
+                crate::country::country_key(code, name).as_deref(),
+                Some(key),
+                "{code:?} {name:?}"
+            );
+        }
+    }
+
+    #[test]
     fn hyphens_apostrophes_and_white_space_are_one_thing() {
         assert_eq!(fold_place("Trois-Rivières"), fold_place("Trois Rivieres"));
         assert_eq!(fold_place("Trois-Rivières"), "trois rivieres");
@@ -592,12 +650,16 @@ mod tests {
         );
         assert_eq!(c.region_key.as_deref(), Some("quebec"));
         assert_eq!(c.city_key.as_deref(), Some("montreal"));
-        // Without a code, the folded name.
+        // Without a code, the code the name has in the table of countries: the same country.
         meta.country_code = None;
+        assert_eq!(PlaceColumns::of(&meta).country_key.as_deref(), Some("CA"));
+        // A name the table does not have: the folded name.
+        meta.country = Some("Atlantis".into());
         assert_eq!(
             PlaceColumns::of(&meta).country_key.as_deref(),
-            Some("canada")
+            Some("atlantis")
         );
+        meta.country = Some("Canada".into());
         // Only a code is a country; only a city is none.
         meta.country = None;
         meta.country_code = Some("CA".into());
