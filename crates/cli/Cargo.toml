@@ -24,4 +24,5 @@ path = "src/main.rs"
 
 [dev-dependencies]
 auroraw-testkit = { path = "../testkit" }
+auroraw-places = { path = "../places" }
 auroraw-workspace = { path = "../workspace" }

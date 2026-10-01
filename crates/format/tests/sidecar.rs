@@ -195,6 +195,168 @@ fn a_sidecar_written_before_the_reference_was_kept_reads_without_one_and_is_not_
     assert_eq!(photo.to_bytes(), bytes);
 }
 
+/// A photo whose place names Auroraw found (design note 008): the record says which fields are still its.
+fn placed_photo() -> PhotoSidecar {
+    let mut p = PhotoSidecar::new(photo_id());
+    let m = &mut p.meta;
+    m.original.gps_latitude = Some("45,30.1140N".into());
+    m.original.gps_longitude = Some("73,34.0440W".into());
+    m.city = Some("Montréal".into());
+    m.region = Some("Quebec".into());
+    m.country = Some("Canada".into());
+    m.country_code = Some("CA".into());
+    m.place_filled = Some(PlaceFilled {
+        latitude: "45.50190".into(),
+        longitude: "-73.56740".into(),
+        city: Some("Montréal".into()),
+        region: Some("Quebec".into()),
+        country: Some("Canada".into()),
+        country_code: Some("CA".into()),
+        extra: vec![],
+    });
+    p.imported = Some("2026-09-21T14:02:11Z".parse().unwrap());
+    p
+}
+
+#[test]
+fn the_record_of_filled_place_names_matches_its_fixture_and_reads_back() {
+    let photo = placed_photo();
+    let bytes = photo.to_bytes();
+    check_fixture("photo-places.xmp", &bytes);
+    let back = current(PhotoSidecar::from_bytes(&bytes).unwrap());
+    assert_eq!(back, photo);
+    assert_eq!(back.to_bytes(), bytes);
+    assert!(back.extra.is_empty(), "understood: {:?}", back.extra);
+    // Other software reads the four fields as the IPTC fields they are; the record is Auroraw's own.
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(
+        text.contains("<photoshop:City>Montréal</photoshop:City>"),
+        "{text}"
+    );
+    assert!(text.contains("aur:PlaceFilled"), "{text}");
+}
+
+#[test]
+fn a_person_writing_a_field_takes_it_out_of_the_record_and_the_record_goes_with_the_last() {
+    let mut meta = placed_photo().meta;
+    // Writing a field releases it, whatever is written: the same text, another, or nothing.
+    assert!(meta.release_place_field(PlaceField::City));
+    assert!(
+        !meta.release_place_field(PlaceField::City),
+        "already theirs"
+    );
+    let record = meta.place_filled.as_ref().expect("three fields are left");
+    assert_eq!(record.get(PlaceField::City), None);
+    assert_eq!(record.get(PlaceField::Region), Some("Quebec"));
+    assert_eq!(
+        meta.city.as_deref(),
+        Some("Montréal"),
+        "the text itself is kept"
+    );
+    for field in [
+        PlaceField::Region,
+        PlaceField::Country,
+        PlaceField::CountryCode,
+    ] {
+        meta.release_place_field(field);
+    }
+    assert_eq!(meta.place_filled, None, "nothing of Auroraw's is left");
+    // A photo that never had a record has nothing to release.
+    let mut plain = Metadata::default();
+    assert!(!plain.release_place_field(PlaceField::Country));
+}
+
+#[test]
+fn a_person_emptying_a_field_is_an_answer_the_record_keeps_and_round_trips() {
+    // Design note 008 §4: "clearing a city is an answer, not a gap to refill". The record keeps the field with an
+    // empty text, so that the place job can tell it from a field that was never filled.
+    let mut meta = placed_photo().meta;
+    meta.set_place_field(PlaceField::City, None);
+    assert!(meta.release_place_field(PlaceField::City));
+    meta.decline_place_field(PlaceField::City);
+    let record = meta.place_filled.as_ref().expect("the other three remain");
+    assert!(record.is_cleared(PlaceField::City));
+    assert_eq!(record.get(PlaceField::City), Some(""));
+    assert!(
+        !record.is_cleared(PlaceField::Region),
+        "Auroraw's, not cleared"
+    );
+    assert!(!record.is_cleared(PlaceField::Country) && record.get(PlaceField::Country).is_some());
+    // A person writing a value afterwards takes the answer out: the field is theirs, written.
+    let mut later = meta.clone();
+    assert!(later.release_place_field(PlaceField::City));
+    assert!(!later.place_filled.unwrap().is_cleared(PlaceField::City));
+    // A record that holds only answers is a record: it is what keeps the fields from being filled again.
+    let mut only = Metadata::default();
+    only.decline_place_field(PlaceField::Country);
+    only.decline_place_field(PlaceField::CountryCode);
+    assert!(only.place_filled.as_ref().is_some_and(|r| !r.is_empty()));
+    // And it goes with the last of them.
+    only.release_place_field(PlaceField::Country);
+    only.release_place_field(PlaceField::CountryCode);
+    assert_eq!(only.place_filled, None);
+}
+
+#[test]
+fn the_fields_a_person_emptied_match_their_fixture_and_read_back_empty() {
+    // No position: only the answers. The empty texts must survive the XMP and come back as emptied fields, not as
+    // fields that were never filled.
+    let mut photo = PhotoSidecar::new(photo_id());
+    photo.meta.region = Some("Quebec".into());
+    photo.meta.place_filled = Some(PlaceFilled {
+        city: Some(String::new()),
+        region: Some("Quebec".into()),
+        country_code: Some(String::new()),
+        ..PlaceFilled::default()
+    });
+    photo.imported = Some("2026-09-21T14:02:11Z".parse().unwrap());
+    let bytes = photo.to_bytes();
+    check_fixture("photo-places-emptied.xmp", &bytes);
+    let back = current(PhotoSidecar::from_bytes(&bytes).unwrap());
+    assert_eq!(back, photo);
+    assert_eq!(back.to_bytes(), bytes);
+    let record = back.meta.place_filled.expect("the record");
+    assert!(record.is_cleared(PlaceField::City) && record.is_cleared(PlaceField::CountryCode));
+    assert!(
+        !record.is_cleared(PlaceField::Country),
+        "never filled is not emptied"
+    );
+    assert_eq!(record.get(PlaceField::Country), None);
+    assert_eq!(
+        (record.latitude.as_str(), record.longitude.as_str()),
+        ("", "")
+    );
+    let text = String::from_utf8_lossy(&bytes);
+    assert!(
+        !text.contains("aur:Latitude"),
+        "no position to give: {text}"
+    );
+}
+
+#[test]
+fn what_a_newer_version_adds_to_the_record_is_kept() {
+    let mut photo = placed_photo();
+    let record = photo.meta.place_filled.as_mut().unwrap();
+    record
+        .extra
+        .push(Property::text(ns::AUR, "TownId", "6077243"));
+    let bytes = photo.to_bytes();
+    let back = current(PhotoSidecar::from_bytes(&bytes).unwrap());
+    assert_eq!(back.meta.place_filled.as_ref().unwrap().extra.len(), 1);
+    assert_eq!(back.to_bytes(), bytes);
+    // Releasing every field does not drop a record that holds something we do not understand.
+    let mut meta = back.meta;
+    for field in [
+        PlaceField::City,
+        PlaceField::Region,
+        PlaceField::Country,
+        PlaceField::CountryCode,
+    ] {
+        meta.release_place_field(field);
+    }
+    assert!(meta.place_filled.is_some());
+}
+
 #[test]
 fn stars_and_flag_are_kept_apart() {
     let mut p = PhotoSidecar::new(photo_id());
@@ -526,4 +688,48 @@ proptest! {
         let _ = PhotoSidecar::from_bytes(&bytes);
         let _ = VersionSidecar::from_bytes(&bytes);
     }
+}
+
+#[test]
+fn a_position_is_the_corrections_when_there_is_one_and_the_files_otherwise() {
+    let mut meta = Metadata::default();
+    assert_eq!(meta.position(), None);
+    meta.original.gps_latitude = Some("45,30.1140N".into());
+    meta.original.gps_longitude = Some("73,34.0440W".into());
+    let (lat, lon) = meta.position().unwrap();
+    assert!(
+        (lat - 45.5019).abs() < 1e-6 && (lon + 73.5674).abs() < 1e-6,
+        "{lat} {lon}"
+    );
+    meta.overlay = Some(Overlay {
+        gps: Some(OverlayGps {
+            latitude: "33,52,7.68S".into(),
+            longitude: "151,12,33.48E".into(),
+            altitude: None,
+            extra: vec![],
+        }),
+        ..Overlay::default()
+    });
+    let (lat, lon) = meta.position().unwrap();
+    assert!(
+        (lat + 33.8688).abs() < 1e-4 && (lon - 151.2093).abs() < 1e-4,
+        "{lat} {lon}"
+    );
+    // Half a position, or text that is not one, is no position.
+    let mut broken = Metadata::default();
+    broken.original.gps_latitude = Some("45,30.1140N".into());
+    assert_eq!(broken.position(), None);
+    for bad in [
+        "",
+        "N",
+        "45,30.1140",
+        "95,0N",
+        "45,61N",
+        "x,0N",
+        "45,30,10,5N",
+        "-3,0N",
+    ] {
+        assert_eq!(parse_gps_coordinate(bad, 'N', 'S', 90.0), None, "{bad:?}");
+    }
+    assert_eq!(parse_gps_coordinate("0,0S", 'N', 'S', 90.0), Some(-0.0));
 }

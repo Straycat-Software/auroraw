@@ -200,6 +200,14 @@
             <numerusform>Annuler l’acceptation des changements externes de %n photos</numerusform>
         </translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="70"/>
+        <source>Undo finding the place names of %n photo(s)</source>
+        <translation>
+            <numerusform>Annuler la recherche des noms de lieux de %n photo</numerusform>
+            <numerusform>Annuler la recherche des noms de lieux de %n photos</numerusform>
+        </translation>
+    </message>
     <message>
         <location filename="../qml/AppActions.qml" line="70"/>
         <source>Undo keyword properties</source>
@@ -486,6 +494,14 @@
         <translation>
             <numerusform>Rétablir l’acceptation des changements externes de %n photo</numerusform>
             <numerusform>Rétablir l’acceptation des changements externes de %n photos</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="116"/>
+        <source>Redo finding the place names of %n photo(s)</source>
+        <translation>
+            <numerusform>Rétablir la recherche des noms de lieux de %n photo</numerusform>
+            <numerusform>Rétablir la recherche des noms de lieux de %n photos</numerusform>
         </translation>
     </message>
     <message>

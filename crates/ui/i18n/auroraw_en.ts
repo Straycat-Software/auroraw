@@ -200,6 +200,14 @@
             <numerusform>Undo accepting external changes to %n photos</numerusform>
         </translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="70"/>
+        <source>Undo finding the place names of %n photo(s)</source>
+        <translation>
+            <numerusform>Undo finding the place names of %n photo</numerusform>
+            <numerusform>Undo finding the place names of %n photos</numerusform>
+        </translation>
+    </message>
     <message>
         <location filename="../qml/AppActions.qml" line="70"/>
         <source>Undo keyword properties</source>
@@ -486,6 +494,14 @@
         <translation>
             <numerusform>Redo accepting external changes to %n photo</numerusform>
             <numerusform>Redo accepting external changes to %n photos</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="116"/>
+        <source>Redo finding the place names of %n photo(s)</source>
+        <translation>
+            <numerusform>Redo finding the place names of %n photo</numerusform>
+            <numerusform>Redo finding the place names of %n photos</numerusform>
         </translation>
     </message>
     <message>

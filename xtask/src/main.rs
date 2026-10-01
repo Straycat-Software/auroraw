@@ -55,6 +55,7 @@ const ALLOWED: &[(&str, &[&str])] = &[
             "auroraw-plugin-api",
             "auroraw-import",
             "auroraw-imaging",
+            "auroraw-places",
             "auroraw-plugin-host",
             "auroraw-types",
         ],

@@ -462,6 +462,18 @@ static CLOCK: AtomicU64 = AtomicU64::new(1_700_000_000);
 /// Writes an XMP file the way another application would, and gives it a modification time of its own
 /// (never the same as the last one written), so that nothing depends on the file system's granularity.
 fn write_xmp(path: &Path, rating: Option<i8>, title: &str, keywords: &[&str], develop: &str) {
+    write_xmp_with(path, rating, title, keywords, develop, "");
+}
+
+/// [`write_xmp`], with more attributes on the description (`extra`, such as `photoshop:City="…"`).
+fn write_xmp_with(
+    path: &Path,
+    rating: Option<i8>,
+    title: &str,
+    keywords: &[&str],
+    develop: &str,
+    extra: &str,
+) {
     let rating = rating.map_or(String::new(), |r| format!(r#" xmp:Rating="{r}""#));
     let subjects: String = keywords
         .iter()
@@ -475,7 +487,8 @@ fn write_xmp(path: &Path, rating: Option<i8>, title: &str, keywords: &[&str], de
     xmlns:dc="http://purl.org/dc/elements/1.1/"
     xmlns:lr="http://ns.adobe.com/lightroom/1.0/"
     xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/"
-    crs:Exposure2012="{develop}"{rating}>
+    xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/"
+    crs:Exposure2012="{develop}"{rating}{extra}>
    <dc:title><rdf:Alt><rdf:li xml:lang="x-default">{title}</rdf:li></rdf:Alt></dc:title>
    <lr:hierarchicalSubject><rdf:Bag>{subjects}</rdf:Bag></lr:hierarchicalSubject>
   </rdf:Description>
@@ -949,4 +962,121 @@ fn hundreds_of_photos_are_accepted_as_one_step_and_undone_as_one() {
         ids.iter()
             .all(|id| meta(&s, *id).title.as_deref() == Some("Old"))
     );
+}
+
+/// Another application writing a place field the photo had from the place names takes it out of the record
+/// of what Auroraw filled (design note 008 §4), and undoing the acceptance brings it back.
+#[test]
+fn a_place_field_another_application_wrote_is_no_longer_ours_to_follow() {
+    let s = setup();
+    let (source, photo, folder) = one_tracked(&s, 4, "Heron", &[]);
+    s.engine
+        .submit_and_wait(Command::FillPlace {
+            photo_id: photo,
+            fill: auroraw_engine::PlaceFill {
+                latitude: "5.00000".into(),
+                longitude: "2.00000".into(),
+                city: Some("Westville".into()),
+                region: Some("West".into()),
+                country: None,
+                country_code: None,
+                refresh: false,
+            },
+        })
+        .unwrap();
+    assert!(meta(&s, photo).place_filled.is_some());
+
+    // The file says another city, and a country the photo lacks.
+    write_xmp_with(
+        &folder.join("a.xmp"),
+        Some(4),
+        "Heron",
+        &[],
+        "+0.10",
+        r#" photoshop:City="Elsewhere" photoshop:Country="Zed""#,
+    );
+    assert_eq!(rescan_waiting(&s, source), 1);
+    let listed = s.engine.external_changes().unwrap();
+    let conflicts: Vec<(&str, bool)> = listed[0]
+        .changes
+        .iter()
+        .map(|c| (c.field.key(), c.conflict))
+        .collect();
+    assert_eq!(conflicts, [("city", true), ("country", false)]);
+
+    assert_eq!(
+        accept(
+            &s,
+            &[photo],
+            &[(photo, auroraw_engine::ExternalField::City)]
+        ),
+        1
+    );
+    let after = meta(&s, photo);
+    assert_eq!(
+        (after.city.as_deref(), after.country.as_deref()),
+        (Some("Elsewhere"), Some("Zed"))
+    );
+    let record = after.place_filled.expect("the region is still Auroraw's");
+    assert_eq!(
+        (record.city, record.region.as_deref()),
+        (None, Some("West"))
+    );
+
+    s.engine.undo().unwrap();
+    let undone = meta(&s, photo);
+    assert_eq!(undone.city.as_deref(), Some("Westville"));
+    assert_eq!(
+        undone.place_filled.unwrap().city.as_deref(),
+        Some("Westville")
+    );
+}
+
+/// Another application emptying a place field is an answer, like a person's: the record keeps the field empty.
+#[test]
+fn a_place_field_another_application_emptied_stays_empty_for_the_place_names() {
+    let s = setup();
+    let (source, photo, folder) = one_tracked(&s, 4, "Heron", &[]);
+    s.engine
+        .submit_and_wait(Command::FillPlace {
+            photo_id: photo,
+            fill: auroraw_engine::PlaceFill {
+                latitude: "5.00000".into(),
+                longitude: "2.00000".into(),
+                city: Some("Westville".into()),
+                region: Some("West".into()),
+                country: None,
+                country_code: None,
+                refresh: false,
+            },
+        })
+        .unwrap();
+    // The file says another city; accepted (it is a conflict with what Auroraw wrote, settled in the file's favour).
+    write_xmp_with(
+        &folder.join("a.xmp"),
+        Some(4),
+        "Heron",
+        &[],
+        "+0.10",
+        r#" photoshop:City="Elsewhere""#,
+    );
+    assert_eq!(rescan_waiting(&s, source), 1);
+    accept(
+        &s,
+        &[photo],
+        &[(photo, auroraw_engine::ExternalField::City)],
+    );
+    assert_eq!(meta(&s, photo).city.as_deref(), Some("Elsewhere"));
+    // Then the application empties it.
+    write_xmp_with(&folder.join("a.xmp"), Some(4), "Heron", &[], "+0.10", "");
+    assert_eq!(rescan_waiting(&s, source), 1);
+    accept(&s, &[photo], &[]);
+    let after = meta(&s, photo);
+    assert_eq!(after.city, None);
+    let record = after.place_filled.expect("the region is Auroraw's still");
+    assert!(
+        record.is_cleared(auroraw_engine::PlaceField::City),
+        "an answer, not a gap: {record:?}"
+    );
+    assert_eq!(record.region.as_deref(), Some("West"));
 }
