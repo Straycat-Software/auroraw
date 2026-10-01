@@ -58,10 +58,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { name: linux-x64, os: ubuntu-24.04 }
+          # EXPERIMENT (issue #77, lever 3), not to be merged: the same Windows job four times, on the same commit, to
+          # see what the runner's file work costs. The control is unchanged.
           - { name: windows-x64, os: windows-2025, arch: win64_msvc2022_64 }
-          - { name: macos-arm64, os: macos-15 }
+          - { name: windows-defender-off, os: windows-2025, arch: win64_msvc2022_64, defender: "off" }
+          - { name: windows-temp-on-d, os: windows-2025, arch: win64_msvc2022_64, temp: "d" }
+          - { name: windows-both, os: windows-2025, arch: win64_msvc2022_64, defender: "off", temp: "d" }
     steps:
+      - name: "EXPERIMENT: Windows Defender's real-time scan off"
+        if: matrix.defender == 'off'
+        shell: pwsh
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction Continue
+          Get-MpPreference | Select-Object DisableRealtimeMonitoring, DisableIOAVProtection | Format-List
+          Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled, AntivirusEnabled, IsTamperProtected | Format-List
+      - name: "EXPERIMENT: the temporary folder on D:"
+        if: matrix.temp == 'd'
+        shell: bash
+        run: |
+          mkdir -p /d/tmp
+          echo "TEMP=D:\\tmp" >> "$GITHUB_ENV"
+          echo "TMP=D:\\tmp" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install the pinned toolchain
         run: rustup show
@@ -70,6 +87,8 @@ jobs:
           workspaces: |
             .
             plugins
+          # (A cache of its own for each variant would make them differ by the cache; they share the control's.)
+          shared-key: windows-experiment
       - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: nextest
