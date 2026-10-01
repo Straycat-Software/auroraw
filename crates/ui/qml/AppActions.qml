@@ -232,6 +232,13 @@ QtObject {
         enabled: root.host.inWorkspace && !root.host.dialogOpen
         onTriggered: root.host.showXmpExport()
     }
+    readonly property Action findPlaceNames: Action {
+        property string commandId: "file.find-place-names"
+        text: qsTr("Find place names…")
+        shortcut: "Ctrl+Shift+L"
+        enabled: root.host.inWorkspace && !root.host.dialogOpen
+        onTriggered: root.host.showPlaceNames()
+    }
     readonly property Action invertSelection: Action {
         property string commandId: "edit.invert-selection"
         text: qsTr("Invert selection")

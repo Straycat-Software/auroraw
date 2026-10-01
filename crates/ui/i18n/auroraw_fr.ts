@@ -34,6 +34,11 @@
         <translation>Composé en IBM Plex Sans, sous la licence SIL Open Font 1.1.</translation>
     </message>
     <message>
+        <location line="+10"/>
+        <source>Place names: towns adapted from GeoNames (Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/; https://www.geonames.org/), countries and regions from Natural Earth (public domain), with its boundaries as they stand on the ground, in its default worldview. Auroraw takes no position on a disputed border. A name you correct is never overwritten. The data is not code, and the GPL is not its licence.</source>
+        <translation>Noms de lieux&#xa0;: villes adaptées de GeoNames (Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/&#xa0;; https://www.geonames.org/), pays et régions de Natural Earth (domaine public), avec ses frontières telles qu’elles sont sur le terrain, selon sa vision par défaut. Auroraw ne prend pas position sur une frontière contestée. Un nom que vous corrigez n’est jamais écrasé. Les données ne sont pas du code, et la GPL n’en est pas la licence.</translation>
+    </message>
+    <message>
         <location filename="../qml/AboutDialog.qml" line="51"/>
         <source>Close</source>
         <translation>Fermer</translation>
@@ -750,6 +755,11 @@
         <location line="+7"/>
         <source>Export XMP files…</source>
         <translation>Exporter les fichiers XMP…</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Find place names…</source>
+        <translation>Trouver les noms de lieux…</translation>
     </message>
     <message>
         <location filename="../qml/AppActions.qml" line="228"/>
@@ -1534,6 +1544,16 @@
         <translation>Import</translation>
     </message>
     <message>
+        <location line="-377"/>
+        <source>Looks up where each photo was taken, without the internet, and fills in its city, region and country where they are empty. For the photos that enter the catalogue.</source>
+        <translation>Cherche où chaque photo a été prise, sans Internet, et remplit sa ville, sa région et son pays là où ils sont vides. Pour les photos qui entrent dans le catalogue.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Place names are not installed.</source>
+        <translation>Les noms de lieux ne sont pas installés.</translation>
+    </message>
+    <message>
         <location filename="../qml/ImportDialog.qml" line="59"/>
         <source>This folder is part of the source &quot;%1&quot;: the photos also enter the catalogue.</source>
         <translation>Ce dossier fait partie de la source « %1 » : les photos entrent aussi dans le catalogue.</translation>
@@ -1580,6 +1600,34 @@
         <location filename="../qml/ImportDialog.qml" line="165"/>
         <source>%1 copied, %2 already in the library, %3 failed. Run it again to retry.</source>
         <translation>%1 copiés, %2 déjà dans la bibliothèque, %3 en échec. Relancez l&apos;import pour réessayer.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>The place names could not be looked up: %1</source>
+        <translation>Les noms de lieux n’ont pas pu être cherchés&#xa0;: %1</translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Finding the place names…</source>
+        <translation>Recherche des noms de lieux…</translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Place names: stopped.</source>
+        <translation>Noms de lieux&#xa0;: arrêté.</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+1"/>
+        <source>Place names found for %n photo(s).</source>
+        <translation>
+            <numerusform>Noms de lieux trouvés pour %n photo.</numerusform>
+            <numerusform>Noms de lieux trouvés pour %n photos.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No place names were found: the photos have no position, or are in no country.</source>
+        <translation>Aucun nom de lieu trouvé&#xa0;: les photos n’ont pas de position, ou sont hors de tout pays.</translation>
     </message>
     <message>
         <location filename="../qml/ImportDialog.qml" line="179"/>
@@ -1676,6 +1724,11 @@
         <location filename="../qml/ImportDialog.qml" line="339"/>
         <source>Backup folder (optional)</source>
         <translation>Dossier de sauvegarde (facultatif)</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Find the place names of the imported photos</source>
+        <translation>Trouver les noms de lieux des photos importées</translation>
     </message>
     <message>
         <location filename="../qml/ImportDialog.qml" line="365"/>
@@ -2633,6 +2686,255 @@
     <message>
         <location filename="../qml/NoticeBar.qml" line="32"/>
         <source>Dismiss</source>
+        <translation>Fermer</translation>
+    </message>
+</context>
+<context>
+    <name>PlaceNamesDialog</name>
+    <message>
+        <location filename="../qml/PlaceNamesDialog.qml" line="+26"/>
+        <source>Find place names</source>
+        <translation>Trouver les noms de lieux</translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>For photos whose position was corrected since. A name you edited or typed is left as it is.</source>
+        <translation>Pour les photos dont la position a été corrigée depuis. Un nom que vous avez modifié ou saisi est laissé tel quel.</translation>
+    </message>
+    <message>
+        <location line="+98"/>
+        <source>City</source>
+        <translation>Ville</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Region</source>
+        <translation>Région</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Country</source>
+        <translation>Pays</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Country code</source>
+        <translation>Code du pays</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <location line="+1"/>
+        <source>(empty)</source>
+        <translation>(vide)</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+1"/>
+        <source>%1: %2 → %3, %n photo(s)</source>
+        <translation>
+            <numerusform>%1&#xa0;: %2 → %3, %n photo</numerusform>
+            <numerusform>%1&#xa0;: %2 → %3, %n photos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>The place names could not be looked up: %1</source>
+        <translation>Les noms de lieux n’ont pas pu être cherchés&#xa0;: %1</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) got place names</source>
+        <translation>
+            <numerusform>%n photo a reçu des noms de lieux</numerusform>
+            <numerusform>%n photos ont reçu des noms de lieux</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) already had their place, left as it is</source>
+        <translation>
+            <numerusform>%n photo avait déjà ses noms de lieux, laissés tels quels</numerusform>
+            <numerusform>%n photos avaient déjà leurs noms de lieux, laissés tels quels</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) have no position, so there is no place to look up</source>
+        <translation>
+            <numerusform>%n photo n’a pas de position&#xa0;: pas de lieu à chercher</numerusform>
+            <numerusform>%n photos n’ont pas de position&#xa0;: pas de lieu à chercher</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) are in no country (open water, a pole): no place names</source>
+        <translation>
+            <numerusform>%n photo n’est dans aucun pays (pleine mer, un pôle)&#xa0;: pas de noms de lieux</numerusform>
+            <numerusform>%n photos ne sont dans aucun pays (pleine mer, un pôle)&#xa0;: pas de noms de lieux</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+2"/>
+        <source>%n photo(s) could not be updated</source>
+        <translation>
+            <numerusform>%n photo n’a pas pu être mise à jour</numerusform>
+            <numerusform>%n photos n’ont pas pu être mises à jour</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+29"/>
+        <source>Place names are not installed.</source>
+        <translation>Les noms de lieux ne sont pas installés.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Auroraw looks places up in a file that comes with the application, and this copy does not have it. Nothing else is affected.</source>
+        <translation>Auroraw cherche les lieux dans un fichier livré avec l’application, que cette copie n’a pas. Rien d’autre n’est touché.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Looks up where each photo was taken, from its position and without the internet, and fills in its city, region and country where they are empty. What you typed, or another application wrote, is never changed.</source>
+        <translation>Cherche où chaque photo a été prise, d’après sa position et sans Internet, et remplit sa ville, sa région et son pays là où ils sont vides. Ce que vous avez saisi, ou qu’une autre application a écrit, n’est jamais modifié.</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Photos</source>
+        <translation>Photos</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+6"/>
+        <source>The %n selected photo(s)</source>
+        <translation>
+            <numerusform>La photo sélectionnée (%n)</numerusform>
+            <numerusform>Les %n photos sélectionnées</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The selected photos (none is selected)</source>
+        <translation>Les photos sélectionnées (aucune n’est sélectionnée)</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Every photo of the source:</source>
+        <translation>Toutes les photos de la source&#xa0;:</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Source</source>
+        <translation>Source</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Also update the names Auroraw found earlier</source>
+        <translation>Mettre aussi à jour les noms trouvés plus tôt par Auroraw</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>The country and the region are named in the language of the interface, the city as the place spells it.</source>
+        <translation>Le pays et la région sont nommés dans la langue de l’interface, la ville comme le lieu l’écrit.</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Looking up photo %1 of %2…</source>
+        <translation>Recherche de la photo %1 sur %2…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Looking up the places…</source>
+        <translation>Recherche des lieux…</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Place names progress</source>
+        <translation>Progression des noms de lieux</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+18"/>
+        <source>The refresh would change %n photo(s).</source>
+        <translation>
+            <numerusform>La mise à jour changerait %n photo.</numerusform>
+            <numerusform>La mise à jour changerait %n photos.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>The refresh would change nothing.</source>
+        <translation>La mise à jour ne changerait rien.</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+17"/>
+        <source>… and %n more change(s), the smaller ones.</source>
+        <translation>
+            <numerusform>… et %n autre changement, plus petit.</numerusform>
+            <numerusform>… et %n autres changements, plus petits.</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+9"/>
+        <source>The other %n photo(s) would stay as they are.</source>
+        <translation>
+            <numerusform>L’autre photo resterait telle quelle.</numerusform>
+            <numerusform>Les %n autres photos resteraient telles quelles.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Nothing has been written. Apply makes these changes as one step, and Undo takes them back.</source>
+        <translation>Rien n’a été écrit. Appliquer fait ces changements en une seule étape, et Annuler les reprend.</translation>
+    </message>
+    <message>
+        <location line="+14"/>
+        <source>Stopped. What was found stays, as one step.</source>
+        <translation>Arrêté. Ce qui a été trouvé reste, en une seule étape.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Stopped. Nothing was written.</source>
+        <translation>Arrêté. Rien n’a été écrit.</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Done.</source>
+        <translation>Terminé.</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Nothing to look up.</source>
+        <translation>Rien à chercher.</translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>It is one step: Undo takes it back for all of these photos.</source>
+        <translation>C’est une seule étape&#xa0;: Annuler la défait pour toutes ces photos.</translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Find</source>
+        <translation>Trouver</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Apply</source>
+        <translation>Appliquer</translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Back</source>
+        <translation>Retour</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Stop</source>
+        <translation>Arrêter</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Cancel</source>
+        <translation>Annuler</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Close</source>
         <translation>Fermer</translation>
     </message>
 </context>

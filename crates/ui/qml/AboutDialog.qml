@@ -8,8 +8,14 @@ import org.auroraw.ui
 AppDialog {
     id: dialog
     required property var launcher
+    // The place names (`PlaceNames`), to say whether the data they are looked up in is here.
+    property var placeNames: null
+    property bool placesInstalled: false
+    property alias placesLabel: placesLabel
     preferredWidth: 480
     title: qsTr("About Auroraw")
+
+    onAboutToShow: dialog.placesInstalled = dialog.placeNames ? dialog.placeNames.installed() : false
 
     contentItem: ColumnLayout {
         spacing: 16
@@ -39,6 +45,16 @@ AppDialog {
             wrapMode: Text.Wrap
             color: Theme.quiet
             text: qsTr("Set in IBM Plex Sans, under the SIL Open Font License 1.1.")
+        }
+        // The credit the data asks for (design note 008 §2): GeoNames' licence asks for it, Natural Earth's does not and
+        // is named all the same; the choice of boundaries is said here, as the note decided.
+        Label {
+            id: placesLabel
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            color: Theme.quiet
+            visible: dialog.placesInstalled
+            text: qsTr("Place names: towns adapted from GeoNames (Creative Commons Attribution 4.0, https://creativecommons.org/licenses/by/4.0/; https://www.geonames.org/), countries and regions from Natural Earth (public domain), with its boundaries as they stand on the ground, in its default worldview. Auroraw takes no position on a disputed border. A name you correct is never overwritten. The data is not code, and the GPL is not its licence.")
         }
         Label {
             text: "https://auroraw.org"
