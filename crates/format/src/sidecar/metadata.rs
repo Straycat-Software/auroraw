@@ -128,8 +128,11 @@ pub struct Original {
     pub gps_latitude: Option<String>,
     /// `exif:GPSLongitude`.
     pub gps_longitude: Option<String>,
-    /// `exif:GPSAltitude`.
+    /// `exif:GPSAltitude`: a distance in metres, never negative (XMP's convention, EXIF's).
     pub gps_altitude: Option<String>,
+    /// `exif:GPSAltitudeRef`: `"0"` above sea level, `"1"` below. `None` when the file did not say, and in
+    /// every sidecar written before it was kept: read as above sea level, as those altitudes always were.
+    pub gps_altitude_ref: Option<String>,
 }
 
 impl Original {
@@ -156,6 +159,7 @@ impl Original {
             x::opt_text(ns::EXIF, "GPSLatitude", &o.gps_latitude),
             x::opt_text(ns::EXIF, "GPSLongitude", &o.gps_longitude),
             x::opt_text(ns::EXIF, "GPSAltitude", &o.gps_altitude),
+            x::opt_text(ns::EXIF, "GPSAltitudeRef", &o.gps_altitude_ref),
         ];
         props.into_iter().flatten().collect()
     }
@@ -393,6 +397,7 @@ impl Metadata {
         o.gps_latitude = x::text(props, ns::EXIF, "GPSLatitude");
         o.gps_longitude = x::text(props, ns::EXIF, "GPSLongitude");
         o.gps_altitude = x::text(props, ns::EXIF, "GPSAltitude");
+        o.gps_altitude_ref = x::text(props, ns::EXIF, "GPSAltitudeRef");
         m.overlay = x::structure(props, ns::AUR, "Overlay").map(overlay_from_fields);
         m.custom = x::struct_items(props, ns::AUR, "Custom")
             .map(|items| items.into_iter().filter_map(custom_from_fields).collect())

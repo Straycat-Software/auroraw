@@ -155,6 +155,46 @@ fn the_fixture_file_itself_reads_and_rewrites_identically() {
     assert_eq!(photo.to_bytes(), bytes);
 }
 
+/// A photo taken at the Dead Sea: 430 m below sea level (`exif:GPSAltitude` is a distance, never negative;
+/// `exif:GPSAltitudeRef` says which side).
+fn dead_sea_photo() -> PhotoSidecar {
+    let mut p = PhotoSidecar::new(photo_id());
+    let o = &mut p.meta.original;
+    o.capture_time = Some("2026-03-02T09:15:00+02:00".into());
+    o.gps_latitude = Some("31,30.0000N".into());
+    o.gps_longitude = Some("35,28.0000E".into());
+    o.gps_altitude = Some("4300/10".into());
+    o.gps_altitude_ref = Some("1".into());
+    p.imported = Some("2026-09-21T14:02:11Z".parse().unwrap());
+    p
+}
+
+#[test]
+fn an_altitude_below_sea_level_keeps_its_reference_in_the_sidecar() {
+    let photo = dead_sea_photo();
+    let bytes = photo.to_bytes();
+    check_fixture("photo-below-sea-level.xmp", &bytes);
+    assert!(
+        String::from_utf8_lossy(&bytes).contains("<exif:GPSAltitudeRef>1</exif:GPSAltitudeRef>"),
+        "written as the XMP standard spells it, for any reader"
+    );
+    let back = current(PhotoSidecar::from_bytes(&bytes).unwrap());
+    assert_eq!(back, photo);
+    assert_eq!(back.to_bytes(), bytes);
+    assert!(back.extra.is_empty(), "understood: {:?}", back.extra);
+}
+
+#[test]
+fn a_sidecar_written_before_the_reference_was_kept_reads_without_one_and_is_not_given_one() {
+    // `photo-full.xmp` has an altitude and no reference: every sidecar of the first releases. It still reads
+    // (as above sea level, which is what it always meant) and rewrites as it was.
+    let bytes = std::fs::read(fixture_path("photo-full.xmp")).unwrap();
+    let photo = current(PhotoSidecar::from_bytes(&bytes).unwrap());
+    assert_eq!(photo.meta.original.gps_altitude.as_deref(), Some("1800/10"));
+    assert_eq!(photo.meta.original.gps_altitude_ref, None);
+    assert_eq!(photo.to_bytes(), bytes);
+}
+
 #[test]
 fn stars_and_flag_are_kept_apart() {
     let mut p = PhotoSidecar::new(photo_id());

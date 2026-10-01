@@ -169,7 +169,13 @@ pub fn effective_original(original: &Original, overlay: Option<&Overlay>) -> Ori
     if let Some(gps) = &overlay.gps {
         o.gps_latitude = Some(gps.latitude.clone());
         o.gps_longitude = Some(gps.longitude.clone());
-        o.gps_altitude = gps.altitude.clone();
+        // The overlay's altitude is text a person typed, where a minus sign means below sea level; the
+        // properties hold a distance and its reference, as EXIF and XMP do.
+        let altitude = gps.altitude.as_deref().map(str::trim).unwrap_or_default();
+        let below = altitude.starts_with('-');
+        let magnitude = Some(altitude.trim_start_matches('-').trim()).filter(|a| !a.is_empty());
+        o.gps_altitude = magnitude.map(String::from);
+        o.gps_altitude_ref = magnitude.map(|_| if below { "1" } else { "0" }.to_string());
     }
     if let Some(c) = nonblank(&overlay.camera) {
         o.model = Some(c.clone());
@@ -241,9 +247,8 @@ fn overlay_keys(overlay: &Overlay) -> Vec<(&'static str, &'static str)> {
             (ns::EXIF, "GPSLatitude"),
             (ns::EXIF, "GPSLongitude"),
             (ns::EXIF, "GPSAltitude"),
-            // The file's own reference (above or below sea level) went with the altitude it qualified: a
-            // corrected position that gives none must not inherit it. (Auroraw's own data keeps no
-            // reference for an original's altitude yet, so a file it builds has none either.)
+            // The file's own reference (above or below sea level) goes with the altitude it qualified: a
+            // corrected position that gives none must not inherit it, and one that gives one brings its own.
             (ns::EXIF, "GPSAltitudeRef"),
         ]);
     }

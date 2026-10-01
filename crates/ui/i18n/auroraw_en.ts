@@ -1810,6 +1810,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="+1"/>
+        <source>below sea level</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../qml/InfoPanel.qml" line="97"/>
         <source>Serial number</source>
         <translation type="unfinished"></translation>

@@ -2586,6 +2586,7 @@ impl qobject::PhotoGrid {
             "gps_latitude": extra.as_ref().and_then(|e| e.gps_latitude.clone()),
             "gps_longitude": extra.as_ref().and_then(|e| e.gps_longitude.clone()),
             "gps_altitude": extra.as_ref().and_then(|e| e.gps_altitude.clone()),
+            "gps_altitude_ref": extra.as_ref().and_then(|e| e.gps_altitude_ref.clone()),
             "serial": extra.as_ref().and_then(|e| e.serial.clone()),
         });
         QString::from(json.to_string().as_str())

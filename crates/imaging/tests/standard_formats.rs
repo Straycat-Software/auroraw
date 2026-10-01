@@ -48,3 +48,58 @@ fn an_unrecognised_extension_is_refused_cleanly() {
     assert!(auroraw_imaging::read_metadata(&path).is_err());
     assert!(auroraw_imaging::embedded_preview(&path).is_err());
 }
+
+/// A JPEG with this GPS altitude in its EXIF: the test image with an APP1 segment spliced in after the
+/// start-of-image marker.
+fn jpeg_with_altitude(path: &std::path::Path, altitude: (u32, u32), reference: Option<u8>) {
+    write_test_image(path, ImageFormat::Jpeg);
+    let mut writer = exif::experimental::Writer::new();
+    let mut fields = vec![exif::Field {
+        tag: exif::Tag::GPSAltitude,
+        ifd_num: exif::In::PRIMARY,
+        value: exif::Value::Rational(vec![exif::Rational {
+            num: altitude.0,
+            denom: altitude.1,
+        }]),
+    }];
+    if let Some(byte) = reference {
+        fields.push(exif::Field {
+            tag: exif::Tag::GPSAltitudeRef,
+            ifd_num: exif::In::PRIMARY,
+            value: exif::Value::Byte(vec![byte]),
+        });
+    }
+    for field in &fields {
+        writer.push_field(field);
+    }
+    let mut tiff = std::io::Cursor::new(Vec::new());
+    writer.write(&mut tiff, false).unwrap();
+    let tiff = tiff.into_inner();
+    let length = u16::try_from(2 + 6 + tiff.len()).unwrap();
+    let image = std::fs::read(path).unwrap();
+    let mut spliced = image[..2].to_vec();
+    spliced.extend([0xFF, 0xE1]);
+    spliced.extend(length.to_be_bytes());
+    spliced.extend(b"Exif\0\0");
+    spliced.extend(tiff);
+    spliced.extend(&image[2..]);
+    std::fs::write(path, spliced).unwrap();
+}
+
+#[test]
+fn a_photo_taken_below_sea_level_is_read_with_its_reference() {
+    let dir = auroraw_testkit::temp_dir();
+    let cases = [
+        ("below.jpg", Some(1), Some("1")),
+        ("above.jpg", Some(0), Some("0")),
+        ("unsaid.jpg", None, None),
+    ];
+    for (name, byte, expected) in cases {
+        let path = dir.path().join(name);
+        jpeg_with_altitude(&path, (4300, 10), byte);
+        let metadata =
+            auroraw_imaging::read_metadata(&path).unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert_eq!(metadata.gps_altitude.as_deref(), Some("4300/10"), "{name}");
+        assert_eq!(metadata.gps_altitude_ref.as_deref(), expected, "{name}");
+    }
+}

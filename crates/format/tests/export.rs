@@ -288,6 +288,70 @@ fn the_overlay_is_applied_to_the_capture_data_and_a_new_position_drops_the_old_a
     assert!(xmp.get(ns::EXIF, "GPSAltitude").is_none());
 }
 
+#[test]
+fn an_altitude_below_sea_level_is_written_with_its_reference_and_an_overlays_sign_is_read() {
+    let mut original = photo().original;
+    original.gps_altitude = Some("4300/100".into());
+    original.gps_altitude_ref = Some("1".into());
+    let meta = Metadata {
+        original: original.clone(),
+        ..photo()
+    };
+    let xmp = build(&view(&meta, &[], true));
+    assert_eq!(
+        xmp.get(ns::EXIF, "GPSAltitude").and_then(Property::as_text),
+        Some("4300/100")
+    );
+    assert_eq!(
+        xmp.get(ns::EXIF, "GPSAltitudeRef")
+            .and_then(Property::as_text),
+        Some("1"),
+        "the Dead Sea reads as below sea level in another application"
+    );
+    // An original whose file did not say gets no reference: readers take it as above, as before.
+    original.gps_altitude_ref = None;
+    let unsaid = Metadata {
+        original: original.clone(),
+        ..photo()
+    };
+    assert!(
+        build(&view(&unsaid, &[], true))
+            .get(ns::EXIF, "GPSAltitudeRef")
+            .is_none()
+    );
+    // A corrected position brings its own altitude and side of sea level: a minus sign is below.
+    let overlay_with = |altitude: &str| Overlay {
+        gps: Some(OverlayGps {
+            latitude: "31,30.0N".into(),
+            longitude: "35,28.0E".into(),
+            altitude: Some(altitude.into()),
+            extra: Vec::new(),
+        }),
+        ..Overlay::default()
+    };
+    let below = effective_original(&original, Some(&overlay_with("-430")));
+    assert_eq!(
+        (
+            below.gps_altitude.as_deref(),
+            below.gps_altitude_ref.as_deref()
+        ),
+        (Some("430"), Some("1"))
+    );
+    let above = effective_original(&original, Some(&overlay_with(" 120/1 ")));
+    assert_eq!(
+        (
+            above.gps_altitude.as_deref(),
+            above.gps_altitude_ref.as_deref()
+        ),
+        (Some("120/1"), Some("0"))
+    );
+    let nothing = effective_original(&original, Some(&overlay_with("-")));
+    assert_eq!(
+        (nothing.gps_altitude, nothing.gps_altitude_ref),
+        (None, None)
+    );
+}
+
 // ---- merging into a file that exists -----------------------------------------------------------
 
 #[test]
