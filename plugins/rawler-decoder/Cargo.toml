@@ -11,3 +11,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rawler = "0.8"
+# The one writer of the block the host reads (MIT OR Apache-2.0, no dependency on the application).
+auroraw-plugin-api = { path = "../../crates/plugin-api" }

@@ -1,0 +1,15 @@
+file: Fujifilm_-_GFX100S_II_-_16bit_compressed_(4:3).RAF
+readout: 11808 x 8754
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: U16 x 103367232, blake3 4d62076e360fffab80fa8593d1ba59b012cd76a011c1dd92b49d10694db00011
+black: 2 rows x 2 columns x 1 components [256.0, 256.0, 256.0, 256.0]
+white: [65535.0]
+white balance: Some([2.0198677, 1.0, 1.8907285])
+colour matrix: illuminant 17 (3 rows) [1.5656, -1.0088, 0.1263, -0.2871, 1.0498, 0.2752, 0.0065, 0.0436, 0.6714]
+colour matrix: illuminant 21 (3 rows) [1.2806, -0.5779, -0.111, -0.3546, 1.1507, 0.2318, -0.0177, 0.0996, 0.5715]
+crop: Some(Rect { x: 8, y: 7, width: 11648, height: 8736 })
+active area: Some(Rect { x: 0, y: 0, width: 11664, height: 8750 })
+orientation: Normal
+camera: Fujifilm GFX 100S II
+iso: Some(80)
+noise profile: None

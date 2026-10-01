@@ -54,6 +54,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "auroraw-plugin-api"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -852,6 +860,7 @@ dependencies = [
 name = "rawler-decoder"
 version = "0.0.0"
 dependencies = [
+ "auroraw-plugin-api",
  "rawler",
 ]
 

@@ -1,0 +1,14 @@
+file: Leica_-_M_Monochrom_-_16bit_(3:2).DNG
+readout: 5216 x 3472
+layout: mono
+samples: U16 x 18109952, blake3 844b2faf8dd18c24b4feab35fc41caecb1d25d64ac2d9866659bdfcfbc0517f8
+black: 1 rows x 1 columns x 1 components [220.0]
+white: [16383.0]
+white balance: None
+colour matrix: none
+crop: Some(Rect { x: 2, y: 2, width: 5212, height: 3468 })
+active area: None
+orientation: Normal
+camera: Leica M Monochrom
+iso: Some(1600)
+noise profile: None
