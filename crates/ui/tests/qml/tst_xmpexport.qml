@@ -179,7 +179,7 @@ AppTestCase {
         click(dialog.reviewButton)
         tryVerify(() => app.externalDialog.visible, 5000, "the review of the external changes opened")
         verify(!app.xmpExportDialog.visible, "and this dialog is gone")
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         compare(app.externalDialog.entries[0].filename, "IMG_0004.jpg")
     }
 

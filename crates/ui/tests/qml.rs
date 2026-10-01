@@ -275,20 +275,6 @@ fn external_xmp_changes_are_announced_reviewed_and_answered() {
     run_suite("external", home.path(), None);
 }
 
-/// TEMPORARY, for issue #63 only, removed before this is merged: the suite above twenty times over, each in a test (so a
-/// process) of its own, run in parallel like the rest of the suite, so that one CI run says what many would have.
-macro_rules! external_repeats {
-    ($($name:ident)*) => {$(
-        #[test]
-        fn $name() {
-            let home = temp_dir();
-            support::machine_with_photos(home.path(), 20);
-            run_suite("external", home.path(), None);
-        }
-    )*};
-}
-external_repeats!(external_repeat_01 external_repeat_02 external_repeat_03 external_repeat_04 external_repeat_05 external_repeat_06 external_repeat_07 external_repeat_08 external_repeat_09 external_repeat_10 external_repeat_11 external_repeat_12 external_repeat_13 external_repeat_14 external_repeat_15 external_repeat_16 external_repeat_17 external_repeat_18 external_repeat_19 external_repeat_20);
-
 /// The XMP export to the source folders: the command, the form, the files written beside the originals, a file another
 /// application changed held back, Replace asking first, the choices remembered.
 #[test]

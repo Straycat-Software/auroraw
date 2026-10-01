@@ -60,28 +60,6 @@ AppTestCase {
         drawn(app.externalDialog.contentItem)
     }
 
-    SignalSpy { id: acceptClicks; signalName: "clicked" }
-    SignalSpy { id: engineAnswers; target: Bus; signalName: "externalChanges" }
-
-    // Clicks "Accept all" and waits for the list to empty. When it does not, the message says what happened: whether the
-    // click reached the button, and whether the engine's answer reached the window (issue #63, a failure seen on macOS
-    // only, with nothing to tell the two apart).
-    function acceptAllAndWait(dialog) {
-        const button = dialog.acceptAllButton
-        acceptClicks.target = button
-        acceptClicks.clear()
-        engineAnswers.clear()
-        click(button)
-        const deadline = Date.now() + 5000
-        while (dialog.entries.length > 0 && Date.now() < deadline)
-            wait(50)
-        verify(dialog.entries.length === 0, "Accept all did not empty the list: clicks that reached the button "
-               + acceptClicks.count + ", answers of the engine " + engineAnswers.count + ", button enabled " + button.enabled
-               + " visible " + button.visible + " size " + button.width + "x" + button.height + ", window visible "
-               + dialog.visible + " active " + dialog.active + ", entries " + dialog.entries.length + ", banner "
-               + app.externalBanner.count)
-    }
-
     // Writes `name`.xmp beside its original and lets a rescan see it, as another application's edit.
     function edit(name, title, rating) {
         files.write(home + "/Card/" + name + ".xmp", xmp(title, rating))
@@ -99,7 +77,7 @@ AppTestCase {
         snapshot("external-banner")
 
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         const entry = app.externalDialog.entries[0]
         compare(entry.filename, "IMG_0003.jpg")
         compare(entry.changes.length, 1)
@@ -113,7 +91,7 @@ AppTestCase {
         tryCompare(app.photos, "count", 20)
         tryVerify(() => app.photos.ratingAt(rowOfPhoto("IMG_0003")) === 4)
         tryVerify(() => !app.externalBanner.visible)
-        tryCompare(app.externalDialog.entries, "length", 0)
+        tryEntries(0)
         // (Undo waits for the window to be put away: no command while a dialog is open.)
         app.externalDialog.close()
         tryVerify(() => app.actions.undo.enabled)
@@ -154,7 +132,7 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
 
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         compare(app.externalDialog.entries[0].changes[0].conflict, true)
         snapshot("external-changes")
         // Kept by default: accepting leaves the rating as it is.
@@ -170,7 +148,7 @@ AppTestCase {
         edit("IMG_0005", "Base", 1)
         tryVerify(() => app.externalBanner.visible)
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         app.externalDialog.choose(app.externalDialog.entries[0].id, "rating", true)
         click(app.externalDialog.acceptAllButton)
         tryVerify(() => app.photos.ratingAt(rowOfPhoto("IMG_0005")) === 1)
@@ -206,7 +184,7 @@ AppTestCase {
         app.launcher.chooseLanguage("fr")
         wait(250)
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         compare(app.externalDialog.title, "Métadonnées modifiées par une autre application")
         verify(app.externalDialog.acceptAllButton.text !== "Accept all")
         // French labels are the longest: the three buttons of the footer are as wide as each other, at least 128px, and
@@ -236,13 +214,14 @@ AppTestCase {
         edit("IMG_0013", "Base")
         edit("IMG_0013", "Base", 2)
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         const dialog = app.externalDialog
         compare(dialog.introLabel.text, "Another application changed the XMP file beside the original of 1 photo.")
         verify(dialog.answersLabel.visible && dialog.answersLabel.text.indexOf("Accept applies") === 0, dialog.answersLabel.text)
         verify(dialog.answersLabel.text.indexOf("Ignore keeps the photo as it is") > 0)
         verify(dialog.safetyLabel.visible && dialog.safetyLabel.text.indexOf("Nothing is applied until you choose") === 0)
-        acceptAllAndWait(dialog)
+        click(dialog.acceptAllButton)
+        tryEntries(0)
         compare(dialog.introLabel.text, "Nothing is waiting.")
         verify(!dialog.answersLabel.visible && !dialog.safetyLabel.visible, "nothing to explain when nothing waits")
         dialog.close()

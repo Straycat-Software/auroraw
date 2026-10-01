@@ -123,6 +123,15 @@ TestCase {
         verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
     }
 
+    // Waits until the review of external changes lists `count` photos. (Not `tryCompare(app.externalDialog.entries,
+    // "length", count)`: `entries` is a new array at each refresh, and `tryCompare` reads the array once, when it is
+    // called, so it keeps waiting on a list nobody updates; the test passed whenever the engine answered within the
+    // pause of a click, and on a slow macOS runner it did not: issue #63.)
+    function tryEntries(count) {
+        tryVerify(() => app.externalDialog.entries.length === count,
+                  5000, "the review lists " + app.externalDialog.entries.length + " photos, not " + count)
+    }
+
     // Clicks the centre of an item as a person would.
     function click(item) {
         mouseClick(item)
