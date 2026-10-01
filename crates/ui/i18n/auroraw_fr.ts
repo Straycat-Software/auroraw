@@ -1411,16 +1411,26 @@
     </message>
     <message numerus="yes">
         <location line="+12"/>
-        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</source>
+        <source>Another application changed the XMP file beside the original of %n photo(s).</source>
         <translation>
-            <numerusform>%n photo a un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie ces fichiers que lorsque vous lui demandez d’exporter des fichiers XMP.</numerusform>
-            <numerusform>%n photos ont un fichier, à côté de l’original, qu’une autre application a modifié. Rien n’est appliqué avant que vous acceptiez&#xa0;; Auroraw ne modifie ces fichiers que lorsque vous lui demandez d’exporter des fichiers XMP.</numerusform>
+            <numerusform>Une autre application a modifié le fichier XMP à côté de l’original de %n photo.</numerusform>
+            <numerusform>Une autre application a modifié les fichiers XMP à côté des originaux de %n photos.</numerusform>
         </translation>
     </message>
     <message>
         <location filename="../qml/ExternalChangesDialog.qml" line="104"/>
         <source>Nothing is waiting.</source>
         <translation>Rien n’est en attente.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Accept applies what the file says to the photo, in one step you can undo. Ignore keeps the photo as it is; the file is offered again only if it changes.</source>
+        <translation>Accepter applique à la photo ce que dit le fichier, en une étape que vous pouvez annuler. Ignorer garde la photo telle qu’elle est&#xa0;; le fichier n’est proposé de nouveau que s’il change.</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Nothing is applied until you choose. Auroraw changes these files only when you export XMP files.</source>
+        <translation>Rien n’est appliqué avant que vous choisissiez. Auroraw ne modifie ces fichiers que lorsque vous exportez des fichiers XMP.</translation>
     </message>
     <message>
         <location filename="../qml/ExternalChangesDialog.qml" line="161"/>
