@@ -66,8 +66,19 @@ TestCase {
         mouseClick(menu.button)
         tryVerify(() => menu.popup.opened)
         tryVerify(() => menu.list.count > 0)
-        // (The first frame with the rows in it: a click before it lands where they are not yet.)
-        wait(60)
+        // The rows are made at the list's next layout (`count` is the model's, and `itemAtIndex()` is `null` until then), and a
+        // click sent before the frame with them in it lands where they are not yet: wait for the first row and for a frame
+        // that draws it, not for a duration that guesses how long that takes (issues #27, #63).
+        drawn(rowItem(menu, 0))
+    }
+
+    // A frame was drawn with `item` in it (what the application's tests do through `AppTestCase.drawn`, which this plain
+    // `TestCase` does not have).
+    function drawn(item) {
+        item.update()
+        if (item.Window.window)
+            item.Window.window.update()
+        verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
     }
 
     function texts(menu) {
@@ -130,8 +141,8 @@ TestCase {
         compare(texts(menu), ["Any place", "Canada 100", "France 30"])
         verify(menu.rows[1].hasChildren && !menu.rows[1].open)
         // (No translation is installed in this suite: the source text, "%n photo(s)", is what it says.)
-        compare(menu.list.itemAtIndex(1).Accessible.name.indexOf("Canada, 100 photo"), 0)
-        compare(menu.list.itemAtIndex(0).Accessible.name, "Any place")
+        compare(rowItem(menu, 1).Accessible.name.indexOf("Canada, 100 photo"), 0)
+        compare(rowItem(menu, 0).Accessible.name, "Any place")
         menu.popup.close()
     }
 
