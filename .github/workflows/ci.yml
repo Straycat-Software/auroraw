@@ -7,6 +7,9 @@ on:
   push:
     branches: [dev, main]
   pull_request:
+  # The merge queue (docs/continuous-integration.md §2): the same jobs run on the merge of a pull request with what is
+  # already in the queue, and the checks the ruleset requires are those of that run.
+  merge_group:
 
 permissions:
   contents: read
