@@ -14,12 +14,24 @@
 //! - the smoke test that compiles every shader and checks it against a CPU reference
 //!   ([`Pipeline::smoke_test`]).
 //!
-//! The render API (recipes, views, reports) comes next, following design note 005.
+//! - the **pipeline definition v1** as data ([`definition`], design note 006): the stages, the data spaces,
+//!   the fixed spine, the canonical order of the built-in operations, and the fingerprint that holds a
+//!   released version unchanged;
+//! - the **recipe** ([`recipe`]) with the canonical encoding of its typed parameters, the **registry** of
+//!   the operations the engine knows ([`registry`]), the **validation** of a recipe against both
+//!   ([`validate`]), and the **stage cache keys** with the model of what a change reruns ([`plan`]).
+//!
+//! The render API (views, bands, the stage caches themselves, reports) comes next, following design note 005.
 
 pub mod adapter;
+pub mod definition;
 mod gpu;
+pub mod plan;
+pub mod recipe;
+pub mod registry;
 mod smoke;
 mod thread;
+pub mod validate;
 
 pub use adapter::{
     AdapterChoice, AdapterInfo, AdapterKind, Backend, ChooseError, choose, choose_for,
