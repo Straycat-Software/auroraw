@@ -15,6 +15,7 @@ use time::format_description::well_known::Rfc3339;
 use crate::SidecarStat;
 use crate::effective::{effective_flag, effective_rating, flag_code};
 use crate::error::Result;
+use crate::place::PlaceColumns;
 
 /// Every version of a photo, keyed by photo identifier, as `rebuild` and the tests need to look
 /// a photo's main version up while inserting it.
@@ -138,6 +139,7 @@ pub(crate) fn insert_photo(
         .find(|f| f.role == FileRole::Original)
         .or_else(|| photo.files.first());
     let location = original_file.and_then(|f| f.locations.first());
+    let place = PlaceColumns::of(&photo.meta);
     let camera_id = camera_id(tx, &photo.meta.original.make, &photo.meta.original.model)?;
     let lens_id = match &photo.meta.original.lens {
         Some(name) if !name.is_empty() => Some(get_or_insert_name(tx, "lens", name)?),
@@ -150,10 +152,12 @@ pub(crate) fn insert_photo(
             iso, aperture, shutter, focal_length, width, height,
             rating, flag, label, title, caption, gps_lat, gps_lon,
             series_id, main_version_id, version_count, effective_rating, effective_flag,
-            rating_overridden, imported, sidecar_size, sidecar_modified
+            rating_overridden, imported, sidecar_size, sidecar_modified,
+            country, region, city, country_code, place_country, place_region, place_city
         ) VALUES (
             ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15,
-            ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31
+            ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31,
+            ?32, ?33, ?34, ?35, ?36, ?37, ?38
         )",
         params![
             photo.photo_id.to_string(),
@@ -216,6 +220,13 @@ pub(crate) fn insert_photo(
             photo.imported.map(|t| t.unix()),
             stat.size as i64,
             stat.modified,
+            place.country,
+            place.region,
+            place.city,
+            place.country_code,
+            place.country_key,
+            place.region_key,
+            place.city_key,
         ],
     )?;
     // `photo_fts` is a self-contained FTS5 table (schema.sql) that still needs an integer rowid

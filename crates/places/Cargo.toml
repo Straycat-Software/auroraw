@@ -22,3 +22,6 @@ fastrand.workspace = true
 
 [[example]]
 name = "build-places"
+
+[[example]]
+name = "country-names"

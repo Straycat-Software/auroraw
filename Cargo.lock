@@ -131,6 +131,7 @@ dependencies = [
  "auroraw-types",
  "auroraw-workspace",
  "fastrand",
+ "icu_normalizer",
  "proptest",
  "rusqlite",
  "serde",
