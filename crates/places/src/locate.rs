@@ -155,26 +155,30 @@ impl Lookup {
     }
 
     /// The parts of this level whose box meets `[lon_low, lon_high] x [lat_low, lat_high]`: part,
-    /// area, and the area of the box (to prefer the smallest of several).
+    /// area, and the area of the box (to prefer the smallest of several). With `parent`, only the areas
+    /// that are in that country (the regions of one country).
     fn candidates(
         conn: &Connection,
         level: Level,
         lon: (f64, f64),
         lat: (f64, f64),
+        parent: Option<i64>,
     ) -> Result<Vec<(i64, i64, f64)>> {
         let mut statement = conn.prepare_cached(
             "SELECT b.id, p.area, (b.max_lon - b.min_lon) * (b.max_lat - b.min_lat) \
-             FROM part_boxes b JOIN parts p ON p.id = b.id \
-             WHERE p.level = ?1 AND b.max_lon >= ?2 AND b.min_lon <= ?3 AND b.max_lat >= ?4 AND b.min_lat <= ?5",
+             FROM part_boxes b JOIN parts p ON p.id = b.id JOIN areas a ON a.id = p.area \
+             WHERE p.level = ?1 AND b.max_lon >= ?2 AND b.min_lon <= ?3 AND b.max_lat >= ?4 AND b.min_lat <= ?5 \
+             AND (?6 IS NULL OR a.parent = ?6)",
         )?;
-        let rows = statement
-            .query_map(params![level as i64, lon.0, lon.1, lat.0, lat.1], |row| {
-                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-            })?;
+        let rows = statement.query_map(
+            params![level as i64, lon.0, lon.1, lat.0, lat.1, parent],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )?;
         Ok(rows.collect::<std::result::Result<_, _>>()?)
     }
 
-    /// The area of this level that contains the point, or, with a tolerance, the nearest one within it.
+    /// The area of this level that contains the point, or, with a tolerance, the nearest one within it. With
+    /// `parent`, among the areas of that country only.
     pub(crate) fn area_at(
         &self,
         conn: &Connection,
@@ -182,9 +186,10 @@ impl Lookup {
         lon: f64,
         lat: f64,
         tolerance_m: f64,
+        parent: Option<i64>,
     ) -> Result<Option<i64>> {
         let mut inside: Option<(f64, i64)> = None;
-        for (part, area, size) in Self::candidates(conn, level, (lon, lon), (lat, lat))? {
+        for (part, area, size) in Self::candidates(conn, level, (lon, lon), (lat, lat), parent)? {
             if inside.is_some_and(|(best, _)| best <= size) {
                 continue;
             }
@@ -202,7 +207,9 @@ impl Lookup {
         let dlon = geometry::degrees_of_longitude(tolerance_m, lat);
         let mut nearest: Option<(f64, i64)> = None;
         for range in geometry::longitude_ranges(lon, dlon) {
-            for (part, area, _) in Self::candidates(conn, level, range, (lat - dlat, lat + dlat))? {
+            for (part, area, _) in
+                Self::candidates(conn, level, range, (lat - dlat, lat + dlat), parent)?
+            {
                 let distance = geometry::distance_m(&self.rings(conn, part)?, lon, lat);
                 if distance <= tolerance_m && nearest.is_none_or(|(best, _)| distance < best) {
                     nearest = Some((distance, area));
@@ -210,6 +217,34 @@ impl Lookup {
             }
         }
         Ok(nearest.map(|(_, area)| area))
+    }
+
+    /// The country and the region a point is in, **the country decided first**: the country that contains
+    /// the point, then the region of that country that contains it or, failing that, is nearest within the
+    /// tolerance. Deciding the region first would give a point in a country with no regions of its own the
+    /// neighbour's country, whenever a region of the neighbour is within the tolerance (review of the
+    /// places crate). Only a point in **no country** (a coast, a ferry, an island the polygons do not show)
+    /// uses the tolerance to find one: through the nearest region, else the nearest country.
+    pub(crate) fn country_and_region(
+        &self,
+        conn: &Connection,
+        lon: f64,
+        lat: f64,
+        tolerance_m: f64,
+    ) -> Result<(Option<i64>, Option<i64>)> {
+        if let Some(country) = self.area_at(conn, Level::Country, lon, lat, 0.0, None)? {
+            let region = self.area_at(conn, Level::Region, lon, lat, tolerance_m, Some(country))?;
+            return Ok((Some(country), region));
+        }
+        let region = self.area_at(conn, Level::Region, lon, lat, tolerance_m, None)?;
+        if let Some(country) = match region {
+            Some(region) => self.parent_of(conn, region)?,
+            None => None,
+        } {
+            return Ok((Some(country), region));
+        }
+        let country = self.area_at(conn, Level::Country, lon, lat, tolerance_m, None)?;
+        Ok((country, None))
     }
 
     /// The country a region is in.
@@ -222,12 +257,15 @@ impl Lookup {
             .flatten())
     }
 
-    /// The town of `column` (region or country) `area` that the point is "in": the biggest of those that
-    /// claim it ([`TOWN_REACH_M`]), else the nearest within the radius.
+    /// The town of the country `country` that the point is "in": the biggest of those that claim it
+    /// ([`TOWN_REACH_M`]), else the nearest within the radius. With a `region`, the towns of that region **and
+    /// the towns of the country that no region contains** (the 1:10 million polygons leave out harbours,
+    /// beaches and islands, and a photo that has a region must still see them); never a town of another
+    /// region, so that a point just inside one is not given the town across its border.
     fn town_of(
         conn: &Connection,
-        column: &str,
-        area: i64,
+        country: i64,
+        region: Option<i64>,
         lon: f64,
         lat: f64,
         options: &Options,
@@ -235,15 +273,15 @@ impl Lookup {
         let radius_m = options.town_radius_m;
         let dlat = geometry::degrees_of_latitude(radius_m);
         let dlon = geometry::degrees_of_longitude(radius_m, lat);
-        let sql = format!(
+        let mut statement = conn.prepare_cached(
             "SELECT id, name, lat, lon, population, section FROM places \
-             WHERE {column} = ?5 AND lat BETWEEN ?3 AND ?4 AND lon BETWEEN ?1 AND ?2"
-        );
-        let mut statement = conn.prepare_cached(&sql)?;
+             WHERE country_area = ?5 AND (?6 IS NULL OR region_area IS NULL OR region_area = ?6) \
+             AND lat BETWEEN ?3 AND ?4 AND lon BETWEEN ?1 AND ?2",
+        )?;
         let mut near: Vec<(Town, i64, bool)> = Vec::new();
         for range in geometry::longitude_ranges(lon, dlon) {
             let rows = statement.query_map(
-                params![range.0, range.1, lat - dlat, lat + dlat, area],
+                params![range.0, range.1, lat - dlat, lat + dlat, country, region],
                 |row| {
                     Ok((
                         row.get::<_, i64>(0)?,
@@ -390,29 +428,17 @@ impl Places {
             (lon + 180.0).rem_euclid(360.0) - 180.0
         };
         let lang = lang.split(['-', '_']).next().unwrap_or("en").to_lowercase();
-        let tolerance = self.options.coastal_tolerance_m;
-        let region = self
-            .lookup
-            .area_at(&self.conn, Level::Region, lon, lat, tolerance)?;
-        let mut country = match region {
-            Some(region) => self.lookup.parent_of(&self.conn, region)?,
+        let (country, region) = self.lookup.country_and_region(
+            &self.conn,
+            lon,
+            lat,
+            self.options.coastal_tolerance_m,
+        )?;
+        // The town must be in the region the point is in (or in none, in the same country), so that a point
+        // just inside one is not given the town across the border; with no region, in the country.
+        let town = match country {
+            Some(country) => Lookup::town_of(&self.conn, country, region, lon, lat, &self.options)?,
             None => None,
-        };
-        if country.is_none() {
-            country = self
-                .lookup
-                .area_at(&self.conn, Level::Country, lon, lat, tolerance)?;
-        }
-        // The town must be in the region the point is in, so that a point just inside one is not given
-        // the town across the border; with no region, in the country.
-        let town = match (region, country) {
-            (Some(region), _) => {
-                Lookup::town_of(&self.conn, "region_area", region, lon, lat, &self.options)?
-            }
-            (None, Some(country)) => {
-                Lookup::town_of(&self.conn, "country_area", country, lon, lat, &self.options)?
-            }
-            (None, None) => None,
         };
         Ok(Located {
             country: country

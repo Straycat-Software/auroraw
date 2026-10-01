@@ -384,3 +384,121 @@ fn a_neighbourhood_gives_way_to_the_city_near_it_but_stands_alone_when_there_is_
         "Quarter"
     );
 }
+
+/// Two countries side by side, for the borders the generalised polygons blur: `Xland`, with a region of its
+/// own, and `Yland` beside it, two kilometres across and with no region at all, with a town in it.
+fn neighbours() -> (TempDir, Places) {
+    let dir = temp_dir();
+    let path = dir.path().join("places.sqlite");
+    let mut pack = PackBuilder::create(&path).unwrap();
+    let x = pack
+        .add_area(&area(
+            Level::Country,
+            "XL",
+            "Xland",
+            None,
+            vec![vec![square(0.0, 1.0, 0.0, 1.0)]],
+        ))
+        .unwrap();
+    let mut region = area(
+        Level::Region,
+        "XL-1",
+        "Xregion",
+        None,
+        vec![vec![square(0.0, 1.0, 0.0, 1.0)]],
+    );
+    region.parent = Some(x);
+    pack.add_area(&region).unwrap();
+    // 1.00..1.02 by 0.40..0.42: touching Xland's region, and with no region layer of its own.
+    pack.add_area(&area(
+        Level::Country,
+        "YL",
+        "Yland",
+        None,
+        vec![vec![square(1.0, 1.02, 0.40, 0.42)]],
+    ))
+    .unwrap();
+    pack.add_place(&town(1, "Yburg", 0.41, 1.01, "YL")).unwrap();
+    pack.finish().unwrap();
+    (dir, Places::open(&path).unwrap())
+}
+
+#[test]
+fn a_country_without_regions_beside_a_region_is_not_taken_for_the_neighbour() {
+    // Review of the places crate (Bob), point 1. The middle of Yland is 1.1 km from Xland's region, well
+    // within the coastal tolerance; the country is decided by containment first, and the tolerance only
+    // serves a point that is in no country.
+    let (_dir, places) = neighbours();
+    let yland = places.locate(0.41, 1.01, "en").unwrap();
+    assert_eq!(yland.country.unwrap().name, "Yland");
+    assert!(yland.region.is_none(), "Yland has no region");
+    assert_eq!(yland.city.unwrap().name, "Yburg");
+    // The other side of the same border is still Xland, and still in its region.
+    let xland = places.locate(0.41, 0.995, "en").unwrap();
+    assert_eq!(xland.country.unwrap().name, "Xland");
+    assert_eq!(xland.region.unwrap().name, "Xregion");
+}
+
+/// A country whose region stops short of its coast, with a harbour in the strip the region does not cover and a
+/// town of the next country that has no region either.
+fn harbour() -> (TempDir, Places) {
+    let dir = temp_dir();
+    let path = dir.path().join("places.sqlite");
+    let mut pack = PackBuilder::create(&path).unwrap();
+    let x = pack
+        .add_area(&area(
+            Level::Country,
+            "XL",
+            "Xland",
+            None,
+            vec![vec![square(0.0, 1.2, 0.0, 1.0)]],
+        ))
+        .unwrap();
+    let mut region = area(
+        Level::Region,
+        "XL-1",
+        "Xregion",
+        None,
+        vec![vec![square(0.0, 1.0, 0.0, 1.0)]],
+    );
+    region.parent = Some(x);
+    pack.add_area(&region).unwrap();
+    pack.add_area(&area(
+        Level::Country,
+        "ZL",
+        "Zland",
+        None,
+        vec![vec![square(1.2, 2.2, 0.0, 1.0)]],
+    ))
+    .unwrap();
+    // In Xland but outside every region of it: 300 m past the region's edge.
+    pack.add_place(&town(1, "Harbour", 0.70, 1.003, "XL"))
+        .unwrap();
+    // In Zland, which has no region either.
+    pack.add_place(&town(2, "Zport", 0.20, 1.21, "ZL")).unwrap();
+    let summary = pack.finish().unwrap();
+    assert_eq!(summary.places_without_region, 2);
+    (dir, Places::open(&path).unwrap())
+}
+
+#[test]
+fn a_town_that_no_region_contains_is_found_from_a_point_in_its_countrys_region() {
+    // Review of the places crate (Bob), point 2: the towns outside the generalised polygons are mostly the
+    // coastal ones (harbours, beaches, islands), and a photo that has a region could not see them.
+    let (_dir, places) = harbour();
+    let found = places.locate(0.70, 0.995, "en").unwrap();
+    assert_eq!(found.region.unwrap().name, "Xregion");
+    assert_eq!(found.city.unwrap().name, "Harbour");
+}
+
+#[test]
+fn a_town_with_no_region_is_still_a_town_of_its_own_country_only() {
+    // The border guard stays: Zport is 23.9 km from this point and has no region, but it is Zland's.
+    let (_dir, places) = harbour();
+    let found = places.locate(0.20, 0.995, "en").unwrap();
+    assert_eq!(found.country.unwrap().name, "Xland");
+    assert!(found.city.is_none(), "no town of Xland within 25 km");
+    // And from its own side it is found.
+    let zland = places.locate(0.20, 1.25, "en").unwrap();
+    assert_eq!(zland.city.unwrap().name, "Zport");
+}
