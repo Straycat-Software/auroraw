@@ -522,6 +522,12 @@ they need the first stages and a look at real images. The criteria, to write dow
   wrong or estimated noise profile costs a noise-model denoiser (§4.5). v1 does not freeze before the first
   two are settled.
 - **Decided by looking, not yet taken**: the base look's curve and constants (§6).
+- **Before v1 freezes** (the start of increment B, §3.6), besides the two measurements above: the colour
+  stages' matrices must be derived from the definition's working space and from no other copy of its
+  chromaticities (done: `colour.rs` reads `definition::V1`, and a test reads the chromaticities back from
+  its matrix); and whoever loads the registry (WP18) must pass plugin declarations in a machine-independent
+  order, since the first of two declarations of one identifier is the one kept (the doc of
+  `OperationRegistry::load`).
 - **Accepted in review** (D-146): the five data spaces, `after` and `before` naming operations within
   a stage, `decode` and `encode` as boundaries, the fingerprint test of released definitions, the definition
   as Rust data, the flat linear look as an absent `tone map`. **Changed after review**: stage names

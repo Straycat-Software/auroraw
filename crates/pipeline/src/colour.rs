@@ -2,13 +2,18 @@
 //! The colour arithmetic of the first stages: the matrices between the camera, the working space and
 //! the display (design note 006 §3.3, §5).
 //!
-//! The working space is **linear Rec.2020 primaries with the D65 white**, as architecture §6.5 and the
-//! M2 plan propose, **provisionally**: the plan asks that it be confirmed against linear ProPhoto RGB by
-//! measurement before the colour operations are written against it (note 006 §5). Changing it is a new
-//! pipeline-definition version; only this table and the matrices derived from it would change.
+//! The working space is **the one the pipeline definition holds** ([`definition::V1`]`.working_space`:
+//! linear Rec.2020 primaries with the D65 white, as architecture §6.5 and the M2 plan propose,
+//! **provisionally**; the plan asks that it be confirmed against linear ProPhoto RGB by measurement
+//! before the colour operations are written against it, note 006 §5). This module has **no copy of its
+//! chromaticities**: the definition is their only source, so the fingerprint that holds a released
+//! version cannot say one working space while the stages compute with another. Changing the working space
+//! is a new definition version; the matrices follow from the definition without an edit here.
 //!
 //! The matrices are **derived from the chromaticities**, in double precision, not copied as rounded
 //! numbers, so that the white point maps exactly to white and the tests can say so.
+
+use crate::definition;
 
 /// A 3x3 matrix, row-major, acting on a column vector of linear RGB.
 pub(crate) type Matrix3 = [[f32; 3]; 3];
@@ -21,13 +26,16 @@ struct Primaries {
     white: [f64; 2],
 }
 
-/// ITU-R BT.2020, the working space (D65 white).
-const WORKING: Primaries = Primaries {
-    red: [0.708, 0.292],
-    green: [0.170, 0.797],
-    blue: [0.131, 0.046],
-    white: [0.3127, 0.3290],
-};
+/// The working space of definition v1, read from the definition itself.
+fn working() -> Primaries {
+    let space = &definition::V1.working_space;
+    Primaries {
+        red: space.red,
+        green: space.green,
+        blue: space.blue,
+        white: space.white,
+    }
+}
 
 /// sRGB (IEC 61966-2-1), the display space of the first output (D65 white).
 const SRGB: Primaries = Primaries {
@@ -99,7 +107,7 @@ fn to_f32(m: &M64) -> Matrix3 {
 /// transfer function.
 pub(crate) fn working_to_display() -> Matrix3 {
     let to_display = inverse(&rgb_to_xyz(&SRGB)).expect("sRGB primaries invert");
-    to_f32(&mul(&to_display, &rgb_to_xyz(&WORKING)))
+    to_f32(&mul(&to_display, &rgb_to_xyz(&working())))
 }
 
 /// Camera RGB to working space, from the camera's `XYZ to camera` matrix, **by dcraw's method**: the
@@ -111,7 +119,7 @@ pub(crate) fn working_to_display() -> Matrix3 {
 pub(crate) fn camera_to_working(xyz_to_camera: &Matrix3) -> Option<Matrix3> {
     let xyz_to_cam: M64 =
         std::array::from_fn(|i| std::array::from_fn(|j| f64::from(xyz_to_camera[i][j])));
-    let mut working_to_cam = mul(&xyz_to_cam, &rgb_to_xyz(&WORKING));
+    let mut working_to_cam = mul(&xyz_to_cam, &rgb_to_xyz(&working()));
     for row in &mut working_to_cam {
         let sum: f64 = row.iter().sum();
         if sum.abs() < 1e-9 {
@@ -158,6 +166,32 @@ mod tests {
                     "[{i}][{j}] {} against {}",
                     derived[i][j],
                     published[i][j]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_working_matrix_has_the_chromaticities_of_the_definition() {
+        // Read back from the matrix, not from the table it was derived from: the columns of RGB-to-XYZ
+        // are the primaries and its row sum is the white, so their chromaticities (x = X / (X + Y + Z))
+        // are the definition's. A copy of the numbers left in this module would make this fail the day
+        // the definition's working space changes.
+        let space = &definition::V1.working_space;
+        let m = rgb_to_xyz(&working());
+        let xy = |v: [f64; 3]| [v[0] / (v[0] + v[1] + v[2]), v[1] / (v[0] + v[1] + v[2])];
+        let column = |c: usize| [m[0][c], m[1][c], m[2][c]];
+        let white: [f64; 3] = std::array::from_fn(|r| m[r].iter().sum());
+        for (name, got, want) in [
+            ("red", xy(column(0)), space.red),
+            ("green", xy(column(1)), space.green),
+            ("blue", xy(column(2)), space.blue),
+            ("white", xy(white), space.white),
+        ] {
+            for axis in 0..2 {
+                assert!(
+                    (got[axis] - want[axis]).abs() < 1e-12,
+                    "{name}: {got:?} against the definition's {want:?}"
                 );
             }
         }
