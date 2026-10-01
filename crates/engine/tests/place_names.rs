@@ -473,24 +473,48 @@ fn a_refresh_moves_what_auroraw_wrote_with_the_position_and_leaves_what_a_person
 }
 
 #[test]
-fn typing_what_auroraw_wrote_changes_nothing_and_a_refresh_keeps_other_words() {
-    // A person typing what Auroraw wrote changes nothing: it stays Auroraw's. A person's own different
-    // words are never overwritten, even by a refresh.
+fn typing_the_same_words_confirms_them_and_a_refresh_then_keeps_them() {
+    // A person typing what Auroraw wrote is confirming it, and it is theirs (design note 008 §4): the
+    // field leaves the record, as a step that can be undone, and a refresh never moves it.
     let photo = photo_at(5.0, 2.0);
     let id = photo.photo_id;
     let f = fixture(&[photo]);
     f.find(&[id], "fr", false);
+
     f.set(id, MetadataField::City, "Westville");
+    let meta = f.meta(id);
+    assert_eq!(
+        meta.city.as_deref(),
+        Some("Westville"),
+        "the words did not change"
+    );
+    assert_eq!(
+        meta.place_filled.unwrap().city,
+        None,
+        "but they are the person's now"
+    );
+    assert_eq!(f.undo_label(), Some((LabelKind::MetaCity, 1)));
+
+    // Writing it again, now that it is theirs, is the no-op it always was: no second step.
+    f.set(id, MetadataField::City, "Westville");
+    f.engine.undo().unwrap();
     assert_eq!(
         f.meta(id).place_filled.unwrap().city.as_deref(),
-        Some("Westville")
+        Some("Westville"),
+        "one undo gives it back to Auroraw"
     );
+    f.engine.redo().unwrap();
+
     f.set(id, MetadataField::Region, "Mine");
     moved(&f, id, 5.0, 8.0);
     f.find(&[id], "fr", true);
     let meta = f.meta(id);
-    assert_eq!(meta.region.as_deref(), Some("Mine"));
-    assert_eq!(meta.city.as_deref(), Some("Eastburg"));
+    assert_eq!(
+        (meta.city.as_deref(), meta.region.as_deref()),
+        (Some("Westville"), Some("Mine")),
+        "neither moves with the position: both are the person's"
+    );
+    assert_eq!(meta.country.as_deref(), Some("Alandie"));
 }
 
 #[test]

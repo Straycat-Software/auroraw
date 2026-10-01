@@ -891,19 +891,20 @@ impl Coordinator {
                 value,
             } => self.edit_photo(*photo_id, |m| {
                 let before = field.get(m);
-                (before != *value).then(|| {
-                    // (A place field a person writes is theirs from then on: it leaves the record of what
-                    // Auroraw filled, and undoing the write brings it back.)
-                    let was = m.place_filled.clone();
+                // A place field a person writes is theirs from then on, whatever they write, the same words
+                // included (design note 008 §4): it leaves the record of what Auroraw filled, and undoing the
+                // write brings it back. So writing what a field already says is a step when it was Auroraw's.
+                let was = m.place_filled.clone();
+                if before != *value {
                     field.set(m, value.clone());
-                    let place = place_names::released(m, field, was);
-                    Change::Metadata {
-                        photo: *photo_id,
-                        field: field.clone(),
-                        before,
-                        after: value.clone(),
-                        place,
-                    }
+                }
+                let place = place_names::released(m, field, was);
+                (before != *value || place.is_some()).then(|| Change::Metadata {
+                    photo: *photo_id,
+                    field: field.clone(),
+                    before,
+                    after: value.clone(),
+                    place,
                 })
             }),
             Command::FillPlace { photo_id, fill } => {
