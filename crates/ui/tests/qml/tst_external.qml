@@ -77,7 +77,7 @@ AppTestCase {
         snapshot("external-banner")
 
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         const entry = app.externalDialog.entries[0]
         compare(entry.filename, "IMG_0003.jpg")
         compare(entry.changes.length, 1)
@@ -91,7 +91,7 @@ AppTestCase {
         tryCompare(app.photos, "count", 20)
         tryVerify(() => app.photos.ratingAt(rowOfPhoto("IMG_0003")) === 4)
         tryVerify(() => !app.externalBanner.visible)
-        tryCompare(app.externalDialog.entries, "length", 0)
+        tryEntries(0)
         // (Undo waits for the window to be put away: no command while a dialog is open.)
         app.externalDialog.close()
         tryVerify(() => app.actions.undo.enabled)
@@ -132,7 +132,7 @@ AppTestCase {
         tryVerify(() => app.externalBanner.visible)
 
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         compare(app.externalDialog.entries[0].changes[0].conflict, true)
         snapshot("external-changes")
         // Kept by default: accepting leaves the rating as it is.
@@ -148,7 +148,7 @@ AppTestCase {
         edit("IMG_0005", "Base", 1)
         tryVerify(() => app.externalBanner.visible)
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         app.externalDialog.choose(app.externalDialog.entries[0].id, "rating", true)
         click(app.externalDialog.acceptAllButton)
         tryVerify(() => app.photos.ratingAt(rowOfPhoto("IMG_0005")) === 1)
@@ -184,7 +184,7 @@ AppTestCase {
         app.launcher.chooseLanguage("fr")
         wait(250)
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         compare(app.externalDialog.title, "Métadonnées modifiées par une autre application")
         verify(app.externalDialog.acceptAllButton.text !== "Accept all")
         // French labels are the longest: the three buttons of the footer are as wide as each other, at least 128px, and
@@ -214,14 +214,14 @@ AppTestCase {
         edit("IMG_0013", "Base")
         edit("IMG_0013", "Base", 2)
         openReview()
-        tryCompare(app.externalDialog.entries, "length", 1)
+        tryEntries(1)
         const dialog = app.externalDialog
         compare(dialog.introLabel.text, "Another application changed the XMP file beside the original of 1 photo.")
         verify(dialog.answersLabel.visible && dialog.answersLabel.text.indexOf("Accept applies") === 0, dialog.answersLabel.text)
         verify(dialog.answersLabel.text.indexOf("Ignore keeps the photo as it is") > 0)
         verify(dialog.safetyLabel.visible && dialog.safetyLabel.text.indexOf("Nothing is applied until you choose") === 0)
         click(dialog.acceptAllButton)
-        tryCompare(dialog.entries, "length", 0)
+        tryEntries(0)
         compare(dialog.introLabel.text, "Nothing is waiting.")
         verify(!dialog.answersLabel.visible && !dialog.safetyLabel.visible, "nothing to explain when nothing waits")
         dialog.close()
