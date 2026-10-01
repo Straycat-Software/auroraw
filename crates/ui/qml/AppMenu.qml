@@ -51,6 +51,7 @@ AppSubMenu {
         title: qsTr("&Tools")
         AppMenuItem { action: root.actions.importPhotos }
         AppMenuItem { action: root.actions.exportXmp }
+        AppMenuItem { action: root.actions.findPlaceNames }
         MenuSeparator {}
         AppMenuItem { action: root.actions.editKeywords }
         MenuSeparator {}

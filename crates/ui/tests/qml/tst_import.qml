@@ -81,6 +81,26 @@ AppTestCase {
         compare(app.library.status, "2 photos")
     }
 
+    function test_an_import_can_find_the_place_names_of_the_photos_it_registers() {
+        const m = begin("TemplateGps")
+        openImport()
+        fill(m)
+        verify(d.placesInstalled, "the places file is there")
+        verify(d.findPlacesBox.enabled, "so the option can be turned on")
+        verify(!d.findPlaces && !d.findPlacesBox.checked, "off until the person asks")
+        click(d.findPlacesBox)
+        verify(d.findPlaces)
+        click(d.importButton)
+        waitForTheImport()
+        // The import said what it did, then the run of place names said what it found, for the two photos it registered.
+        tryVerify(() => d.status.indexOf("Place names found for 2 photos.") >= 0, 30000, d.status)
+        verify(d.status.indexOf("All 2 files copied and verified.") === 0, d.status)
+        click(d.showPhotosButton)
+        tryVerify(() => app.photos.count === 2, 10000)
+        compare(app.photos.metadataAt(0, "city"), "Westville")
+        compare(app.photos.metadataAt(0, "country"), "Aland")
+    }
+
     function test_the_dialog_cannot_be_closed_while_an_import_runs() {
         const m = begin("Big")
         openImport()

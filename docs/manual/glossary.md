@@ -23,6 +23,9 @@ session, used when you resolve a series.
 
 **Original.** The photo file as it came from the camera. Auroraw never changes it.
 
+**Place names.** The city, region and country that Auroraw writes into a photo's fields from its position, offline,
+only where they are empty (**Tools ▸ Find place names…**, see [Keywords](06-keywords.md#place-names)).
+
 **RAW.** A camera's own, undeveloped file format (as opposed to a JPEG, already developed by the camera). A photo
 with no RAW file, only a JPEG, is marked **No RAW** in the grid.
 
