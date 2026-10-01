@@ -1,19 +1,26 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The plugin declaration (architecture §8.3, decision D-078): identifier, version, API version,
+//! The plugin declaration (architecture §8.3, decisions D-078 and D-142): identifier, version, API version,
 //! family, permissions. The host refuses a declaration it cannot satisfy and says why.
 //!
-//! D-078 also lists a panel, a pipeline stage with ordering constraints, and parameters with
-//! limits and defaults: those describe an **operation** plugin's placement in the develop
-//! pipeline, which does not exist before M2 (architecture §8.4, D-084). [`Declaration`] carries
-//! them as optional fields so the schema does not have to change shape when operation plugins
-//! arrive; nothing in this crate or WP6 gives them meaning yet.
+//! D-078 also lists a panel, a pipeline stage with ordering constraints, and parameters with limits and defaults:
+//! those describe an **operation** plugin's place in the develop pipeline, and D-142 gives them their shape. A
+//! declaration is the first of two layers: the small, stable one that `develop`, the version sidecar and the panels
+//! read (identifier, version, API version, family, stage and placement, panel, typed [parameters](crate::ParamSpec),
+//! the data space it reads and the one it writes, its [cost class](crate::CostClass), permissions). The second layer,
+//! the implementation descriptor the pipeline alone reads (halo, passes, shaders, the CPU twin), is not here: its data
+//! form is defined when the first external GPU operation arrives (M3), and for the built-in operations it is a Rust
+//! trait.
+//!
+//! The fields of the operation are optional or empty for the other families, and a declaration that gives them to
+//! another family is refused: a source with a cost class is a mistake the declaration can catch.
 
-use crate::Permissions;
+use crate::operation::{CostClass, ParamError, ParamSpec};
+use crate::{Permissions, spaces};
 use serde::{Deserialize, Serialize};
 
-/// What family of capability a plugin provides (architecture §8.1). Only the two families M1
-/// uses are named here; `Operation`, `Export` and others join when their work package builds
-/// them, matching how `Family` itself only exists because the declaration schema does.
+/// What family of capability a plugin provides (architecture §8.1). The families M1 uses, and the operation (WP13);
+/// `Export` and others join when their work package builds them, matching how `Family` itself only exists because the
+/// declaration schema does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Family {
@@ -21,26 +28,35 @@ pub enum Family {
     Source,
     /// Decodes a file's own bytes to pixels (`plugin_api::Decoder`, WP6).
     Import,
+    /// An operation of the develop pipeline (D-142): placed at a stage, with typed parameters, reading and writing a
+    /// data space.
+    Operation,
 }
 
-/// A plugin's placement in the develop pipeline: which named stage it runs at, and constraints on
-/// its order relative to others (architecture §8.3). Unused before an `Operation` family exists;
-/// see this module's doc comment.
+/// An operation's placement in the develop pipeline: the stage it runs at, and constraints on its order relative to
+/// other operations of the same stage (architecture §8.3, D-142, note 006 §7).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Placement {
-    /// The pipeline stage this plugin runs at (e.g. `"scene-linear"`, spike 4's `gpuop`).
+    /// The pipeline stage this operation runs at: one of [`crate::stages`] in definition v1. `develop` refuses an
+    /// identifier the definition it renders with does not have; a declaration cannot know which definitions will exist,
+    /// so [`Declaration::validate`] does not.
     pub stage: String,
-    /// Must run after these other stages, if present in the pipeline.
+    /// Must run after these other **operations**, if they are present in the stage.
+    ///
+    /// What these name is operations, by their identifier (`auroraw.exposure`), **not stages**: the order of the stages
+    /// is the definition's, and the constraints only order the operations that share one. A constraint that names an
+    /// operation of another stage is an error at load time (the registry's, when it builds the order); one that names
+    /// the declaring operation itself is refused here.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub after: Vec<String>,
-    /// Must run before these other stages, if present in the pipeline.
+    /// Must run before these other **operations**, if they are present in the stage (see [`Placement::after`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub before: Vec<String>,
 }
 
-/// What every plugin declares (architecture §8.3, D-078), shown to the person before
+/// What every plugin declares (architecture §8.3, D-078, D-142), shown to the person before
 /// installation and read by the host before it is trusted with anything.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Declaration {
     /// A stable identifier for this plugin, unique in the index (architecture §8.7).
     pub identifier: String,
@@ -58,6 +74,18 @@ pub struct Declaration {
     /// This plugin's place in the develop pipeline, if it has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub placement: Option<Placement>,
+    /// The operation's typed parameters, in the order the panel shows them (operations only).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parameters: Vec<ParamSpec>,
+    /// The data space the operation reads, one of [`crate::spaces`] (operations only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub input_space: Option<String>,
+    /// The data space the operation writes, one of [`crate::spaces`] (operations only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_space: Option<String>,
+    /// What the operation costs (operations only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cost: Option<CostClass>,
     /// What the plugin asks the host to grant it.
     #[serde(default)]
     pub permissions: Permissions,
@@ -80,11 +108,49 @@ pub enum DeclarationError {
         /// The highest version this host understands.
         supported: u32,
     },
-    /// A stage placement names itself in its own ordering constraints.
-    #[error("stage {stage:?} cannot be constrained relative to itself")]
+    /// A placement names the declaring operation itself in its ordering constraints.
+    #[error("operation {operation:?} cannot be constrained relative to itself")]
     SelfConstrainedPlacement {
-        /// The stage that names itself.
-        stage: String,
+        /// The operation that names itself.
+        operation: String,
+    },
+    /// An ordering constraint names nothing.
+    #[error("an ordering constraint cannot be empty")]
+    EmptyConstraint,
+    /// An operation declares no placement.
+    #[error("an operation needs a placement: the stage it runs at")]
+    OperationWithoutPlacement,
+    /// A placement's stage is empty.
+    #[error("a placement needs a stage")]
+    EmptyStage,
+    /// An operation does not say which space it reads or writes.
+    #[error("an operation must declare the data space it {side}")]
+    MissingSpace {
+        /// `"reads"` or `"writes"`.
+        side: &'static str,
+    },
+    /// A data space this API does not know.
+    #[error("{0:?} is not a data space of this API version")]
+    UnknownSpace(String),
+    /// An operation does not declare its cost class.
+    #[error("an operation must declare its cost class")]
+    MissingCost,
+    /// Two parameters have one key.
+    #[error("two parameters have the key {0:?}")]
+    DuplicateParameter(String),
+    /// A parameter does not hold together.
+    #[error("parameter {key:?}: {error}")]
+    BadParameter {
+        /// The parameter's key.
+        key: String,
+        /// What is wrong.
+        error: ParamError,
+    },
+    /// A declaration of another family gives a field that only an operation has.
+    #[error("{field} belongs to the operation family, and this plugin is another")]
+    NotAnOperation {
+        /// The field.
+        field: &'static str,
     },
 }
 
@@ -110,15 +176,77 @@ impl Declaration {
                 supported: HOST_API_VERSION,
             });
         }
-        if let Some(placement) = &self.placement
-            && (placement.after.contains(&placement.stage)
-                || placement.before.contains(&placement.stage))
-        {
-            return Err(DeclarationError::SelfConstrainedPlacement {
-                stage: placement.stage.clone(),
-            });
+        if let Some(placement) = &self.placement {
+            if self.family == Family::Operation && placement.stage.trim().is_empty() {
+                return Err(DeclarationError::EmptyStage);
+            }
+            let constraints = placement.after.iter().chain(&placement.before);
+            for name in constraints {
+                if name.trim().is_empty() {
+                    return Err(DeclarationError::EmptyConstraint);
+                }
+                if *name == self.identifier {
+                    return Err(DeclarationError::SelfConstrainedPlacement {
+                        operation: name.clone(),
+                    });
+                }
+            }
+        }
+        if self.family == Family::Operation {
+            self.validate_operation()
+        } else {
+            self.validate_not_an_operation()
+        }
+    }
+
+    /// The checks of the operation family: a placement, the two spaces, a cost class, and parameters that hold together
+    /// with distinct keys.
+    fn validate_operation(&self) -> Result<(), DeclarationError> {
+        if self.placement.is_none() {
+            return Err(DeclarationError::OperationWithoutPlacement);
+        }
+        for (space, side) in [(&self.input_space, "reads"), (&self.output_space, "writes")] {
+            match space {
+                None => return Err(DeclarationError::MissingSpace { side }),
+                Some(name) if !spaces::ALL.contains(&name.as_str()) => {
+                    return Err(DeclarationError::UnknownSpace(name.clone()));
+                }
+                Some(_) => {}
+            }
+        }
+        if self.cost.is_none() {
+            return Err(DeclarationError::MissingCost);
+        }
+        let mut keys = std::collections::HashSet::new();
+        for parameter in &self.parameters {
+            parameter
+                .validate()
+                .map_err(|error| DeclarationError::BadParameter {
+                    key: parameter.key.clone(),
+                    error,
+                })?;
+            if !keys.insert(parameter.key.as_str()) {
+                return Err(DeclarationError::DuplicateParameter(parameter.key.clone()));
+            }
         }
         Ok(())
+    }
+
+    /// A source or an import has no parameters, spaces or cost: a declaration that gives them is mistaken about what
+    /// it is.
+    fn validate_not_an_operation(&self) -> Result<(), DeclarationError> {
+        let field = if !self.parameters.is_empty() {
+            "parameters"
+        } else if self.input_space.is_some() {
+            "input_space"
+        } else if self.output_space.is_some() {
+            "output_space"
+        } else if self.cost.is_some() {
+            "cost"
+        } else {
+            return Ok(());
+        };
+        Err(DeclarationError::NotAnOperation { field })
     }
 }
 
@@ -134,6 +262,10 @@ mod tests {
             family: Family::Import,
             panel: None,
             placement: None,
+            parameters: Vec::new(),
+            input_space: None,
+            output_space: None,
+            cost: None,
             permissions: Permissions::default(),
         }
     }
@@ -171,19 +303,191 @@ mod tests {
     }
 
     #[test]
-    fn a_stage_constrained_relative_to_itself_is_refused() {
+    fn an_operation_constrained_relative_to_itself_is_refused() {
         let mut d = minimal();
         d.placement = Some(Placement {
-            stage: "tone".into(),
-            after: vec!["tone".into()],
+            stage: "scene-linear".into(),
+            after: vec!["org.auroraw.rawler".into()],
             before: vec![],
         });
         assert_eq!(
             d.validate(),
             Err(DeclarationError::SelfConstrainedPlacement {
-                stage: "tone".into()
+                operation: "org.auroraw.rawler".into()
             })
         );
+        // Naming the stage is not naming oneself: the constraints name operations.
+        d.placement = Some(Placement {
+            stage: "scene-linear".into(),
+            after: vec!["scene-linear".into()],
+            before: vec![],
+        });
+        assert!(d.validate().is_ok());
+    }
+
+    use crate::operation::{ParamKind, ParamSpec};
+    use crate::{spaces, stages};
+
+    /// An exposure operation, as a plugin or a built-in declares it.
+    fn exposure() -> Declaration {
+        Declaration {
+            identifier: "auroraw.exposure".into(),
+            version: "1".into(),
+            api_version: HOST_API_VERSION,
+            family: Family::Operation,
+            panel: Some("tone".into()),
+            placement: Some(Placement {
+                stage: stages::SCENE_LINEAR.into(),
+                after: vec!["auroraw.white-balance".into()],
+                before: vec![],
+            }),
+            parameters: vec![ParamSpec {
+                key: "ev".into(),
+                label: "exposure.ev".into(),
+                kind: ParamKind::Float {
+                    min: -5.0,
+                    max: 5.0,
+                    default: 0.0,
+                },
+            }],
+            input_space: Some(spaces::WORKING_LINEAR.into()),
+            output_space: Some(spaces::WORKING_LINEAR.into()),
+            cost: Some(CostClass::Interactive),
+            permissions: Permissions::default(),
+        }
+    }
+
+    #[test]
+    fn an_operation_with_everything_it_needs_validates() {
+        assert_eq!(exposure().validate(), Ok(()));
+    }
+
+    #[test]
+    fn what_an_operation_needs_is_named_when_it_is_missing() {
+        let mut d = exposure();
+        d.placement = None;
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::OperationWithoutPlacement)
+        );
+        let mut d = exposure();
+        d.input_space = None;
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::MissingSpace { side: "reads" })
+        );
+        let mut d = exposure();
+        d.output_space = None;
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::MissingSpace { side: "writes" })
+        );
+        let mut d = exposure();
+        d.cost = None;
+        assert_eq!(d.validate(), Err(DeclarationError::MissingCost));
+        let mut d = exposure();
+        d.placement.as_mut().unwrap().stage = " ".into();
+        assert_eq!(d.validate(), Err(DeclarationError::EmptyStage));
+    }
+
+    #[test]
+    fn a_space_this_api_does_not_know_is_refused() {
+        let mut d = exposure();
+        d.output_space = Some("display".into());
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::UnknownSpace("display".into()))
+        );
+        // Every space the constants name is known.
+        for name in spaces::ALL {
+            let mut d = exposure();
+            d.input_space = Some(name.into());
+            assert_eq!(d.validate(), Ok(()), "{name}");
+        }
+    }
+
+    #[test]
+    fn the_parameters_hold_together_and_their_keys_are_distinct() {
+        let mut d = exposure();
+        d.parameters.push(d.parameters[0].clone());
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::DuplicateParameter("ev".into()))
+        );
+        let mut d = exposure();
+        d.parameters[0].kind = ParamKind::Float {
+            min: 1.0,
+            max: 0.0,
+            default: 0.5,
+        };
+        assert!(matches!(
+            d.validate(),
+            Err(DeclarationError::BadParameter { key, .. }) if key == "ev"
+        ));
+    }
+
+    #[test]
+    fn the_ordering_constraints_name_operations_and_never_nothing_or_oneself() {
+        let mut d = exposure();
+        d.placement.as_mut().unwrap().before = vec!["auroraw.exposure".into()];
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::SelfConstrainedPlacement {
+                operation: "auroraw.exposure".into()
+            })
+        );
+        let mut d = exposure();
+        d.placement.as_mut().unwrap().after.push("".into());
+        assert_eq!(d.validate(), Err(DeclarationError::EmptyConstraint));
+    }
+
+    #[test]
+    fn the_fields_of_an_operation_are_refused_on_another_family() {
+        let mut d = minimal();
+        d.parameters = exposure().parameters;
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation {
+                field: "parameters"
+            })
+        );
+        let mut d = minimal();
+        d.input_space = Some(spaces::SENSOR_RAW.into());
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation {
+                field: "input_space"
+            })
+        );
+        let mut d = minimal();
+        d.output_space = Some(spaces::SENSOR_RAW.into());
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation {
+                field: "output_space"
+            })
+        );
+        let mut d = minimal();
+        d.cost = Some(CostClass::Heavy);
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation { field: "cost" })
+        );
+    }
+
+    #[test]
+    fn an_operation_round_trips_through_json_and_a_declaration_without_its_fields_is_still_read() {
+        let d = exposure();
+        let text = serde_json::to_string(&d).unwrap();
+        let back: Declaration = serde_json::from_str(&text).unwrap();
+        assert_eq!(back, d);
+        assert!(text.contains(r#""family":"operation""#), "{text}");
+        assert!(text.contains(r#""cost":"interactive""#), "{text}");
+        // A declaration written before the operation family: the new fields are absent, and that is fine.
+        let old = r#"{ "identifier": "org.auroraw.rawler", "version": "0.1.0", "api_version": 0, "family": "import" }"#;
+        let read: Declaration = serde_json::from_str(old).unwrap();
+        assert_eq!(read, minimal());
+        assert_eq!(read.validate(), Ok(()));
     }
 
     #[test]

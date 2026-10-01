@@ -11,9 +11,13 @@
 
 pub mod declaration;
 pub mod decoder;
+pub mod operation;
 pub mod permissions;
 pub mod source;
+pub mod spaces;
+pub mod stages;
 
 pub use declaration::{Declaration, DeclarationError, Family, HOST_API_VERSION, Placement};
 pub use decoder::{Decoder, DecoderError, RawImage};
+pub use operation::{CostClass, OperationId, ParamError, ParamKind, ParamSpec, ParamValue};
 pub use permissions::Permissions;

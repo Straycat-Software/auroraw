@@ -163,6 +163,13 @@ test that lifts the float-samples refusal on the float DNG, and the orientation 
 Done when: every sample decodes (or is refused cleanly) into the new `RawImage` through the sandbox,
 native and WebAssembly agree byte for byte, and the parser survives the fuzzer.
 
+**Status: the declaration layer is built (second pull request, 2026-10-01).** In `plugin-api`: `Family::Operation`,
+`OperationId`, `ParamSpec`/`ParamKind`, `ParamValue`, `CostClass`, the declaration's new fields and their
+validation, and the stage and space constants; `pipeline` depends on `plugin-api` (and `xtask`'s table says so),
+with the equality test of D-146. Left to WP14 (Charlie): replacing `pipeline`'s stand-ins (`OperationId`,
+`ParamValue`, `definition::names`) with the shared types, and the load-time checks that need the definition (the
+stage exists, `after` and `before` name operations of the same stage; note 005 §5.3).
+
 ### WP14 The pipeline crate: the render API and the engine around it (L). Needs #37, WP13. Lead: Charlie
 
 From the foundation to a service: `Pipeline::open(config, registry)`, `render(request)` and its handle

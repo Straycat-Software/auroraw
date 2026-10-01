@@ -13,15 +13,16 @@
 //! version.
 //!
 //! The identifiers of the stages and of the data spaces are part of the plugin surface (a declaration names
-//! them), so they move to `plugin-api` as constants with work package 13, and a test then checks that this
-//! table equals them. They are here for now, in [`names`].
+//! them), so `plugin-api` publishes them as constants (`stages`, `spaces`, work package 13) and a test below
+//! checks that this table equals them. They are still here, in [`names`], because the definition and its
+//! fingerprint are made of them; the table can become a re-export of `plugin-api`'s when the stand-ins go.
 
 use std::fmt;
 
 /// The identifiers of the stages and of the data spaces, as text.
 ///
-/// These are a plugin's vocabulary (`Placement.stage`, an operation's input space), so they belong in
-/// `plugin-api` (note 006 §3.2, review of the note); they are here until work package 13 moves them.
+/// These are a plugin's vocabulary (`Placement.stage`, an operation's input space), so `plugin-api` publishes
+/// the same table (note 006 §3.2, review of the note); a test checks that the two are equal.
 pub mod names {
     /// Stage 1: the black and white levels, and the operations on the mosaic.
     pub const RAW_LINEAR: &str = "raw-linear";
@@ -441,6 +442,35 @@ mod tests {
             names::STAGES,
             "the definition's stage list equals the identifiers (plugin-api's, from WP13)"
         );
+    }
+
+    /// D-146: the identifiers a plugin names (the constants of `plugin-api`, work package 13) and the ones this
+    /// definition is made of are the same, one by one.
+    #[test]
+    fn the_stage_and_space_names_are_the_ones_plugin_api_publishes() {
+        use auroraw_plugin_api::{spaces, stages};
+        assert_eq!(names::STAGES, stages::ALL);
+        assert_eq!(names::SPACES, spaces::ALL);
+        for (ours, theirs) in [
+            (names::RAW_LINEAR, stages::RAW_LINEAR),
+            (names::DEMOSAIC, stages::DEMOSAIC),
+            (names::CAMERA_RGB, stages::CAMERA_RGB),
+            (names::INPUT_COLOUR, stages::INPUT_COLOUR),
+            (names::SCENE_LINEAR, stages::SCENE_LINEAR),
+            (names::GEOMETRY, stages::GEOMETRY),
+            (names::DETAIL, stages::DETAIL),
+            (names::DISPLAY, stages::DISPLAY),
+        ] {
+            assert_eq!(ours, theirs);
+        }
+        let ids: Vec<&str> = V1.stages.iter().map(|s| s.id).collect();
+        assert_eq!(ids, stages::ALL, "the definition's stages");
+        let space_names: Vec<&str> = DataSpace::ALL.iter().map(|s| s.name()).collect();
+        assert_eq!(space_names, spaces::ALL, "the definition's spaces");
+        // And a declaration that uses them is a declaration the definition understands.
+        for name in spaces::ALL {
+            assert!(DataSpace::from_name(name).is_some(), "{name}");
+        }
     }
 
     #[test]
