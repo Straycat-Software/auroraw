@@ -70,6 +70,7 @@ fn main() {
         QmlFile::from("qml/ExternalChangesDialog.qml"),
         QmlFile::from("qml/XmpExportDialog.qml"),
         QmlFile::from("qml/PlaceNamesDialog.qml"),
+        QmlFile::from("qml/PlaceMenu.qml"),
     ];
     let mut builder = CxxQtBuilder::new_qml_module(QmlModule::new("org.auroraw.ui").qml_files(qml))
         .qt_module("Quick")

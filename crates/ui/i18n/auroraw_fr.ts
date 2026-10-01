@@ -2690,6 +2690,49 @@
     </message>
 </context>
 <context>
+    <name>PlaceMenu</name>
+    <message>
+        <location filename="../qml/PlaceMenu.qml" line="+87"/>
+        <location line="+7"/>
+        <location line="+96"/>
+        <source>Any place</source>
+        <translation>Tous les lieux</translation>
+    </message>
+    <message>
+        <location line="-1"/>
+        <source>Show photos by place</source>
+        <translation>Afficher les photos par lieu</translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Show the photos of one country, region or city</source>
+        <translation>Afficher les photos d’un pays, d’une région ou d’une ville</translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>No photo has a place yet. Find place names, in the Tools menu, looks them up.</source>
+        <translation>Aucune photo n’a encore de lieu. «&#xa0;Trouver les noms de lieux&#xa0;», dans le menu Outils, les cherche.</translation>
+    </message>
+    <message numerus="yes">
+        <location line="+67"/>
+        <source>%1, %n photo(s)</source>
+        <translation>
+            <numerusform>%1, %n photo</numerusform>
+            <numerusform>%1, %n photos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Open</source>
+        <translation>Ouvert</translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Closed</source>
+        <translation>Fermé</translation>
+    </message>
+</context>
+<context>
     <name>PlaceNamesDialog</name>
     <message>
         <location filename="../qml/PlaceNamesDialog.qml" line="+26"/>
