@@ -315,6 +315,14 @@ AppTestCase {
         compare(JSON.parse(app.photos.placeFilter), west.filter, "the filter in force is what was given back")
         compare(menu.choiceText, "West")
         verify(menu.button.highlighted)
+        // The open menu, as the manual draws it: the path to the choice open, the photos with no country after the countries.
+        mouseClick(menu.button)
+        tryVerify(() => menu.popup.opened)
+        tryVerify(() => menu.list.itemAtIndex(0) !== null)
+        drawn(menu.list.itemAtIndex(0))
+        snapshot("place-menu")
+        menu.popup.close()
+        tryVerify(() => !menu.popup.opened)
         // (The tree is read again now rather than after the menu's pause: what is asked is that the counts leave the place
         // filter out.)
         menu.refresh()

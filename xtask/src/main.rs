@@ -143,6 +143,7 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("place-names", "place-names"),
     ("place-names-preview", "place-names-preview"),
     ("place-names-done", "place-names-done"),
+    ("place-menu", "place-menu"),
     ("metadata-en", "metadata"),
     ("info-en", "info"),
     ("collections-en", "collections"),

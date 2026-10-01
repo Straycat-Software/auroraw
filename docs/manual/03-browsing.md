@@ -65,6 +65,9 @@ they list.
   the menu, with its regions and cities as for a country. The button is greyed out while no photo in view has a place:
   places come from [Find place names](06-keywords.md), or from what you typed in the Metadata tab. (While Auroraw reads
   the places of your photos for the first time, which takes a minute on a large library, the button says so.)
+
+  ![The Any place menu, with a place chosen](images/place-menu.png)
+
 - **Keyword**: choose *Show the photos with this keyword* in the keyword panel's menu; a chip *Keyword: Peru ×*
   appears, and its × removes the filter.
 
