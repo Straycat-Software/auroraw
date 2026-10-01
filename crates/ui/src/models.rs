@@ -1307,7 +1307,8 @@ impl qobject::PhotoGrid {
 
     pub fn set_place_filter_text(mut self: Pin<&mut Self>, text: &QString) {
         // What the engine reads back is what is kept (an unreadable text, or one that constrains nothing, lifts it).
-        let kept = PlaceFilter::from_json(&text.to_string()).map_or_else(String::new, |p| p.to_json());
+        let kept =
+            PlaceFilter::from_json(&text.to_string()).map_or_else(String::new, |p| p.to_json());
         if kept != self.place_filter.to_string() {
             self.as_mut().rust_mut().place_filter = QString::from(kept.as_str());
             self.as_mut().place_filter_changed();

@@ -78,7 +78,8 @@ does not carry (most photos have no GPS position, for instance) is left off the 
 **Tools ▸ Find place names…** (`Ctrl+Shift+L`) fills in the **City**, **Region**, **Country** and **Country code**
 fields of the Metadata tab from where a photo was taken. It uses the photo's position (the one in the file, or the
 one you corrected) and a file of places that comes with Auroraw, so nothing is sent anywhere and it works without the
-internet.
+internet. Once photos have places, the **Any place** menu of the filter bar lists them by country, region and city
+([Browsing](03-browsing.md)).
 
 ![The Find place names dialog, with a photo selected](images/place-names.png)
 
