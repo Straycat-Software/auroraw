@@ -5,8 +5,8 @@ import QtTest
 import org.auroraw.ui
 
 // The place menu of the library's filter bar (design note 008 §5, D-151) on its own, against a stand-in for the engine's
-// slice 3: the three things the menu asks of the grid (`placeFacets()`, `placeFilter`, `setPlaceFilter()`), with a small
-// tree of places. What a person can do: see the tree with its counts, open a country and a region, choose a node, lift the
+// slice 3: the four things the menu asks of the grid (`placeFacets()`, `placeFilter`, `setPlaceFilter()` and the signal
+// `placesChanged()`), with a small tree of places. What a person can do: see the tree with its counts, open a country and a region, choose a node, lift the
 // filter, and move in the tree by keyboard; and that the menu is not there while the grid cannot answer.
 TestCase {
     id: tc
@@ -40,6 +40,7 @@ TestCase {
             property int count: 130
             property int asked: 0
             property var answer: tc.tree
+            signal placesChanged()
             function placeFacets() { asked++; return JSON.stringify(answer) }
             function setPlaceFilter(text) { placeFilter = text }
         }
@@ -201,6 +202,63 @@ TestCase {
         verify(grid.asked > before)
         open(menu)
         compare(texts(menu), ["Any place", "France 30"])
+        menu.popup.close()
+    }
+
+    function test_a_run_of_place_names_enables_the_button_though_the_photos_in_view_are_the_same() {
+        const grid = make(gridComponent)
+        grid.answer = { placed: 0, countries: [] }
+        const menu = menuOn(grid)
+        verify(!menu.button.enabled, "no photo has a place: disabled, and a disabled button cannot be opened to refresh it")
+        // The run changed the places of the photos, not the photos in view: `count` stays where it is.
+        grid.answer = tc.tree
+        grid.placesChanged()
+        tryVerify(() => menu.facets.placed === 130, 2000, "the tree was asked for again")
+        compare(grid.count, 130)
+        verify(menu.button.enabled)
+        open(menu)
+        compare(texts(menu), ["Any place", "Canada 100", "France 30"])
+        menu.popup.close()
+        // And back: Undo of the run takes the places away again.
+        grid.answer = { placed: 0, countries: [] }
+        grid.placesChanged()
+        tryVerify(() => !menu.button.enabled, 2000)
+    }
+
+    function test_many_changes_of_places_are_one_reading_of_the_tree() {
+        const grid = make(gridComponent)
+        const menu = menuOn(grid)
+        wait(300)
+        const before = grid.asked
+        // (A run of 10,000 photos sends a signal for each.)
+        for (let n = 0; n < 50; n++)
+            grid.placesChanged()
+        wait(450)
+        compare(grid.asked, before + 1)
+    }
+
+    function test_a_country_with_no_region_has_its_cities_directly_under_it() {
+        const grid = make(gridComponent)
+        grid.answer = { placed: 7, countries: [
+            { label: "Singapore", count: 7, filter: { country: "SG" }, children: [
+                { label: "Singapore", count: 4, filter: { country: "SG", city: "singapore" }, children: [] },
+                { label: "Jurong", count: 3, filter: { country: "SG", city: "jurong" }, children: [] } ] } ] }
+        const menu = menuOn(grid)
+        open(menu)
+        compare(texts(menu), ["Any place", "Singapore 7"])
+        const country = rowItem(menu, 1)
+        mouseClick(country, 8 + 7, country.height / 2)
+        tryVerify(() => menu.rows.length === 4)
+        compare(texts(menu), ["Any place", "Singapore 7", " Jurong 3", " Singapore 4"])
+        mouseClick(rowItem(menu, 2), 60, 12)
+        tryVerify(() => !menu.popup.opened)
+        compare(JSON.parse(grid.placeFilter), { country: "SG", city: "jurong" }, "no region key: the keys are the engine's, given back")
+        compare(menu.choiceText, "Jurong")
+        compare(menu.choicePath, "Singapore, Jurong")
+        // Opened again, the path to the choice is open: the country, and under it the city.
+        open(menu)
+        compare(texts(menu), ["Any place", "Singapore 7", " Jurong 3", " Singapore 4"])
+        verify(menu.selected(menu.rows[2]))
         menu.popup.close()
     }
 

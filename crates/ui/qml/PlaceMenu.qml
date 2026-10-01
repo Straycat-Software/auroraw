@@ -9,19 +9,30 @@ import org.auroraw.ui
 // under it ("everything from Quebec"), and "Any place" lifts the filter. It sits beside the flag and the series filters
 // and is made like them: flat, a caret, `highlighted` while it filters.
 //
-// It talks to the grid through three things, the contract with the engine's slice 3 (the filter of the note's §5):
+// It talks to the grid through four things, the contract with the engine's slice 3 (the filter of the note's §5):
 //
 //   grid.placeFacets()          the tree, as JSON text: `{ "placed": N, "countries": [Node] }`, N the photos in view that
 //                               have a country, and a Node `{ "label": "Quebec", "count": 80, "filter": {...},
 //                               "children": [Node] }` (countries hold regions, regions hold cities; a city has none).
-//                               `label` is the node's spelling to show (the most common one: the grouping is made on
-//                               the text folded for case and diacritics, so `Montreal` and `Montréal` are one node),
-//                               `count` the photos under it, `filter` what selects them, `{ "country": key, "region":
-//                               key, "city": key }` from the most general down, each key as the engine folded it. The
-//                               counts are those of the photos in view that pass every filter *but this one*, so that
-//                               the tree stays one to move around in while a place is chosen.
+//                               `label` is the node's spelling to show: the most frequent one among the photos of the
+//                               node, the smallest in code point order when two are as frequent, so that it does not
+//                               flicker (the grouping is made on the text folded for case and diacritics, so `Montreal`
+//                               and `Montréal` are one node). `count` is the photos under the node, `filter` what
+//                               selects them, `{ "country": key, "region": key, "city": key }` from the most general
+//                               down, each key **opaque** (the engine's: the ISO code for a country that has one, the
+//                               folded text otherwise; the menu only gives it back). The counts are those of the photos
+//                               in view that pass every filter *but this one*, so that the tree stays one to move
+//                               around in while a place is chosen.
+//                               **A country with no region** (Singapore, or a photo whose region is empty) has its cities
+//                               directly under it, with `filter: { country, city }` and no `region` key.
+//                               **A photo with a city or a region but no country** is not in the tree: `placed` does not
+//                               count it and the filter cannot select it ("placed" is not "has any place field").
 //   grid.placeFilter            the filter in force, the `filter` of a node as JSON text, or an empty text for none.
 //   grid.setPlaceFilter(text)   puts the `filter` of a node in force (an empty text lifts it).
+//   grid.placesChanged()        a signal, emitted when the place fields of photos in view may have changed without the
+//                               photos in view changing (a run of place names, a hand-typed city, Undo and Redo of either,
+//                               an accepted external change): the tree is read again, once things have settled (200 ms,
+//                               restarted by each signal, so that 10,000 photos changed one by one are one reading).
 //
 // The menu never makes a key itself and never decides what a place is: it shows what the engine says and gives it back.
 // Until the engine has `placeFacets` there is nothing to ask, and the menu is not there (`available`): it appears with
@@ -93,6 +104,8 @@ Item {
     readonly property var rows: {
         const out = [{ any: true, label: qsTr("Any place"), depth: 0, count: 0, hasChildren: false, open: false, key: "" }]
         const walk = (nodes, depth) => {
+            // (Sorted as JavaScript's `localeCompare` does, in the system's locale: the interface's language is not set as the
+            // default locale, which is immaterial for English and French place names.)
             for (const node of nodes.slice().sort((a, b) => a.label.localeCompare(b.label))) {
                 const key = menu.keyOf(node.filter)
                 const children = node.children || []
@@ -164,7 +177,9 @@ Item {
         popup.close()
     }
 
-    // The photos in view changed (a filter, a scan, a run of place names): the tree follows, once things have settled.
+    // The photos in view changed (a filter, a scan: `count`), or their places did without them (a run of place names, an
+    // edit, Undo: `placesChanged`): the tree follows, once things have settled. Without the second, a button disabled for
+    // lack of places could not learn that a run just gave some, since a disabled button cannot be opened to refresh it.
     Timer {
         id: settle
         interval: 200
@@ -174,6 +189,7 @@ Item {
         target: menu.available ? menu.grid : null
         ignoreUnknownSignals: true
         function onCountChanged() { settle.restart() }
+        function onPlacesChanged() { settle.restart() }
     }
     Component.onCompleted: menu.refresh()
 
