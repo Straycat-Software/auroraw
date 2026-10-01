@@ -17,6 +17,7 @@ fn main() {
     for info in &adapters {
         println!("{}", info.describe());
         println!("  driver: {} {}", info.driver, info.driver_info);
+        println!("  shaders: {}", info.backend.shader_route());
         println!(
             "  max buffer: {} MiB, max storage binding: {} MiB",
             info.max_buffer_size >> 20,
@@ -29,10 +30,9 @@ fn main() {
             Ok(Ok(report)) => {
                 for shader in &report.shaders {
                     println!(
-                        "  smoke {}: max {} level(s), {:.4} % over one level: {}",
+                        "  smoke {}: {}: {}",
                         shader.shader,
-                        shader.max_level_difference,
-                        shader.fraction_over_one_level * 100.0,
+                        shader.describe(),
                         if shader.passed() { "ok" } else { "FAILED" }
                     );
                 }

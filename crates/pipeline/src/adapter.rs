@@ -37,6 +37,19 @@ impl Backend {
         }
     }
 
+    /// How a shader reaches the GPU through this API, as a short sentence for reports (design note 006
+    /// §3.2; review of the pipeline crate, point 8): the WGSL is translated by naga, and then compiled by
+    /// something that differs per API and is where a construct one API accepts can fail on another.
+    pub const fn shader_route(self) -> &'static str {
+        match self {
+            Backend::Vulkan => "WGSL to SPIR-V by naga, then the driver's compiler",
+            Backend::Metal => "WGSL to MSL by naga, then Apple's Metal compiler",
+            Backend::Dx12 => {
+                "WGSL to HLSL by naga, then FXC (fixed in the engine, not left to wgpu)"
+            }
+        }
+    }
+
     /// The words [`AdapterChoice::Named`] finds this back end by: the ones a person types (`dx12`)
     /// and the ones it is displayed with (`DirectX 12`).
     const fn keywords(self) -> &'static str {
@@ -231,9 +244,21 @@ pub fn list_adapters() -> Vec<AdapterInfo> {
 /// Created once and never dropped: creating and destroying Vulkan instances from several threads at
 /// the same time crashed the process (a segmentation fault, 14 runs in 15, with two adapters on one
 /// machine), and there is no reason to have more than one. Every adapter and device comes from it.
+///
+/// **The DirectX shader compiler is FXC, set here and not left to wgpu.** wgpu's default is `Auto`: the
+/// statically linked DXC if it was built in, else a `dxcompiler.dll` found on the PATH, else FXC, so the
+/// compiler a machine used would depend on what happens to be installed on it. FXC is the strictest of
+/// them (it is the one that rejected a construct Vulkan and Metal accept, in spike 1), so a shader that
+/// compiles under it compiles under DXC, it needs no DLL shipped with the application, and every machine
+/// then behaves like the continuous-integration runner. DXC stays an option (design note 006, risk 2 of
+/// the M2 plan); changing it is a decision, since it changes what is shipped.
 fn instance() -> &'static wgpu::Instance {
     static INSTANCE: std::sync::OnceLock<wgpu::Instance> = std::sync::OnceLock::new();
-    INSTANCE.get_or_init(wgpu::Instance::default)
+    INSTANCE.get_or_init(|| {
+        let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
+        descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
+        wgpu::Instance::new(descriptor)
+    })
 }
 
 /// The adapters wgpu offers with their descriptions, best first.

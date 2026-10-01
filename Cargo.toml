@@ -23,6 +23,8 @@ blake3 = "1"
 quick-xml = "0.42"
 rusqlite = { version = "0.40", default-features = false, features = ["bundled", "cache"] }
 notify = "8"
+# Golden renders of the image engine are small PNG files (testing strategy §5); already in the tree through `image`.
+png = "0.18"
 # The image engine (design note 005): only the back ends the product targets (architecture §6.6:
 # no OpenGL), no web target, no window-system integration.
 wgpu = { version = "30", default-features = false, features = ["std", "parking_lot", "dx12", "metal", "vulkan", "wgsl"] }

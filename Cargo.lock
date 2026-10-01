@@ -222,7 +222,9 @@ dependencies = [
 name = "auroraw-pipeline"
 version = "0.0.0"
 dependencies = [
+ "png",
  "pollster",
+ "proptest",
  "thiserror 2.0.20",
  "wgpu",
 ]
