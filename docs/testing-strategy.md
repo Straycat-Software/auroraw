@@ -274,7 +274,7 @@ A change is ready to merge when:
    vulnerability (`cargo-deny` reads the RustSec advisories as well).
 7. If it touches the pipeline or the catalogue, the **performance run** has been done on at least
    one reference machine, and the result is in the change.
-8. It is reviewed, and the QA reviewer has approved it (governance §1, D-152).
+8. It is reviewed, and the QA group has approved it (governance §1, D-152).
 
 **Coverage** is measured (`cargo-llvm-cov`) and shown, but it is **not a gate**: a percentage
 invites tests that run code without checking it. It is used to find untested branches in the write
@@ -290,7 +290,7 @@ path, the format code and the plugin host, where a gap is expensive.
   quarantine list that grows is a process failure, reported at each release.
   The quarantine list (a test ignored on one platform, or for good, until it is fixed) is empty. A quarantined
   test gets a row here: the test, since when, where, the issue, why, and the date it is due. The QA
-  reviewer keeps the list and finds the cause of each entry (D-152).
+  group keeps the list and finds the cause of each entry (D-152).
 - **No test depends on another's result or order.**
 - **Tooling.** `cargo nextest` (faster, isolates each test), `proptest`, `cargo-fuzz`, `insta` or a
   small in-house comparison for golden files, `cargo-llvm-cov`, `cargo-deny` (which also covers the advisory database).

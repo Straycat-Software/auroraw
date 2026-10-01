@@ -15,7 +15,7 @@
 | --- | --- | --- |
 | **Owner** | Patrick Fournier | Holds the repository, the signing accounts and the name. Takes the final decision. |
 | **Collaborator** | Claude Code | Works on the project at the owner's request, in the owner's repository, on `dev`, under the owner's review. Commits are authored as "Claude Code". |
-| **QA reviewer** | Django (Claude Code), from 2026-10-01 (D-152) | Answers for everything that touches quality: the tests, the CI, the unreliable tests and the quarantine list. Reviews **every pull request** for how it is tested and whether it will keep working; **his approval is required before a pull request is merged**. |
+| **QA group** | Django (Claude Code), who answers for quality, and the owner; from 2026-10-01 (D-152) | Django answers for everything that touches quality: the tests, the CI, the unreliable tests and the quarantine list. The group reviews **every pull request** for how it is tested and whether it will keep working; **an approval from the group is required before a pull request is merged**. |
 | **Maintainers** | Added by the owner when there are contributors who are reliable and active | Review and merge changes, triage issues. |
 | **Contributors** | Anyone | Propose changes, report problems, translate, write plugins, provide samples. |
 
@@ -123,7 +123,7 @@ Files to add at the root of the repository, all short:
 | `SECURITY.md` | §7 |
 | `.github/ISSUE_TEMPLATE/` | Bug report, feature proposal, camera or file that does not decode (with a sample), translation |
 | `.github/PULL_REQUEST_TEMPLATE.md` | The checklist of the testing strategy §9 |
-| `.github/CODEOWNERS` | The QA reviewer, asked to review every pull request (D-152) |
+| `.github/CODEOWNERS` | The QA group, asked to review every pull request (D-152) |
 | `PLUGIN-EXCEPTION` | §2.3, once approved |
 
 **Working rules:**
@@ -137,11 +137,11 @@ Files to add at the root of the repository, all short:
   **describes in the user manual (`docs/manual/`) any change a photographer can see** (D-102), and
   justifies a new dependency (testing strategy §9).
 - **Reviews** are by a maintainer other than the author; the owner reviews changes to formats,
-  the plugin API, the pipeline definition, the write path and the sandbox. **The QA reviewer's
-  approval is needed on every pull request before it is merged** (D-152), in addition to these:
-  the other reviews look at the design, the QA review at how the change is shown to work. The
-  requirement is the repository's branch rule on `dev` and `main` (a required approval from the
-  code owners, `.github/CODEOWNERS`), which the owner sets.
+  the plugin API, the pipeline definition, the write path and the sandbox. **An approval from the QA group is needed on every pull
+  request before it is merged** (D-152), in addition to these: the other reviews look at the design, the QA
+  review at how the change is shown to work. The requirement is the repository's branch rule on `dev` and `main`
+  (a required approval from the code owners, `.github/CODEOWNERS`, where the code owner is the QA group, a team of
+  the organisation), which the owner has set.
 - **Language.** Code, comments, commit messages, documents, issues, pull requests and
   discussions are **all in English**, with no exception (D-082).
 - **Commit messages**: a short imperative title, then a body that says why. History is

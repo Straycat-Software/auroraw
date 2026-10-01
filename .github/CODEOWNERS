@@ -1,8 +1,9 @@
 # Code owners (docs/governance.md §1, D-152).
 #
-# The QA reviewer is asked to review every pull request. With the branch rule "Require review from Code Owners" on
-# `dev` and `main` (the owner's setting), his approval is needed before a pull request is merged.
+# The QA group, Django and the owner, is asked to review every pull request. With the branch rule "Require review
+# from Code Owners" on `dev` and `main` (the owner has set it), an approval from the group is needed before a pull
+# request is merged.
 #
 # The last pattern that matches a file decides who owns it: a more specific line added below replaces this one for
-# those paths, and the QA reviewer would no longer be asked for them.
-* @straycat-django-cc
+# those paths, and the QA group would no longer be asked for them.
+* @Straycat-Software/qa
