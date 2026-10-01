@@ -8,6 +8,10 @@
 //!   tests may set up fixtures with any sibling crate.
 //! - `check`: both of the above.
 //! - `manual-images`: redraws the pictures of the user manual (`docs/manual/images/`) from the interface's own tests.
+//! - `translations [<ref>]`: updates the interface's `.ts` files with `lupdate`, keeping the locations the
+//!   committed messages already had, so that the diff is the new messages and nothing else.
+
+mod translations;
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -97,8 +101,9 @@ fn main() -> ExitCode {
             a && b
         }
         Some("manual-images") => manual_images(),
+        Some("translations") => translations::run(std::env::args().nth(2)),
         _ => {
-            eprintln!("usage: cargo xtask <spdx|layers|check|manual-images>");
+            eprintln!("usage: cargo xtask <spdx|layers|check|manual-images|translations [<ref>]>");
             return ExitCode::from(2);
         }
     };
