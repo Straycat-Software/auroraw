@@ -41,7 +41,7 @@ impl Backend {
     /// §3.2; review of the pipeline crate, point 8): the WGSL is translated by naga, and then compiled by
     /// something that differs per API and is where a construct one API accepts can fail on another.
     ///
-    /// The DirectX sentence comes from [`DX12_COMPILER`], the same constant that sets the compiler, so the
+    /// The DirectX sentence comes from `DX12_COMPILER`, the same constant that sets the compiler, so the
     /// report cannot go on saying FXC after the engine has been changed.
     pub const fn shader_route(self) -> &'static str {
         match self {
@@ -191,7 +191,7 @@ pub fn choose(adapters: &[AdapterInfo], choice: &AdapterChoice) -> Result<usize,
 /// [`choose`] for a platform whose own graphics API is `native`, so that the tie-break between
 /// the APIs that reach one GPU is stated and tested on every platform, not only the one running.
 ///
-/// Among the adapters the choice allows, the best by [`AdapterInfo::preference`] wins, and of two
+/// Among the adapters the choice allows, the best by `AdapterInfo::preference` wins, and of two
 /// equal ones the first in `adapters`: the result does not depend on the order of the list, except
 /// to break a true tie.
 pub fn choose_for(
