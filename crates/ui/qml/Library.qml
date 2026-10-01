@@ -35,6 +35,7 @@ FocusScope {
     property alias cellMenu: cellMenu
     property alias viewMenu: viewMenu
     property alias labelFilterButtons: labelFilterButtons
+    property alias placeMenu: placeMenu
     // The image view (one photo at a time) is open over the grid.
     property bool viewing: false
     // The comparison of frames is open over the grid.
@@ -593,6 +594,12 @@ FocusScope {
                                 grid.forceActiveFocus()
                             }
                         }
+                    }
+                    // The place (design note 008 §5): the tree of countries, regions and cities, and what is under a node. It is
+                    // not there until the engine can answer for it (`PlaceMenu.available`).
+                    PlaceMenu {
+                        id: placeMenu
+                        grid: root.photoGrid
                     }
                     // Series (WP9): which photos by series, and every series open or closed.
                     AppComboBox {

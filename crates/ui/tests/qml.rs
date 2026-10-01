@@ -156,6 +156,13 @@ fn place_names_are_found_for_the_selection_or_a_source_and_undone_as_one_step() 
     run_suite("places", home.path(), None);
 }
 
+/// The place menu of the filter bar, on its own against a stand-in for the engine's facets (design note 008 §5).
+#[test]
+fn the_place_menu_shows_the_tree_of_places_and_sets_the_filter() {
+    let home = temp_dir();
+    run_suite("placemenu", home.path(), None);
+}
+
 /// Without the places file the feature says so and the rest is unaffected.
 #[test]
 fn place_names_say_they_are_not_installed_when_the_file_is_missing() {
