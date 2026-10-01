@@ -275,8 +275,7 @@ AppTestCase {
     }
 
     function test_the_dialog_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly("IMG_0009")
         const dialog = openDialog()
         compare(dialog.title, "Exporter les fichiers XMP")

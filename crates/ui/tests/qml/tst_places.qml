@@ -180,8 +180,7 @@ AppTestCase {
     }
 
     function test_the_names_are_in_the_interfaces_language_and_a_refresh_follows_them() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly("IMG_0006")
         let dialog = openDialog()
         runFind(dialog)
@@ -190,8 +189,7 @@ AppTestCase {
         compare(field("IMG_0006", "city"), "Westville", "the city is as the place spells it")
         dialog.close()
         // Without a refresh, what Auroraw found is left as it is, in whatever language it was found.
-        app.launcher.chooseLanguage("en")
-        wait(250)
+        useLanguage("en")
         selectOnly("IMG_0006")
         dialog = openDialog()
         runFind(dialog)
@@ -213,15 +211,13 @@ AppTestCase {
 
     function test_a_refresh_is_shown_grouped_before_it_is_done_and_applied_on_request() {
         const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly(...six)
         let dialog = openDialog()
         runFind(dialog)
         compare(dialog.report.filled, 6, "a first fill goes straight to the run: there is nothing to decide")
         dialog.close()
-        app.launcher.chooseLanguage("en")
-        wait(250)
+        useLanguage("en")
         selectOnly(...six)
         dialog = openDialog()
         previewRefresh(dialog)
@@ -318,8 +314,7 @@ AppTestCase {
     }
 
     function test_the_dialog_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly("IMG_0008")
         const dialog = openDialog()
         compare(dialog.title, "Trouver les noms de lieux")

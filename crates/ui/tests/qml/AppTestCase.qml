@@ -123,6 +123,17 @@ TestCase {
         verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
     }
 
+    // Chooses the interface's language and returns once it is on the screen. The launcher retranslates at once (`language`
+    // says which is chosen), but what the new texts do to the layout (a label that needs more room, a row that wraps)
+    // happens at the next frame: a test that measures it reads after a frame has been drawn, not after a duration. (Issue
+    // #73: of the 26 pauses that followed a change of language, 24 held nothing up and 2 held up a measure of the layout,
+    // the width of the Collections panel's tabs and that of the Import dialog's label column.)
+    function useLanguage(code) {
+        app.launcher.chooseLanguage(code)
+        tryCompare(app.launcher, "language", code)
+        drawn(app.contentItem)
+    }
+
     // Waits until the review of external changes lists `count` photos. (Not `tryCompare(app.externalDialog.entries,
     // "length", count)`: `entries` is a new array at each refresh, and `tryCompare` reads the array once, when it is
     // called, so it keeps waiting on a list nobody updates; the test passed whenever the engine answered within the
