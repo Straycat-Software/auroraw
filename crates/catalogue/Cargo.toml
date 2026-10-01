@@ -16,6 +16,7 @@ auroraw-format = { path = "../format" }
 auroraw-types = { path = "../types" }
 rusqlite.workspace = true
 thiserror.workspace = true
+icu_normalizer.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
