@@ -47,6 +47,7 @@ fn main() {
         }
     }
     let mut orphans = 0;
+    let regions_total = regions.len();
     for mut region in regions {
         region.area.parent = by_key
             .get(&region.country_key)
@@ -54,6 +55,15 @@ fn main() {
             .copied();
         orphans += usize::from(region.area.parent.is_none());
         pack.add_area(&region.area).expect("a region");
+    }
+    // A renamed key in a later release of the data would drop the country of every region without a single
+    // failure; a handful of regions without one is the data's (marine pieces, disputed areas), a hundredth of
+    // them is not (review of the places crate).
+    if orphans * 100 > regions_total {
+        eprintln!(
+            "{orphans} of {regions_total} regions have no country: the data's keys have probably changed"
+        );
+        std::process::exit(1);
     }
     for town in &towns {
         pack.add_place(town).expect("a town");

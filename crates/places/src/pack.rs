@@ -230,14 +230,9 @@ impl PackBuilder {
         };
         let (mut without_region, mut without_country) = (0, 0);
         for (id, lat, lon, country_code) in towns {
-            let region = lookup.area_at(&self.conn, Level::Region, lon, lat, 0.0)?;
-            let mut country = match region {
-                Some(region) => lookup.parent_of(&self.conn, region)?,
-                None => None,
-            };
-            if country.is_none() {
-                country = lookup.area_at(&self.conn, Level::Country, lon, lat, 0.0)?;
-            }
+            // The same decision a lookup makes (country first), with no tolerance: a town and a point at
+            // the same spot are given the same country and region.
+            let (mut country, region) = lookup.country_and_region(&self.conn, lon, lat, 0.0)?;
             if country.is_none() && !country_code.is_empty() {
                 // On an island the polygons do not show, or a shore they cut: the code GeoNames gave.
                 country = self

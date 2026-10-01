@@ -184,7 +184,7 @@ pub fn places(text: &str) -> Result<Vec<NewPlace>> {
         let columns: Vec<&str> = line.split('\t').collect();
         if columns.len() < 15 {
             return Err(source_error(format!(
-                "line {} has {} columns, not the 19 of GeoNames",
+                "line {} has {} columns, fewer than the 15 this needs (GeoNames' have 19)",
                 number + 1,
                 columns.len()
             )));

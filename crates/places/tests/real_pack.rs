@@ -181,3 +181,15 @@ fn ten_thousand_lookups_take_seconds_not_minutes() {
     eprintln!("10,000 random positions: {found} on land or near a shore, {elapsed:.2} s");
     assert!(elapsed < 120.0, "{elapsed} s");
 }
+
+#[test]
+fn a_town_outside_every_region_polygon_is_still_found_from_inside_one() {
+    // Review of the places crate (Bob), point 2. Hong Kong's main town, GeoNames' "Victoria", lies on a shore the
+    // generalised polygons of its regions leave out; a photo in the region of Tsim Sha Tsui used to be given the
+    // district of Mong Kok because the town was invisible to a photo that has a region.
+    let Some(places) = pack() else { return };
+    let found = places.locate(22.3193, 114.1694, "en").unwrap();
+    assert_eq!(found.country.unwrap().code, "HK");
+    assert!(found.region.is_some(), "the point is inside a region");
+    assert_eq!(found.city.unwrap().name, "Victoria");
+}
