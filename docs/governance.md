@@ -19,6 +19,14 @@
 | **Maintainers** | Added by the owner when there are contributors who are reliable and active | Review and merge changes, triage issues. |
 | **Contributors** | Anyone | Propose changes, report problems, translate, write plugins, provide samples. |
 
+**Code owners.** `.github/CODEOWNERS` says who is asked to review a change to each part of the code (D-152): **Alice**
+(the data layer, the engine, import, places, the plugin surface, the repository's own tools), **Bob** (the interface, the
+application that starts it, the manual, the icons), **Charlie** (the image engine and what feeds it: decoders, previews,
+thumbnails, the WebAssembly plugins) and the **QA group** (the tests, the CI and what it runs). Every area lists a second
+reviewer, so that the author of a pull request is never its only owner; the owner is on the areas that §3 reserves to
+him. The last pattern that matches a file decides its owners. Whether an owner's approval is *required*, and not only
+asked for, is a setting of the repository ("Require review from Code Owners"), the owner's.
+
 How decisions are made:
 
 - **The decision log** ([decisions.md](decisions.md)) is the record. A decision that changes what
@@ -123,7 +131,7 @@ Files to add at the root of the repository, all short:
 | `SECURITY.md` | §7 |
 | `.github/ISSUE_TEMPLATE/` | Bug report, feature proposal, camera or file that does not decode (with a sample), translation |
 | `.github/PULL_REQUEST_TEMPLATE.md` | The checklist of the testing strategy §9 |
-| `.github/CODEOWNERS` | The QA group, asked to review every pull request (D-152) |
+| `.github/CODEOWNERS` | Who is asked to review each part of the code (§1, D-152) |
 | `PLUGIN-EXCEPTION` | §2.3, once approved |
 
 **Working rules:**
@@ -139,9 +147,8 @@ Files to add at the root of the repository, all short:
 - **Reviews** are by a maintainer other than the author; the owner reviews changes to formats,
   the plugin API, the pipeline definition, the write path and the sandbox. **An approval from the QA group is needed on every pull
   request before it is merged** (D-152), in addition to these: the other reviews look at the design, the QA
-  review at how the change is shown to work. The requirement is the repository's branch rule on `dev` and `main`
-  (a required approval from the code owners, `.github/CODEOWNERS`, where the code owner is the QA group, a team of
-  the organisation), which the owner has set.
+  review at how the change is shown to work. That requirement is a rule of the repository, which the owner has set;
+  it is not a line of `.github/CODEOWNERS`, which names the owner of each part of the code (§1).
 - **Language.** Code, comments, commit messages, documents, issues, pull requests and
   discussions are **all in English**, with no exception (D-082).
 - **Commit messages**: a short imperative title, then a body that says why. History is
