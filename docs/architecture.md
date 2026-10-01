@@ -325,7 +325,7 @@ granted it.
 
 ## 6. The image engine (`pipeline`)
 
-### 6.1 The model [decided, D-140; following spec §5.6]
+### 6.1 The model [decided, D-140 and D-146; following spec §5.6]
 
 A **pipeline definition** lists **stages**, each working in a defined data space; Auroraw ships
 one that works. A **version** is rendered by instantiating the definition with its operations,
@@ -343,11 +343,28 @@ cache key of stage `n` and the proof of determinism `develop` stores. The detail
 
 The order rule the spikes proved: **heavy, rarely changed operations early; controls that are
 dragged often, late.** White balance applied after the denoiser costs 0.6 ms to change,
-against 120 ms before it, with the same result (the multipliers fold into the camera matrix).
+against 120 ms before it. The multipliers fold into the camera matrix, which is exact for the linear
+steps; through the denoiser the two orders are two different images, within a few tenths of a decibel
+of each other (and the same image for a denoiser with a per-channel noise model), so the cost decides
+and the position of white balance is part of what a definition version promises (D-146, design note
+006 §2.2, §4).
+
+Definition v1 has eight stages, and decoding and encoding are its boundaries:
 
 ```
-decode -> demosaic -> denoise -> [scene-linear operations, plugins] -> tone and display -> encode
+decode | raw-linear -> demosaic -> camera-rgb -> input-colour -> scene-linear -> geometry -> detail -> display | encode
 ```
+
+In that order: the levels and hot pixels; the demosaic; noise reduction; white balance and then the
+camera-to-working-space step; exposure, tone and colour; crop and straighten; sharpening; the tone map
+and the output transform.
+
+Five data spaces name what each stage receives and returns (`sensor-raw`, `mosaic-linear`,
+`camera-linear`, `working-linear`, `display-referred`), the first two with no lower bound (a sample below
+its black stays negative); an operation depends only on its own
+parameters, the operations before it and the image, so that nothing before `input-colour` reads
+the white balance. The stage and space names are constants in `plugin-api`; the definition is Rust
+data in `pipeline`, versioned, and a released version is never edited (D-146, note 006).
 
 ### 6.2 Evaluation [decided by measurement, spike 1]
 
@@ -408,6 +425,9 @@ Black levels are per channel (the spike averaged them), and highlight reconstruc
 - **Device loss** is handled by re-creating the device and replaying the render request.
 - wgpu's OpenGL back end is **not supported** (it lost the device in spike 1).
 - The adapter is the best real GPU (discrete, then integrated), with a setting to override.
+- On DirectX 12 the shader compiler is **FXC, fixed by the engine** (D-149), so that every machine behaves like the
+  continuous-integration runner and nothing is shipped beside the application. It costs shader model 5.x: no `f16`
+  arithmetic and no subgroup operations while it is the compiler.
 
 ### 6.7 Presentation [decided by measurement]
 

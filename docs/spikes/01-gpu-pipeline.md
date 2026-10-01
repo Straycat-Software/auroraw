@@ -153,7 +153,9 @@ of each band. It would be faster with bigger bands.
    masks, exposure and tone cost under 12 ms together. The denoiser alone is 108 ms.
 2. **The order of operations decides how interactive the application feels.** The same white
    balance change costs 120 ms before the denoiser and 0.6 ms after it, 200 times less, and the
-   result is the same, since the multipliers fold into the camera matrix. This is also how real
+   result is the same, since the multipliers fold into the camera matrix. *(Erratum, 2026-09-30: that holds for
+   the linear steps only. Through the denoiser the two orders are different images, within a few tenths of a
+   decibel of each other; design note 006 §2.2 and §4 measured it, and D-146 decided on the cost.)* This is also how real
    RAW developers do it, and the pipeline definition (specification §5.6) must be able to say it:
    heavy operations that are rarely changed go early, operations dragged often go late.
 3. **A draft quality would keep dragging under 50 ms.** Denoising with a search radius of 2

@@ -16,18 +16,29 @@
 //!
 //! - the first stages of the chain (design note 006 §3.3): the levels, the Bayer demosaic, the
 //!   camera-to-working step with the white balance folded in, the exposure and the output transform
-//!   (the flat linear look), each with a CPU reference it is checked against.
+//!   (the flat linear look), each with a CPU reference it is checked against;
+//! - the **pipeline definition v1** as data ([`definition`], design note 006): the stages, the data spaces,
+//!   the fixed spine, the canonical order of the built-in operations, and the fingerprint that holds a
+//!   released version unchanged;
+//! - the **recipe** ([`recipe`]) with the canonical encoding of its typed parameters, the **registry** of
+//!   the operations the engine knows ([`registry`]), the **validation** of a recipe against both
+//!   ([`validate`]), and the **stage cache keys** with the model of what a change reruns ([`plan`]).
 //!
-//! The render API (recipes, views, bands, caches, reports) comes next, following design note 005.
+//! The render API (views, bands, the stage caches themselves, reports) comes next, following design note 005.
 
 pub mod adapter;
 mod colour;
+pub mod definition;
 mod gpu;
+pub mod plan;
+pub mod recipe;
 mod reference;
+pub mod registry;
 mod scenes;
 mod smoke;
 mod stages;
 mod thread;
+pub mod validate;
 
 pub use adapter::{
     AdapterChoice, AdapterInfo, AdapterKind, Backend, ChooseError, choose, choose_for,

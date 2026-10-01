@@ -140,6 +140,10 @@ This is the highest-risk module, and the one where the spikes already fixed the 
 9. **Golden renders** at 8 bits, stored as small PNG files with the parameters that produced them,
    for every operation, at its released versions. Golden images are updated only by an explicit,
    reviewed command that shows the difference; an update is a decision, not a side effect.
+   **From the release of a pipeline definition version, the golden renders of its stages are part of
+   its contract and are not regenerated**: the definition's fingerprint sees the names of its steps, not
+   their maths, so the goldens are what sees the maths; a change that alters one is a new operation
+   version or a new definition version (design note 006 §3.6), never an update.
 
 Real GPUs are not available to continuous integration. CI therefore runs the reference and
 smoke tests on **software adapters** (lavapipe on Linux, WARP on Windows, the Metal adapter of the
