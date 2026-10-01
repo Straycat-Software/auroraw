@@ -193,9 +193,14 @@ only has to write the sidecar, as it does, and the columns follow. What was deci
 
 - **The photo row keeps the four fields** as the sidecar says them (`country`, `region`, `city`, `country_code`) **and
   three keys** (`place_country`, `place_region`, `place_city`) that the filter selects and groups by. A key is the text
-  *folded* (`fold_place`): case and diacritics dropped through Unicode decomposition (`icu_normalizer`, already in the
-  build through `idna`, so no new package), `ß` as `ss`, `æ`, `œ`, `ø`, `đ`, `ł`, `ħ` as their plain letters, hyphens, dashes,
-  apostrophes and white space made one, so that `Trois-Rivières` and `Trois Rivieres` are one place. **A country's key is
+  *folded* (`fold_place`): case and diacritics dropped through Unicode decomposition **with the compatibility forms**
+  (`icu_normalizer`, already in the build through `idna`, so no new package: a full-width `Ａ` is `A`, a ligature `ﬁ` is
+  `fi`, `Ĳ` is `IJ`), `ß` as `ss`, `æ`, `œ`, `ø`, `đ`, `ł`, `ħ` as their plain letters, the Greek final `ς` as `σ` (a capital
+  `Σ` lower-cases to `σ` in any place of the word), the invisible characters dropped (a soft hyphen, a zero-width space, a
+  direction mark, a byte-order mark: a copy and paste of a web page carries them), hyphens, dashes, apostrophes and white space
+  made one, so that `Trois-Rivières` and `Trois Rivieres` are one place. (Issue #84, Django's review of #62: these five
+  ways of writing a place gave two nodes; `Muenchen`/`München` and `St-Jean`/`Saint-Jean` still do, since they are
+  transliteration and abbreviation and not folding. It raised the version of the keys to 2.) **A country's key is
   its ISO 3166-1 alpha-2 code, found from the photo's own fields and from nothing else**: its code field if that says a
   country (`CA`, or `CAN`, the alpha-3 code the IPTC standard also allows), else its name looked up in a **fixed table of
   the names countries go by**, else the code field as written, else the folded name. `Canada` next to `CA` (Auroraw's own
@@ -255,7 +260,12 @@ only has to write the sidecar, as it does, and the columns follow. What was deci
   have a country: the keys, the four texts, the flag and the rating), so that the common case does not touch the table.
   The node of the photos with no country has a second, smaller one (`photo_place_nocountry`, `WHERE place_country IS NULL
   AND (place_region IS NOT NULL OR place_city IS NOT NULL)`), which the tree's query and the filter's read because they
-  state its condition (a test holds it with `EXPLAIN QUERY PLAN`); schema 6 carries both, the migration makes both.
+  state its condition. **It holds `place_country` as its last column**, always NULL there, because the query reads the
+  column and an index without it is not covering (SQLite then reads the table for each photo; Django's plan test of #84
+  found the first form did). A test holds both indexes as **covering** for the usual filters with `EXPLAIN QUERY PLAN`,
+  on the very queries the tree runs (`countries_sql`, `no_country_sql`), so that a column added to them that the index
+  lacks fails on any machine. Schema 6 carries both, the migration makes both, and a catalogue made with the first form
+  has the second one made again when its keys are refilled (version 2).
   Measured on 100,000 photos, 46,000 of them placed (2,300 of them under "(no country)"), 3,655 nodes in the tree
   (the node of the photos with no country holds the places of every country), in release: **20 ms** for the tree
   without a filter and 14 ms with a rating filter (it was 17 and 12 ms before the node, and 120 and 41 ms with an index
