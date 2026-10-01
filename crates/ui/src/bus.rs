@@ -123,6 +123,28 @@ pub mod qobject {
             cancelled: bool,
         );
 
+        /// A run of finding place names ended (D-147, design note 008): what happened to each photo, as JSON
+        /// (`photos`, `filled`, `hadPlace`, `noPosition`, `openWater`, `failed`). `cancelled` is whether it was
+        /// stopped before the last photo (what it found stays, as one step of the history).
+        #[qsignal]
+        #[cxx_name = "placeNamesFound"]
+        fn place_names_found(self: Pin<&mut Bus>, job: &QString, report: &QString, cancelled: bool);
+
+        /// A preview of finding place names ended (`Command::PreviewPlaceNames`, note 008 §4): what a run would do and
+        /// nothing was written, as JSON: `report` (the six counts of `placeNamesFound`), `groups` (the changes, the
+        /// biggest first: `field` (`city`, `region`, `country`, `country-code`), `before` and `after` (text, or
+        /// null for empty), `photos`, and `examples`, a few photo identifiers) and `groupsTotal` (how many
+        /// changes there are in all, which can be more than `groups` holds). `cancelled` is whether it stopped
+        /// before the last photo.
+        #[qsignal]
+        #[cxx_name = "placeNamesPreview"]
+        fn place_names_preview(
+            self: Pin<&mut Bus>,
+            job: &QString,
+            preview: &QString,
+            cancelled: bool,
+        );
+
         /// A keyword branch was deleted (D-126 volet B): a small one right away, `job` empty; one past
         /// `BACKGROUND_THRESHOLD` photos once its background sweep actually ends, `job` its id.
         /// `finished` is `false` only for a sweep that was cancelled before every carrying photo was
@@ -373,6 +395,77 @@ fn dispatch(event: Event, session: &Session) {
                 )
             });
         }
+        Event::PlaceNamesFound {
+            job,
+            report,
+            cancelled,
+        } => {
+            let job = job.to_string();
+            let report = serde_json::json!({
+                "photos": report.photos,
+                "filled": report.filled,
+                "hadPlace": report.had_place,
+                "noPosition": report.no_position,
+                "openWater": report.open_water,
+                "failed": report.failed,
+            })
+            .to_string();
+            on_gui(move |bus| {
+                bus.place_names_found(
+                    &QString::from(job.as_str()),
+                    &QString::from(report.as_str()),
+                    cancelled,
+                )
+            });
+        }
+        Event::PlaceNamesPreview {
+            job,
+            preview,
+            cancelled,
+        } => {
+            let job = job.to_string();
+            let report = &preview.report;
+            let groups: Vec<_> = preview
+                .groups
+                .iter()
+                .map(|group| {
+                    serde_json::json!({
+                        "field": group.field.key(),
+                        "before": group.before,
+                        "after": group.after,
+                        "photos": group.photos,
+                        "examples": group.examples.iter().map(|id| id.to_string()).collect::<Vec<_>>(),
+                    })
+                })
+                .collect();
+            let preview = serde_json::json!({
+                "report": {
+                    "photos": report.photos,
+                    "filled": report.filled,
+                    "hadPlace": report.had_place,
+                    "noPosition": report.no_position,
+                    "openWater": report.open_water,
+                    "failed": report.failed,
+                },
+                "groups": groups,
+                "groupsTotal": preview.groups_total,
+            })
+            .to_string();
+            on_gui(move |bus| {
+                bus.place_names_preview(
+                    &QString::from(job.as_str()),
+                    &QString::from(preview.as_str()),
+                    cancelled,
+                )
+            });
+        }
+        // What an import registers is kept for the run of place names that may follow it (the Import dialog's
+        // option): the dialog asks for it when the import has finished.
+        Event::ImportItem {
+            job,
+            photo_id: Some(photo),
+            ..
+        } => crate::place_names::note_imported(&job.to_string(), photo),
         Event::KeywordDeleted {
             keyword_id,
             job,
