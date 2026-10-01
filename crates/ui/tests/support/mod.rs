@@ -284,3 +284,185 @@ pub fn machine_with_duplicate(home: &Path, photos: u32) {
         }
     }
 }
+
+/// Decimal degrees in XMP's text form (`"5,30.0000N"`), as a sidecar holds a position.
+fn xmp_degrees(value: f64, positive: char, negative: char) -> String {
+    let magnitude = value.abs();
+    let hemisphere = if value < 0.0 { negative } else { positive };
+    format!(
+        "{},{:.4}{hemisphere}",
+        magnitude.trunc(),
+        magnitude.fract() * 60.0
+    )
+}
+
+/// The places file of the suites about place names: "Aland", a country of 10 by 10 degrees at the origin cut into
+/// two regions along the longitude 5 (West, Ouest in French; East, Est), a town in each: Westville (5, 2) and
+/// Eastburg (5, 8). Anything outside is open water. No download is involved (design note 008 §2, testing strategy).
+pub fn write_places_pack(path: &Path) {
+    use auroraw_places::{Level, NewArea, NewPlace, PackBuilder};
+    type Ring = Vec<(f64, f64)>;
+    let square = |x0: f64, x1: f64, y0: f64, y1: f64| -> Ring {
+        vec![(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+    };
+    let area = |level: Level, code: &str, en: &str, fr: &str, ring: Ring| NewArea {
+        level,
+        code: code.into(),
+        country_code: code.split('-').next().unwrap().into(),
+        parent: None,
+        name: en.into(),
+        names: vec![
+            ("en".to_string(), en.to_string()),
+            ("fr".to_string(), fr.to_string()),
+        ],
+        geonames_id: None,
+        parts: vec![vec![ring]],
+    };
+    let town = |id: i64, name: &str, lat: f64, lon: f64| NewPlace {
+        id,
+        name: name.into(),
+        lat,
+        lon,
+        country_code: "AA".into(),
+        population: 5_000,
+        section: false,
+    };
+    let mut pack = PackBuilder::create(path).unwrap();
+    let aland = pack
+        .add_area(&area(
+            Level::Country,
+            "AA",
+            "Aland",
+            "Alandie",
+            square(0.0, 10.0, 0.0, 10.0),
+        ))
+        .unwrap();
+    let mut west = area(
+        Level::Region,
+        "AA-W",
+        "West",
+        "Ouest",
+        square(0.0, 5.0, 0.0, 10.0),
+    );
+    west.parent = Some(aland);
+    pack.add_area(&west).unwrap();
+    let mut east = area(
+        Level::Region,
+        "AA-E",
+        "East",
+        "Est",
+        square(5.0, 10.0, 0.0, 10.0),
+    );
+    east.parent = Some(aland);
+    pack.add_area(&east).unwrap();
+    pack.add_place(&town(1, "Westville", 5.0, 2.0)).unwrap();
+    pack.add_place(&town(2, "Eastburg", 5.0, 8.0)).unwrap();
+    pack.finish().unwrap();
+}
+
+/// [`machine_with_photos`] with a places file at `<home>/places.sqlite` (the suites point `AURORAW_PLACES` at it) and
+/// positions in the sidecars, by file name: `IMG_0000`, `IMG_0001`, `IMG_0006` and `IMG_0007` in the West of Aland,
+/// `IMG_0002` and `IMG_0008` in the East, `IMG_0003` in open water, `IMG_0004` in the West with a city a person typed
+/// ("Mine"); the others have no position.
+pub fn machine_with_places(home: &Path, photos: u32) {
+    machine_with_photos(home, photos);
+    write_places_pack(&home.join("places.sqlite"));
+    let dirs = LocalDirs {
+        data: home.join("data"),
+        cache: home.join("cache"),
+    };
+    let root: PathBuf = home.join("Pictures").join("Auroraw").join("Main");
+    let opened = Engine::open_workspace(&root, &dirs).unwrap();
+    let mut rows = opened
+        .engine
+        .read_catalogue()
+        .unwrap()
+        .list_recent(None, 10_000)
+        .unwrap();
+    rows.sort_by(|a, b| a.filename.cmp(&b.filename));
+    let places: [(usize, f64, f64); 8] = [
+        (0, 5.0, 2.1),
+        (1, 5.0, 2.1),
+        (2, 5.0, 8.1),
+        (3, -40.0, 100.0),
+        (4, 5.0, 2.1),
+        (6, 5.0, 2.1),
+        (7, 5.0, 2.1),
+        (8, 5.0, 8.1),
+    ];
+    for (index, lat, lon) in places {
+        let Some(row) = rows.get(index) else { continue };
+        let mut sidecar = opened
+            .engine
+            .workspace()
+            .read_photo(&row.id)
+            .unwrap()
+            .unwrap()
+            .current()
+            .unwrap();
+        sidecar.meta.original.gps_latitude = Some(xmp_degrees(lat, 'N', 'S'));
+        sidecar.meta.original.gps_longitude = Some(xmp_degrees(lon, 'E', 'W'));
+        if index == 4 {
+            sidecar.meta.city = Some("Mine".into());
+        }
+        opened.engine.workspace().write_photo(&sidecar).unwrap();
+    }
+    opened.engine.submit_and_wait(Command::Rebuild).unwrap();
+}
+
+/// Puts a GPS position into the EXIF of the JPEG at `path`, as a camera with a receiver would have, so that an import
+/// reads it from the file.
+pub fn put_gps_in_jpeg(path: &Path, lat: f64, lon: f64) {
+    let degrees = |value: f64| {
+        let magnitude = value.abs();
+        let d = magnitude.trunc();
+        let minutes = (magnitude - d) * 60.0;
+        exif::Value::Rational(vec![
+            exif::Rational {
+                num: d as u32,
+                denom: 1,
+            },
+            exif::Rational {
+                num: (minutes * 10_000.0).round() as u32,
+                denom: 10_000,
+            },
+            exif::Rational { num: 0, denom: 1 },
+        ])
+    };
+    let ascii = |text: &str| exif::Value::Ascii(vec![text.as_bytes().to_vec()]);
+    let fields = [
+        (
+            exif::Tag::GPSLatitudeRef,
+            ascii(if lat < 0.0 { "S" } else { "N" }),
+        ),
+        (exif::Tag::GPSLatitude, degrees(lat)),
+        (
+            exif::Tag::GPSLongitudeRef,
+            ascii(if lon < 0.0 { "W" } else { "E" }),
+        ),
+        (exif::Tag::GPSLongitude, degrees(lon)),
+    ]
+    .map(|(tag, value)| exif::Field {
+        tag,
+        ifd_num: exif::In::PRIMARY,
+        value,
+    });
+    let mut writer = exif::experimental::Writer::new();
+    for field in &fields {
+        writer.push_field(field);
+    }
+    let mut tiff = std::io::Cursor::new(Vec::new());
+    writer.write(&mut tiff, false).unwrap();
+    let tiff = tiff.into_inner();
+    let jpeg = std::fs::read(path).unwrap();
+    assert_eq!(&jpeg[..2], &[0xFF, 0xD8], "a JPEG");
+    // APP1: the marker, a length that counts itself, "Exif" and two zeros, the TIFF block.
+    let mut segment = vec![0xFF, 0xE1];
+    segment.extend(((tiff.len() + 8) as u16).to_be_bytes());
+    segment.extend(b"Exif\0\0");
+    segment.extend(&tiff);
+    let mut out = jpeg[..2].to_vec();
+    out.extend(segment);
+    out.extend(&jpeg[2..]);
+    std::fs::write(path, out).unwrap();
+}

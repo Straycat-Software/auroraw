@@ -33,7 +33,9 @@ sys-locale = "0.3"
 cxx-qt-build = "0.10"
 
 [dev-dependencies]
+auroraw-places = { path = "../places" }
 auroraw-testkit = { path = "../testkit" }
+kamadak-exif = "0.6"
 image = { version = "0.25", default-features = false, features = ["jpeg"] }
 
 [[bin]]
