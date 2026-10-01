@@ -241,8 +241,8 @@ TestCase {
         const grid = make(gridComponent)
         grid.answer = { placed: 7, countries: [
             { label: "Singapore", count: 7, filter: { country: "SG" }, children: [
-                { label: "Singapore", count: 4, filter: { country: "SG", city: "singapore" }, children: [] },
-                { label: "Jurong", count: 3, filter: { country: "SG", city: "jurong" }, children: [] } ] } ] }
+                { label: "Singapore", count: 4, filter: { country: "SG", region: "", city: "singapore" }, children: [] },
+                { label: "Jurong", count: 3, filter: { country: "SG", region: "", city: "jurong" }, children: [] } ] } ] }
         const menu = menuOn(grid)
         open(menu)
         compare(texts(menu), ["Any place", "Singapore 7"])
@@ -252,13 +252,37 @@ TestCase {
         compare(texts(menu), ["Any place", "Singapore 7", " Jurong 3", " Singapore 4"])
         mouseClick(rowItem(menu, 2), 60, 12)
         tryVerify(() => !menu.popup.opened)
-        compare(JSON.parse(grid.placeFilter), { country: "SG", city: "jurong" }, "no region key: the keys are the engine's, given back")
+        compare(JSON.parse(grid.placeFilter), { country: "SG", region: "", city: "jurong" }, "the empty region key means no region: the keys are the engine's, given back")
         compare(menu.choiceText, "Jurong")
         compare(menu.choicePath, "Singapore, Jurong")
         // Opened again, the path to the choice is open: the country, and under it the city.
         open(menu)
         compare(texts(menu), ["Any place", "Singapore 7", " Jurong 3", " Singapore 4"])
         verify(menu.selected(menu.rows[2]))
+        menu.popup.close()
+    }
+
+    function test_a_city_with_no_region_and_the_same_city_in_a_region_are_two_nodes() {
+        // The empty key of a region means "no region": the two Dups select different photos, and each is the choice alone.
+        const grid = make(gridComponent)
+        grid.answer = { placed: 5, countries: [
+            { label: "Xland", count: 5, filter: { country: "XX" }, children: [
+                { label: "Dup", count: 2, filter: { country: "XX", region: "", city: "dup" }, children: [] },
+                { label: "North", count: 3, filter: { country: "XX", region: "north" }, children: [
+                    { label: "Dup", count: 3, filter: { country: "XX", region: "north", city: "dup" }, children: [] } ] } ] } ] }
+        grid.placeFilter = JSON.stringify({ country: "XX", region: "", city: "dup" })
+        const menu = menuOn(grid)
+        open(menu)
+        compare(texts(menu), ["Any place", "Xland 5", " Dup 2", " North 3"], "the country is open, the region is not")
+        compare(menu.rows.filter(row => !row.any && menu.selected(row)).map(row => row.count), [2])
+        compare(menu.choicePath, "Xland, Dup")
+        menu.popup.close()
+        tryVerify(() => !menu.popup.opened)
+        grid.placeFilter = JSON.stringify({ country: "XX", region: "north", city: "dup" })
+        open(menu)
+        compare(texts(menu), ["Any place", "Xland 5", " Dup 2", " North 3", "  Dup 3"], "now the region is open too")
+        compare(menu.rows.filter(row => !row.any && menu.selected(row)).map(row => row.count), [3])
+        compare(menu.choicePath, "Xland, North, Dup")
         menu.popup.close()
     }
 

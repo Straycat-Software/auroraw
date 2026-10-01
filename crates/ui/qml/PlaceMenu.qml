@@ -15,16 +15,19 @@ import org.auroraw.ui
 //                               have a country, and a Node `{ "label": "Quebec", "count": 80, "filter": {...},
 //                               "children": [Node] }` (countries hold regions, regions hold cities; a city has none).
 //                               `label` is the node's spelling to show: the most frequent one among the photos of the
-//                               node, the smallest in code point order when two are as frequent, so that it does not
-//                               flicker (the grouping is made on the text folded for case and diacritics, so `Montreal`
-//                               and `Montréal` are one node). `count` is the photos under the node, `filter` what
+//                               node, and when two are as frequent the way a person would choose: mixed case first
+//                               (`Montréal` over `MONTRÉAL` and `montréal`), then the most accents kept (`Montréal` over
+//                               `Montreal`), then the smallest text, so that it does not flicker (the grouping is made on
+//                               the text folded for case and diacritics, so `Montreal` and `Montréal` are one node). `count` is the photos under the node, `filter` what
 //                               selects them, `{ "country": key, "region": key, "city": key }` from the most general
 //                               down, each key **opaque** (the engine's: the ISO code for a country that has one, the
 //                               folded text otherwise; the menu only gives it back). The counts are those of the photos
 //                               in view that pass every filter *but this one*, so that the tree stays one to move
 //                               around in while a place is chosen.
 //                               **A country with no region** (Singapore, or a photo whose region is empty) has its cities
-//                               directly under it, with `filter: { country, city }` and no `region` key.
+//                               directly under it, with `filter: { country, region: "", city }`: the empty key of a region
+//                               means "no region", so that the node selects exactly its count (`{ country, city }` would
+//                               also select that city in every region of the country). The menu only gives it back.
 //                               **A photo with a city or a region but no country** is not in the tree: `placed` does not
 //                               count it and the filter cannot select it ("placed" is not "has any place field").
 //   grid.placeFilter            the filter in force, the `filter` of a node as JSON text, or an empty text for none.
