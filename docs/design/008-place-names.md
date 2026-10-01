@@ -8,8 +8,8 @@
 > **[decided]**, **[proposed]** or **[open]**; what was marked **[to measure]** or **[to verify]** was what I
 > remembered of the data sets, not a measurement, and the first slice settled it. **Slices 1 and 2 are
 > built (#49, #52): §8 says what was measured and where the build departs from §2 to §4** (the city rule,
-> where a person's write is caught, what the record holds); a paragraph of those sections that is no longer
-> true carries a pointer to it.
+> where a person's write is caught, what the record holds, the order country then region); a paragraph of
+> those sections that is no longer true carries a pointer to it.
 
 ## 1. The question, and what exists
 
@@ -235,9 +235,9 @@ so the checksum of that file is of the day it was recorded and the script says h
 | | |
 | --- | --- |
 | The file | **24.1 MiB**, built in **3.6 s** in release (about 16 MiB deflated). 4,847 areas (258 countries, 4,589 regions), 12,660 polygon parts, 1.84 million points, 171,091 towns. The polygons are 8 MiB and the towns 8 MiB. |
-| A lookup | **87 µs** on average over 10,000 random positions in release; a cache keeps the large polygons decoded. |
+| A lookup | **115 µs** on average over 10,000 random positions in release (89 µs before the review below, which added a country scan for the points in the sea); a cache keeps the large polygons decoded. |
 | Names | **No region and no country lacks a French name** (4,589 of 4,589; 258 of 258). 13 countries have no ISO code (disputed areas, dependencies): they get a name and no code. |
-| What no polygon holds | 2,946 towns of 171,091 (1.7 %) are in no region and 42 in no country; they are found by their country code where they can be. Seven features of the regions layer have no name (marine pieces) and are left out. |
+| What no polygon holds | 2,955 towns of 171,091 (1.7 %) are in no region and 42 in no country; they are found by their country code where they can be. Seven features of the regions layer have no name (marine pieces) and are left out. |
 | Real borders | Windsor (Ontario) and Detroit (Michigan), 2 km apart across a river, give Canada / Ontario / Windsor and the United States / Michigan / Detroit: the same-region rule works on a real border. Both sides of the antimeridian (Chukotka, Taveuni) work; mid-Atlantic and the North Pole are empty; the South Pole is Antarctica. |
 
 The size is a few tens of megabytes at most, so decision 1 of §7 ("bundle both sets") holds without the
@@ -255,6 +255,19 @@ a point nobody claims goes to the **nearest**. GeoNames' own "section of a popul
 options of `Places` with these defaults. It is a refinement of the "nearest populated place" of §3, not a
 change of the radii Patrick approved.
 
+**The country is decided first, and the towns no region contains are found** (review of the crate, by Bob, who tried it
+on a synthetic file; both are now tests, and the second a test on the real file). The first version looked for the
+region first, with the 5 km coastal tolerance, and took the country from it; a point inside a country with no regions
+of its own, within 5 km of a neighbour's region, was given the *neighbour's* country and region. Now the country that
+contains the point is found first, the region is looked for in that country only (containment, then the tolerance), and
+the tolerance finds a country only for a point in none (a coast, a ferry, an island the polygons do not show). The
+builder asks the same question for a town, so a town and a point at the same spot get the same country and region. And
+the towns that **no region contains** (the 1.7 %, mostly harbours, beaches and islands the 1:10 million polygons leave
+out) were invisible to a photo that has a region, because the town had to be of the same *region*: the candidates are now
+the towns of the region **and the towns of the same country that have none**, never a town of another region. On the real
+file Tsim Sha Tsui used to read Mong Kok, a district, and reads Victoria, which GeoNames makes Hong Kong's town; nine more
+towns have no region than before (the ones a neighbour's polygon had claimed).
+
 **Limits that remain.** The city is a *town point*, not the municipality that contains the position
 (Westmount, an independent city inside Montréal, reads as Montréal); the polygons are the 1:10 million
 generalisation.
@@ -270,10 +283,16 @@ generalisation.
   step. A pack that cannot be opened is refused at once and nothing starts.
 - **The rule** is one pure function (`place_names::fill_place`): an empty field is filled; a field that is
   Auroraw's (in the record and still saying what it wrote) follows the position only on `refresh`, and goes if
-  the new place has none; a field that is a person's is never touched and is not in the record. A cleared
-  field is empty, so the next run fills it again.
-- **`aur:PlaceFilled`** holds the position and the four values (no identifiers). Additive: no schema bump, a
-  fixture, a round trip, and a test that what a newer version adds inside it is kept.
+  the new place has none; a field that is a person's is never touched and is not in the record; **a field a
+  person emptied is an answer, not a gap** (§4): the record keeps it with an empty text, and the run leaves it
+  empty, a refresh included, until a person writes it. (The first version of slice 2 filled an emptied field
+  again, which contradicted §4's own text; Bob's review found it.) Emptying a field that was empty says
+  nothing and leaves an answer already given; undoing the emptying gives the name back to Auroraw; another
+  application emptying it, in an accepted external change, is an answer too.
+- **`aur:PlaceFilled`** holds the position and the four values (no identifiers), and, for a field a person
+  emptied, that field with an empty text: four states in all (absent, written, emptied, and not listed
+  because it is theirs). A record that holds only answers has no position. Additive: no schema bump, two
+  fixtures, round trips, and a test that what a newer version adds inside it is kept.
 - **A person's write takes the field out of the record**, the same words included (§4). It is the engine's
   one function `place_names::released`, called by the two paths that write a place field: `SetMetadataField`
   (the panel, a paste and a batch all go through it) and the accepted external change. It is not in `format`
@@ -282,10 +301,19 @@ generalisation.
   version cannot override a place field (`OverrideField` has no such variant), so that path does not exist
   yet. The belt of §4 is built: a field in the record that no longer says what was recorded is treated as
   the person's.
-- **The report** counts what *landed*: photos, filled, already had their places, no position, in no country,
-  failed (a photo that left, or a workspace that cannot be written).
+- **The report** counts what *landed*: photos, filled, already had their places (including a photo that
+  something changed between the lookup and the write, so that the coordinator's own pass found nothing to
+  write), no position, in no country, failed (could not be read, or written: a photo that left, a workspace
+  that cannot be written).
+- **The preview** (`Command::PreviewPlaceNames`, Patrick's wish for §4's "with the before and after shown"):
+  the same worker, the same lookups and the same rule on the same reads, and nothing sent to be written, so no
+  step. It reports the counts a run would report and the changes it would make **grouped** by field, old text
+  and new text (`City: Westville → Eastburg, 400 photos`, the biggest first, at most 200 groups and three
+  example photos each, with the number of groups there are in all), because a refresh replaces hundreds of
+  names with a few. A run that follows recomputes, so it can differ from the preview by the photos that
+  changed in between.
 - **The CLI**: `auroraw-cli place-names <workspace> <catalogue> <places-file> (--source <id> | <photo>…)
-  [--language <code>] [--refresh]`.
+  [--language <code>] [--refresh] [--preview]`.
 - **Measured**: 10,000 photos in **4.95 s** in release (about 0.5 ms a photo, with the sidecar read and
   rewritten and the catalogue row), one step, undone as one (`cargo test -p auroraw-engine --release --test
   place_names -- --ignored`).
