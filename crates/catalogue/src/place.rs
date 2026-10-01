@@ -605,7 +605,9 @@ mod tests {
             (Some("can"), None, "CA"),
             (None, Some("États-Unis"), "US"),
             (None, Some("Allemagne"), "DE"),
-            (None, Some("Deutschland"), "deutschland"),
+            (None, Some("Deutschland"), "DE"),
+            (None, Some("Congo"), "congo"),
+            (None, Some("Tyskland"), "tyskland"),
             (Some("zz"), None, "ZZ"),
             (None, Some("Atlantis"), "atlantis"),
         ] {

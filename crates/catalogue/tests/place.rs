@@ -313,38 +313,81 @@ fn a_country_is_its_code_so_that_names_in_any_language_are_one_country() {
             Some("Berlin"),
             Some("Deutschland"),
         ),
-        // The same country, written by a tool that gave no code: the table of countries knows the name.
+        // The same country, written by tools that gave no code: the table of countries knows the names, in English
+        // and in the language of a German system.
         spot("Germany", "Bayern", "München").written(
             Some("München"),
             Some("Bayern"),
             Some("germany"),
         ),
-        // A name the table does not know (Auroraw ships English and French), and no code: a node of its own, as it
-        // was before the table. The table can join nodes, never lose one.
         spot("Germany", "Bayern", "München").written(
             Some("München"),
             Some("Bayern"),
             Some("Deutschland"),
+        ),
+        // A name in a language the table does not carry, and no code: a node of its own, as it was before the table.
+        // The table can join nodes, never lose one.
+        spot("Germany", "Bayern", "München").written(
+            Some("München"),
+            Some("Bayern"),
+            Some("Tyskland"),
         ),
     ]);
     let facets = cat.place_facets(&all()).unwrap();
     assert_eq!(
         outline(&facets),
         [
-            "Deutschland 1",
-            " Bayern 1",
-            "  München 1",
-            "Germany 5",
-            " Bayern 3",
-            "  München 3",
+            // (Germany and Deutschland tie at two photos each: the smaller text labels the node.)
+            "Deutschland 6",
+            " Bayern 4",
+            "  München 4",
             " Berlin 2",
             "  Berlin 2",
+            "Tyskland 1",
+            " Bayern 1",
+            "  München 1",
         ]
     );
-    assert_eq!(facets.countries[1].filter.country.as_deref(), Some("DE"));
+    assert_eq!(facets.countries[0].filter.country.as_deref(), Some("DE"));
     assert_eq!(
-        facets.countries[0].filter.country.as_deref(),
-        Some("deutschland")
+        facets.countries[1].filter.country.as_deref(),
+        Some("tyskland")
+    );
+}
+
+#[test]
+fn the_two_congos_are_two_countries_and_a_bare_congo_is_neither() {
+    // The table maps `Congo` to nothing: Natural Earth gives it to Brazzaville and a photographer's metadata very often
+    // means Kinshasa by it. The long names and the codes tell the two apart; the bare name is a node of its own.
+    let (cat, _dir, _) = built(&[
+        spot("Congo", "", "Kinshasa").written(
+            Some("Kinshasa"),
+            None,
+            Some("Democratic Republic of the Congo"),
+        ),
+        spot("Congo", "", "Kinshasa")
+            .written(Some("Kinshasa"), None, Some("RD Congo"))
+            .with_code("CD"),
+        spot("Congo", "", "Brazzaville").written(
+            Some("Brazzaville"),
+            None,
+            Some("Republic of the Congo"),
+        ),
+        spot("Congo", "", "Kinshasa").written(Some("Kinshasa"), None, Some("Congo")),
+    ]);
+    let facets = cat.place_facets(&all()).unwrap();
+    let keys: Vec<_> = facets
+        .countries
+        .iter()
+        .map(|c| (c.count, c.filter.country.clone().unwrap()))
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            (1, "congo".to_string()),
+            (2, "CD".to_string()),
+            (1, "CG".to_string())
+        ]
     );
 }
 

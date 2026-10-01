@@ -10,9 +10,11 @@
 //! so a rebuild of the catalogue gives the same keys in any order.
 //!
 //! The table is `country_names.tsv`, made by the `country-names` example of the `auroraw-places` crate from Natural
-//! Earth (public domain), in the languages Auroraw ships (English and French) with the names people still write. A name
-//! the table does not have (`Deutschland`, a country in a language Auroraw does not ship) stays a node of its own,
-//! under its folded name, as it was before the table: the table can only join nodes, never split or lose one.
+//! Earth (public domain), in English and French and in the languages whose users' tools write the country in the
+//! language of the system (German, Spanish, Italian, Portuguese, Dutch), with the names people still write. A name
+//! the table does not have (`Tyskland`, a country in a language it does not carry) stays a node of its own, under its
+//! folded name, as it was before the table. The table can only join nodes that are one country: a name two countries
+//! answer to is not in it (`Saint-Martin`), nor a name that Natural Earth gives to one and people use for two (`Congo`).
 
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
@@ -138,7 +140,7 @@ mod tests {
 
     #[test]
     fn every_name_of_the_table_finds_its_country_unless_two_countries_share_it() {
-        let mut shared = 0;
+        let mut found_none = Vec::new();
         for line in TABLE
             .lines()
             .filter(|l| !l.is_empty() && !l.starts_with('#'))
@@ -149,12 +151,18 @@ mod tests {
             for name in fields {
                 match code_of(name) {
                     Some(found) => assert_eq!(found, code, "{name:?}"),
-                    None => shared += 1,
+                    None => found_none.push((code, name)),
                 }
             }
         }
-        // (Saint-Martin, which the French part and the Dutch part both go by in French.)
-        assert!(shared <= 5, "{shared} names found no country");
+        // The two halves of Saint Martin go by the same names, in every language: the island is the one case.
+        assert!(!found_none.is_empty());
+        for (code, name) in &found_none {
+            assert!(
+                ["MF", "SX"].contains(code),
+                "{name:?} of {code} finds no country, and only the two halves of Saint Martin share their names"
+            );
+        }
         assert_eq!(code_of("Saint-Martin"), None);
     }
 
@@ -183,22 +191,40 @@ mod tests {
             ("Côte d’Ivoire", "CI"),
             ("Cote d'Ivoire", "CI"),
             ("Ivory Coast", "CI"),
-            ("Congo", "CG"),
+            ("Republic of the Congo", "CG"),
+            ("Congo-Brazzaville", "CG"),
             ("Dem. Rep. Congo", "CD"),
+            ("Democratic Republic of the Congo", "CD"),
+            ("Congo-Kinshasa", "CD"),
+            ("DR Congo", "CD"),
+            // The languages whose users' tools write the country in the language of the system.
+            ("Deutschland", "DE"),
+            ("Alemanha", "DE"),
+            ("Duitsland", "DE"),
+            ("España", "ES"),
+            ("Spanien", "ES"),
+            ("Spagna", "ES"),
+            ("République française", "FR"),
+            ("Frankreich", "FR"),
+            ("Vereinigte Staaten", "US"),
             ("Norway", "NO"),
             ("France", "FR"),
             ("Kosovo", "XK"),
         ] {
             assert_eq!(code_of(text), Some(code), "{text:?}");
         }
+        // Nothing, a name that is not one, a name two countries answer to (Saint-Martin), a name Natural Earth gives
+        // to one country and people use for two (`Congo`: Brazzaville to the data, Kinshasa to many photographers),
+        // and a language the table does not have (Danish).
         for text in [
             "",
             "  ",
             "Atlantis",
             "ZZ",
             "XYZ",
-            "Deutschland",
             "Saint-Martin",
+            "Congo",
+            "Tyskland",
         ] {
             assert_eq!(code_of(text), None, "{text:?}");
         }
@@ -233,8 +259,13 @@ mod tests {
     #[test]
     fn what_the_table_does_not_know_stays_a_node_of_its_own() {
         assert_eq!(
-            country_key(None, Some("Deutschland")).as_deref(),
-            Some("deutschland")
+            country_key(None, Some("Tyskland")).as_deref(),
+            Some("tyskland")
+        );
+        assert_eq!(
+            country_key(None, Some("Congo")).as_deref(),
+            Some("congo"),
+            "a name shared in use is a node of its own, not Brazzaville's"
         );
         assert_eq!(
             country_key(None, Some("Atlantis")).as_deref(),
