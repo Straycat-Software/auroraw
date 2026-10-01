@@ -224,6 +224,7 @@ dependencies = [
 name = "auroraw-pipeline"
 version = "0.0.0"
 dependencies = [
+ "blake3",
  "png",
  "pollster",
  "proptest",

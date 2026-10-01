@@ -12,6 +12,7 @@ description = "The image engine: a wgpu pipeline that develops RAW images, headl
 workspace = true
 
 [dependencies]
+blake3.workspace = true
 wgpu.workspace = true
 pollster.workspace = true
 thiserror.workspace = true
