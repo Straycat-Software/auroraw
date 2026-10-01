@@ -5,12 +5,15 @@
 #   request).
 # - The last pattern that matches a file decides its owners, so the general lines come first and the specific ones
 #   after. A more specific line replaces the general one for its paths.
-# - The QA group's approval of every pull request is a rule of the repository (the owner's setting), not a line here.
-#   The group is named below only for the parts of the code that are QA's own.
+# - The repository's ruleset `main` (the default branch and `dev`) requires, for every pull request, an approval from
+#   a code owner of each path it touches ("Require review from Code Owners"): ONE approval from ANY owner of the
+#   line is enough. It also requires the QA group's approval of every pull request, as a required reviewer of the
+#   ruleset: that is not a line here, and the group is named below only for the parts of the code that are QA's own.
 #
 # Alice: architecture, direction, the organisation and management tools. Bob: UI, UX, Qt. Charlie: image processing
-# and the GPU. The owner (Patrick) is asked to review what the governance reserves to him: formats, the plugin API,
-# the pipeline definition, the write path and the sandbox (docs/governance.md §3); he is on the lines of those areas.
+# and the GPU. The owner (Patrick) is on the lines of what the governance reserves to him (formats, the plugin API,
+# the pipeline definition, the write path and the sandbox, docs/governance.md §3), so he is asked to review it; he is
+# not required to, since one approval of any owner of a line is enough.
 
 # Everything not named below: the documents, the root files, the decision log, the build; Alice and the owner.
 *                                       @straycat-alice-cc @patrickfournier
@@ -45,7 +48,7 @@
 /plugins/                               @straycat-charlie-cc @straycat-alice-cc
 /tools/build-plugins.sh                 @straycat-charlie-cc @straycat-alice-cc
 /docs/design/005-*.md                   @straycat-charlie-cc @straycat-alice-cc
-# The pipeline definition is one of the things the governance reserves to the owner.
+# The pipeline definition is one of the things the governance reserves to the owner: he is asked, not required.
 /crates/pipeline/src/definition.rs      @straycat-charlie-cc @straycat-alice-cc @patrickfournier
 /docs/design/006-*.md                   @straycat-charlie-cc @straycat-alice-cc @patrickfournier
 

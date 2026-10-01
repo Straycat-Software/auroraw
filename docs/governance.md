@@ -24,8 +24,11 @@
 application that starts it, the manual, the icons), **Charlie** (the image engine and what feeds it: decoders, previews,
 thumbnails, the WebAssembly plugins) and the **QA group** (the tests, the CI and what it runs). Every area lists a second
 reviewer, so that the author of a pull request is never its only owner; the owner is on the areas that §3 reserves to
-him. The last pattern that matches a file decides its owners. Whether an owner's approval is *required*, and not only
-asked for, is a setting of the repository ("Require review from Code Owners"), the owner's.
+him, who is *asked* there and not required. The last pattern that matches a file decides its owners. The repository's
+ruleset `main` (the default branch and `dev`) requires an approval from a code owner of each part a pull request
+touches, and **one approval from any owner of the line is enough**: an area's second reviewer can approve alone, and
+requiring the owner on the areas §3 reserves to him would be another required reviewer in the ruleset, the owner's
+decision.
 
 How decisions are made:
 
@@ -147,8 +150,10 @@ Files to add at the root of the repository, all short:
 - **Reviews** are by a maintainer other than the author; the owner reviews changes to formats,
   the plugin API, the pipeline definition, the write path and the sandbox. **An approval from the QA group is needed on every pull
   request before it is merged** (D-152), in addition to these: the other reviews look at the design, the QA
-  review at how the change is shown to work. That requirement is a rule of the repository, which the owner has set;
-  it is not a line of `.github/CODEOWNERS`, which names the owner of each part of the code (§1).
+  review at how the change is shown to work. That requirement is the ruleset `main` of the repository, which the owner has
+  set: a required reviewer (the QA group, at least one approval, for every file), on top of the approval of a code
+  owner of each touched path (§1); it is not a line of `.github/CODEOWNERS`. It covers the pull requests **against `dev`
+  or `main`**; a stacked pull request against a feature branch is covered when that branch is merged into `dev`.
 - **Language.** Code, comments, commit messages, documents, issues, pull requests and
   discussions are **all in English**, with no exception (D-082).
 - **Commit messages**: a short imperative title, then a body that says why. History is
