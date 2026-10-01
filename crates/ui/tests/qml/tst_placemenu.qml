@@ -126,7 +126,6 @@ TestCase {
         }
         let t = twisty(1)
         mouseClick(t.item, t.x, t.y)
-        tryCompare(menu, "rows", menu.rows)
         tryVerify(() => menu.rows.length === 5)
         compare(texts(menu), ["Any place", "Canada 100", " Ontario 20", " Québec 80", "France 30"])
         t = twisty(3)
