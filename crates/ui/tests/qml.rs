@@ -35,7 +35,10 @@ fn run_suite(suite: &str, home: &Path, extra: Option<&Path>) {
         .env("QT_QUICK_CONTROLS_STYLE", "Fusion")
         // The machine's own language must not change what the suites read.
         .env("LC_ALL", "C.UTF-8")
-        .env("AURORAW_TEST_HOME", home);
+        .env("AURORAW_TEST_HOME", home)
+        // The places file of the suites about place names (design note 008): where `support::write_places_pack` puts it.
+        // A machine without one has no place names, which is what the other suites expect.
+        .env("AURORAW_PLACES", home.join("places.sqlite"));
     if let Some(extra) = extra {
         command.env("AURORAW_TEST_EXTRA", extra);
     }
@@ -127,7 +130,38 @@ fn importing_photos_from_a_card_or_a_folder() {
     support::write_photos(&home.path().join("Big"), "IMG", 40);
     support::write_photos(&home.path().join("Cam100"), "IMG", 1);
     support::write_photos(&home.path().join("Cam101"), "CAM", 1);
+    // Two photos taken in the West of Aland (the places file of design note 008's suites), for the option of finding
+    // their place names.
+    support::write_photos(&home.path().join("TemplateGps"), "IMG", 2);
+    for n in 0..2 {
+        support::put_gps_in_jpeg(
+            &home
+                .path()
+                .join("TemplateGps")
+                .join(format!("IMG_000{n}.jpg")),
+            5.0,
+            2.1,
+        );
+    }
+    support::write_places_pack(&home.path().join("places.sqlite"));
     run_suite("import", home.path(), None);
+}
+
+/// Offline place names: the dialog, the selection and a source, what a person typed, one undo, the language, the
+/// refresh, the credit in About. Positions in the sidecars and a small places file (design note 008).
+#[test]
+fn place_names_are_found_for_the_selection_or_a_source_and_undone_as_one_step() {
+    let home = temp_dir();
+    support::machine_with_places(home.path(), 12);
+    run_suite("places", home.path(), None);
+}
+
+/// Without the places file the feature says so and the rest is unaffected.
+#[test]
+fn place_names_say_they_are_not_installed_when_the_file_is_missing() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 6);
+    run_suite("placesabsent", home.path(), None);
 }
 
 /// The application itself, started the way `auroraw-app` does (not through QtQuickTest, which sets

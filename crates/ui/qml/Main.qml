@@ -60,6 +60,8 @@ ApplicationWindow {
     property alias aboutDialog: aboutDialog
     property alias duplicatesDialog: duplicatesDialog
     property alias xmpExportDialog: xmpExportDialog
+    property alias placeNamesDialog: placeNamesDialog
+    property alias placeNames: placeNames
     property alias externalBanner: externalBanner
     property alias externalDialog: externalDialog
     property alias externalChanges: externalChanges
@@ -106,7 +108,7 @@ ApplicationWindow {
     readonly property bool nativeDialogOpen: nativeDialogForced || openDialog.visible || catalogueFlow.browsing || newDialog.browsing
                                             || importDialog.browsing || libraryView.exportDialog.visible || duplicatesDialog.browsing
     readonly property bool dialogOpen: newDialog.visible || settingsDialog.visible || importDialog.visible || libraryView.dialogOpen
-                                       || aboutDialog.visible || duplicatesDialog.visible || externalDialog.visible || xmpExportDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
+                                       || aboutDialog.visible || duplicatesDialog.visible || externalDialog.visible || xmpExportDialog.visible || placeNamesDialog.visible || catalogueFlow.dialogOpen || nativeDialogOpen
     readonly property bool inWorkspace: launcher.screen === "workspace"
     // The grid is what the person is looking at and can act on: the selection commands mean something.
     readonly property bool gridActive: inWorkspace && currentTask === "cull" && !dialogOpen && photoGrid.count > 0
@@ -129,6 +131,7 @@ ApplicationWindow {
     function showAbout() { aboutDialog.open() }
     function showDuplicates() { duplicatesDialog.open() }
     function showXmpExport() { xmpExportDialog.open() }
+    function showPlaceNames() { placeNamesDialog.open() }
     // Ctrl+K: the keyboard goes to the keyword field.
     function focusKeywords() { libraryView.focusKeywords() }
     // The grid's selection commands (`all`, `none`, `invert`).
@@ -369,12 +372,14 @@ ApplicationWindow {
     ImportDialog {
         id: importDialog
         form: importForm
+        placeNames: placeNames
+        language: launcher.effectiveLanguage
         sources: sourceList
         flow: catalogueFlow
         host: window
         hostWindow: window
     }
-    AboutDialog { id: aboutDialog; launcher: launcher }
+    AboutDialog { id: aboutDialog; launcher: launcher; placeNames: placeNames }
     DuplicatesDialog { id: duplicatesDialog; duplicates: duplicates; hostWindow: window }
     Duplicates { id: duplicates }
     ExternalChangesDialog { id: externalDialog; external: externalChanges; hostWindow: window }
@@ -387,6 +392,14 @@ ApplicationWindow {
         onReviewRequested: externalDialog.open()
     }
     XmpExport { id: xmpExport }
+    PlaceNamesDialog {
+        id: placeNamesDialog
+        finder: placeNames
+        sources: sourceList
+        photoGrid: photoGrid
+        language: launcher.effectiveLanguage
+    }
+    PlaceNames { id: placeNames }
 
     Popup {
         id: waiting
