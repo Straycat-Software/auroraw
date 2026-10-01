@@ -36,6 +36,7 @@ use crate::history::{
 use crate::import_job::{self, ImportJob};
 use crate::index_job::{self, IndexJob};
 use crate::job::{CancelToken, JobId};
+use crate::place_names::{self, PlaceJob, PlaceScope};
 use crate::reconcile_apply::{self, CatalogueAction};
 use crate::remove_job::{self, RemoveJob};
 use crate::xmp_export::{
@@ -137,6 +138,13 @@ pub enum Outcome {
     /// `ExportXmp`'s background job, and how many photos it will look at.
     XmpExportStarted {
         /// The job writing the files.
+        job: JobId,
+        /// How many photos it will look at.
+        photos: usize,
+    },
+    /// `FindPlaceNames`'s background job, and how many photos it will look at.
+    PlaceNamesStarted {
+        /// The job finding the place names.
         job: JobId,
         /// How many photos it will look at.
         photos: usize,
@@ -301,6 +309,14 @@ pub(crate) enum Inbound {
     /// entry either way, and, for a `DeleteKeyword` sweep, the vocabulary branch too, once every photo
     /// has lost it).
     BatchDone { job: JobId },
+    /// A run of finding place names is over, finished or cancelled: records its one history entry like
+    /// [`Inbound::BatchDone`], then reports. `report.filled` is what the worker meant to write; the
+    /// coordinator counts what landed, and the photos it could not write are `failed`.
+    PlaceNamesDone {
+        job: JobId,
+        report: crate::PlaceNamesReport,
+        cancelled: bool,
+    },
 }
 
 fn keyword_set(meta: &auroraw_format::sidecar::Metadata) -> KeywordSet {
@@ -591,6 +607,29 @@ impl Coordinator {
                     let _ = ack.send(());
                 }
                 Inbound::BatchDone { job } => self.finish_batch_job(job),
+                Inbound::PlaceNamesDone {
+                    job,
+                    mut report,
+                    cancelled,
+                } => {
+                    let landed = self
+                        .batch_jobs
+                        .get(&job)
+                        .map_or(0, |state| state.changes.len());
+                    self.finish_batch_job(job);
+                    report.failed += report.filled.saturating_sub(landed);
+                    report.filled = landed;
+                    let _ = self.events.send(Event::PlaceNamesFound {
+                        job,
+                        report,
+                        cancelled,
+                    });
+                    let _ = self.events.send(if cancelled {
+                        Event::JobCancelled(job)
+                    } else {
+                        Event::JobFinished(job)
+                    });
+                }
                 Inbound::ResolveKeywords { paths, reply } => {
                     let _ = reply.send(self.resolve_keywords(&paths));
                 }
@@ -684,6 +723,7 @@ impl Coordinator {
             | Command::SetFlag { .. }
             | Command::SetLabel { .. }
             | Command::SetMetadataField { .. }
+            | Command::FillPlace { .. }
             | Command::AddKeyword { .. }
             | Command::RemoveKeyword { .. }
             | Command::RemoveKeywords { .. } => {
@@ -762,6 +802,12 @@ impl Coordinator {
                 Ok(Outcome::Applied)
             }
             Command::ExportXmp { scope, options } => self.start_export(scope, options),
+            Command::FindPlaceNames {
+                scope,
+                pack,
+                language,
+                refresh,
+            } => self.start_place_names(scope, pack, language, refresh),
             Command::RemoveSource { source_id } => self.start_remove(source_id),
             Command::Import {
                 source_root,
@@ -846,15 +892,23 @@ impl Coordinator {
             } => self.edit_photo(*photo_id, |m| {
                 let before = field.get(m);
                 (before != *value).then(|| {
+                    // (A place field a person writes is theirs from then on: it leaves the record of what
+                    // Auroraw filled, and undoing the write brings it back.)
+                    let was = m.place_filled.clone();
                     field.set(m, value.clone());
+                    let place = place_names::released(m, field, was);
                     Change::Metadata {
                         photo: *photo_id,
                         field: field.clone(),
                         before,
                         after: value.clone(),
+                        place,
                     }
                 })
             }),
+            Command::FillPlace { photo_id, fill } => {
+                self.edit_photo(*photo_id, |m| place_names::fill_place(m, *photo_id, fill))
+            }
             Command::AddKeyword {
                 photo_id,
                 keyword_id,
@@ -2522,14 +2576,18 @@ impl Coordinator {
                 other => {
                     if let Some(text_field) = metadata_field(other) {
                         let before = text_field.get(meta);
+                        let was = meta.place_filled.clone();
                         file.apply_field(other, meta);
                         let after = text_field.get(meta);
                         if before != after {
+                            // (Another application wrote it: it is not Auroraw's to follow any more.)
+                            let place = place_names::released(meta, &text_field, was);
                             changes.push(Change::Metadata {
                                 photo: photo_id,
                                 field: text_field,
                                 before,
                                 after,
+                                place,
                             });
                         }
                     }
@@ -2769,6 +2827,52 @@ impl Coordinator {
             cancel: self.jobs[&job].clone(),
         });
         Ok(Outcome::XmpExportStarted { job, photos: count })
+    }
+
+    /// Starts finding the place names (`Command::FindPlaceNames`, design note 008): checks the places
+    /// file, resolves the photos of the scope and hands them to the worker. The edits it sends are
+    /// collected into one step of the history, like a large batch's.
+    fn start_place_names(
+        &mut self,
+        scope: PlaceScope,
+        pack: PathBuf,
+        language: String,
+        refresh: bool,
+    ) -> Result<Outcome> {
+        auroraw_places::Places::open(&pack)?;
+        let photos: Vec<PhotoId> = match scope {
+            PlaceScope::Photos(ids) => {
+                let mut seen = std::collections::HashSet::new();
+                ids.into_iter().filter(|id| seen.insert(*id)).collect()
+            }
+            PlaceScope::Source(source_id) => {
+                self.source_entry(&source_id)?;
+                let mut paths = self.catalogue.photo_paths(&source_id)?;
+                paths.sort_by(|a, b| a.1.cmp(&b.1));
+                paths.into_iter().map(|(photo_id, _)| photo_id).collect()
+            }
+        };
+        let job = self.spawn_job();
+        self.batch_jobs.insert(
+            job,
+            BatchJob {
+                changes: Vec::new(),
+                kind: BatchJobKind::Batch,
+            },
+        );
+        let count = photos.len();
+        place_names::spawn(PlaceJob {
+            job,
+            workspace: self.workspace.clone(),
+            photos,
+            pack,
+            language,
+            refresh,
+            events: self.events.clone(),
+            inbound: self.inbound.clone(),
+            cancel: self.jobs[&job].clone(),
+        });
+        Ok(Outcome::PlaceNamesStarted { job, photos: count })
     }
 
     /// The vocabulary and its keyword paths for an export, read again only when the vocabulary file is not

@@ -13,7 +13,7 @@
 
 use std::collections::VecDeque;
 
-use auroraw_format::sidecar::{Flag, Metadata};
+use auroraw_format::sidecar::{Flag, Metadata, PlaceFilled};
 use auroraw_format::state::{Collection, KeywordEntry, Series};
 use auroraw_types::{CollectionId, KeywordId, PhotoId, SeriesId};
 
@@ -108,6 +108,44 @@ pub struct KeywordDelta {
     pub after: Option<KeywordEntry>,
 }
 
+/// A photo's place fields and the record of what Auroraw filled into them, together: the unit the place
+/// names change and undo as.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PlaceState {
+    /// `photoshop:City`.
+    pub city: Option<String>,
+    /// `photoshop:State`.
+    pub region: Option<String>,
+    /// `photoshop:Country`.
+    pub country: Option<String>,
+    /// `Iptc4xmpCore:CountryCode`.
+    pub country_code: Option<String>,
+    /// `aur:PlaceFilled`.
+    pub filled: Option<PlaceFilled>,
+}
+
+impl PlaceState {
+    /// The state of `meta`.
+    pub fn of(meta: &Metadata) -> Self {
+        Self {
+            city: meta.city.clone(),
+            region: meta.region.clone(),
+            country: meta.country.clone(),
+            country_code: meta.country_code.clone(),
+            filled: meta.place_filled.clone(),
+        }
+    }
+
+    /// Puts `meta` in this state.
+    pub fn put(&self, meta: &mut Metadata) {
+        meta.city = self.city.clone();
+        meta.region = self.region.clone();
+        meta.country = self.country.clone();
+        meta.country_code = self.country_code.clone();
+        meta.place_filled = self.filled.clone();
+    }
+}
+
 /// One state change of one photo, or of the vocabulary, as it was and as it became.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Change {
@@ -158,6 +196,20 @@ pub enum Change {
         before: String,
         /// Its text after.
         after: String,
+        /// For a place field (city, region, country, country code): the record of what Auroraw filled as it
+        /// was and as it became, because a person's write takes the field out of it (design note 008 §4) and
+        /// undoing the write brings it back. `None` for every other field.
+        place: Option<(Option<PlaceFilled>, Option<PlaceFilled>)>,
+    },
+    /// The place names of a photo (the four place fields and the record of what Auroraw filled), as they
+    /// were and as they became: what finding the place names does, undone as one (WP10, design note 008).
+    Place {
+        /// The photo.
+        photo: PhotoId,
+        /// Before.
+        before: PlaceState,
+        /// After.
+        after: PlaceState,
     },
     /// A series, as its state file was and as it became (`None`: there was none). Applied by the coordinator
     /// (the file and the catalogue's rows), not by [`Change::apply`].
@@ -197,7 +249,8 @@ impl Change {
             | Change::Flag { photo, .. }
             | Change::Label { photo, .. }
             | Change::Keywords { photo, .. }
-            | Change::Metadata { photo, .. } => Some(*photo),
+            | Change::Metadata { photo, .. }
+            | Change::Place { photo, .. } => Some(*photo),
             Change::Vocabulary { .. } | Change::Series { .. } | Change::Collections { .. } => None,
         }
     }
@@ -209,6 +262,7 @@ impl Change {
             Change::Label { .. } => LabelKind::ColourLabel,
             Change::Keywords { .. } => LabelKind::Keywords,
             Change::Metadata { field, .. } => LabelKind::of_metadata_field(field),
+            Change::Place { .. } => LabelKind::PlaceNames,
             Change::Series { action, .. } => match action {
                 SeriesAction::Group => LabelKind::SeriesGroup,
                 SeriesAction::Ungroup => LabelKind::SeriesUngroup,
@@ -253,8 +307,17 @@ impl Change {
                 field,
                 before,
                 after,
+                place,
                 ..
-            } => field.set(meta, if undo { before.clone() } else { after.clone() }),
+            } => {
+                field.set(meta, if undo { before.clone() } else { after.clone() });
+                if let Some((was, became)) = place {
+                    meta.place_filled = if undo { was.clone() } else { became.clone() };
+                }
+            }
+            Change::Place { before, after, .. } => {
+                if undo { before } else { after }.put(meta);
+            }
             Change::Vocabulary { .. } | Change::Series { .. } | Change::Collections { .. } => {}
         }
     }
@@ -343,6 +406,8 @@ pub enum LabelKind {
     SeriesReopen,
     /// Changes another application made to XMP files next to originals were accepted (D-047, WP10).
     ExternalChanges,
+    /// Place names were found for photos (design note 008).
+    PlaceNames,
 }
 
 impl LabelKind {
@@ -388,6 +453,7 @@ impl LabelKind {
             LabelKind::SeriesResolve => "series-resolve",
             LabelKind::SeriesReopen => "series-reopen",
             LabelKind::ExternalChanges => "external-changes",
+            LabelKind::PlaceNames => "place-names",
         }
     }
 

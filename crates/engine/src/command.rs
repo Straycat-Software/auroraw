@@ -126,6 +126,18 @@ impl MetadataField {
         }
     }
 
+    /// The place field this is, when it is one of the four the place names fill.
+    pub fn place_field(&self) -> Option<auroraw_format::sidecar::PlaceField> {
+        use auroraw_format::sidecar::PlaceField;
+        match self {
+            Self::City => Some(PlaceField::City),
+            Self::Region => Some(PlaceField::Region),
+            Self::Country => Some(PlaceField::Country),
+            Self::CountryCode => Some(PlaceField::CountryCode),
+            _ => None,
+        }
+    }
+
     /// A stable, ASCII key for the field, the way the interface names it (a QML string, JSON):
     /// kebab-case for the 17 known fields, `custom:<name>` for a custom one (no UI sends this yet,
     /// but the key round-trips it all the same).
@@ -449,6 +461,34 @@ pub enum Command {
         scope: crate::XmpScope,
         /// How.
         options: crate::XmpExportOptions,
+    },
+    /// Finds the place names of photos from where they were taken, offline (WP10, design note 008, D-147):
+    /// for each photo of the scope that has a position, the city, region, country and country code, in
+    /// `language`, written into the fields that are empty. A field a person wrote is never touched; a field
+    /// Auroraw filled earlier is left as it is, or follows the position when `refresh` is set (the
+    /// photo's position was corrected, or the pack is newer). `pack` is the places file
+    /// ([`auroraw_places`], built by `build-places`). A background job that reports
+    /// [`crate::Outcome::PlaceNamesStarted`] at once and [`crate::Event::PlaceNamesFound`] at the end; the
+    /// whole run is one undoable step, named "place names". Fails at once when the file cannot be used.
+    FindPlaceNames {
+        /// Which photos.
+        scope: crate::PlaceScope,
+        /// The places file.
+        pack: std::path::PathBuf,
+        /// The language of the names, as a code (`fr`, `en`); a name the file lacks in it is given in English.
+        language: String,
+        /// Whether the fields Auroraw filled earlier follow the position.
+        refresh: bool,
+    },
+    /// Writes what a lookup found into one photo, by the rule of design note 008: only a field that is empty
+    /// is filled, and a field Auroraw filled earlier follows only on `fill.refresh`. What
+    /// [`Command::FindPlaceNames`] sends for each photo; an edit like the others (it can be part of a
+    /// batch and is undone as one).
+    FillPlace {
+        /// The photo.
+        photo_id: PhotoId,
+        /// What was found.
+        fill: crate::PlaceFill,
     },
     /// Cancels a background job (a keyword rename's sidecar refresh) started earlier.
     CancelJob {

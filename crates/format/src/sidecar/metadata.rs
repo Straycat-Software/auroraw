@@ -258,8 +258,102 @@ pub struct Metadata {
     pub original: Original,
     /// The EXIF overlay.
     pub overlay: Option<Overlay>,
+    /// What Auroraw wrote into the place fields, and has not been written over since (design note 008 §4).
+    pub place_filled: Option<PlaceFilled>,
     /// Fields beyond the fixed set above (WP10's own custom-field support; no UI creates one yet).
     pub custom: Vec<CustomField>,
+}
+
+/// A coordinate in XMP's text form (`DDD,MM.mmmmR` or `DDD,MM,SSR`, `R` the hemisphere) as decimal degrees,
+/// negative for the `negative` hemisphere. `None` for text that is not one, or a value beyond `limit`.
+pub fn parse_gps_coordinate(text: &str, positive: char, negative: char, limit: f64) -> Option<f64> {
+    let text = text.trim();
+    let hemisphere = text.chars().last()?.to_ascii_uppercase();
+    let sign = match hemisphere {
+        h if h == positive => 1.0,
+        h if h == negative => -1.0,
+        _ => return None,
+    };
+    let number = &text[..text.len() - hemisphere.len_utf8()];
+    let mut parts = number.split(',');
+    let degrees: f64 = parts.next()?.trim().parse().ok()?;
+    let minutes: f64 = parts.next().map_or(Some(0.0), |m| m.trim().parse().ok())?;
+    let seconds: f64 = parts.next().map_or(Some(0.0), |s| s.trim().parse().ok())?;
+    if parts.next().is_some()
+        || degrees < 0.0
+        || !(0.0..60.0).contains(&minutes)
+        || !(0.0..60.0).contains(&seconds)
+    {
+        return None;
+    }
+    let value = degrees + minutes / 60.0 + seconds / 3600.0;
+    (value <= limit).then_some(sign * value)
+}
+
+/// One of the four fields the place names fill (design note 008).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlaceField {
+    /// `photoshop:City`.
+    City,
+    /// `photoshop:State`, the region.
+    Region,
+    /// `photoshop:Country`.
+    Country,
+    /// `Iptc4xmpCore:CountryCode`.
+    CountryCode,
+}
+
+/// The record of what Auroraw filled into the place fields (`aur:PlaceFilled`, design note 008 §4): the
+/// position the names were found for, and, for each field, the value written. **A field is listed while it
+/// is Auroraw's**: the moment a person writes it (a new value, the same one, an empty one) it leaves the
+/// record ([`Metadata::release_place_field`]), and a refresh after the position moves touches only what is
+/// still listed.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PlaceFilled {
+    /// The latitude the names were found for, in decimal degrees as text.
+    pub latitude: String,
+    /// The longitude, likewise.
+    pub longitude: String,
+    /// The city written, if it is still Auroraw's.
+    pub city: Option<String>,
+    /// The region written, if it is still Auroraw's.
+    pub region: Option<String>,
+    /// The country written, if it is still Auroraw's.
+    pub country: Option<String>,
+    /// The country code written, if it is still Auroraw's.
+    pub country_code: Option<String>,
+    /// Properties this version does not know, kept.
+    pub extra: Vec<Property>,
+}
+
+impl PlaceFilled {
+    /// The value written for `field`, if it is still Auroraw's.
+    pub fn get(&self, field: PlaceField) -> Option<&str> {
+        match field {
+            PlaceField::City => self.city.as_deref(),
+            PlaceField::Region => self.region.as_deref(),
+            PlaceField::Country => self.country.as_deref(),
+            PlaceField::CountryCode => self.country_code.as_deref(),
+        }
+    }
+
+    /// Records `value` as written by Auroraw for `field`.
+    pub fn set(&mut self, field: PlaceField, value: Option<String>) {
+        match field {
+            PlaceField::City => self.city = value,
+            PlaceField::Region => self.region = value,
+            PlaceField::Country => self.country = value,
+            PlaceField::CountryCode => self.country_code = value,
+        }
+    }
+
+    /// Whether any field is still Auroraw's.
+    pub fn is_empty(&self) -> bool {
+        self.city.is_none()
+            && self.region.is_none()
+            && self.country.is_none()
+            && self.country_code.is_none()
+    }
 }
 
 fn leaf(path: &str) -> &str {
@@ -267,6 +361,61 @@ fn leaf(path: &str) -> &str {
 }
 
 impl Metadata {
+    /// The text of a place field.
+    pub fn place_field(&self, field: PlaceField) -> Option<&str> {
+        match field {
+            PlaceField::City => self.city.as_deref(),
+            PlaceField::Region => self.region.as_deref(),
+            PlaceField::Country => self.country.as_deref(),
+            PlaceField::CountryCode => self.country_code.as_deref(),
+        }
+    }
+
+    /// Sets a place field (an empty text clears it). It does not touch the record of what Auroraw wrote:
+    /// that is [`Metadata::release_place_field`]'s, for a person's write, and the place job's own, for its
+    /// fill.
+    pub fn set_place_field(&mut self, field: PlaceField, value: Option<String>) {
+        let value = value.filter(|v| !v.is_empty());
+        match field {
+            PlaceField::City => self.city = value,
+            PlaceField::Region => self.region = value,
+            PlaceField::Country => self.country = value,
+            PlaceField::CountryCode => self.country_code = value,
+        }
+    }
+
+    /// A person wrote this field: it is theirs from now on, whatever they wrote (design note 008 §4). Takes
+    /// it out of the record of what Auroraw filled, and drops the record when nothing is left of it.
+    /// Returns whether it was in the record.
+    pub fn release_place_field(&mut self, field: PlaceField) -> bool {
+        let Some(record) = &mut self.place_filled else {
+            return false;
+        };
+        let was = record.get(field).is_some();
+        record.set(field, None);
+        if record.is_empty() && record.extra.is_empty() {
+            self.place_filled = None;
+        }
+        was
+    }
+
+    /// Where the photo was taken, in decimal degrees `(latitude, longitude)`: the photographer's correction
+    /// when there is one (the overlay's position replaces the original's, spec §5.7), else the file's own.
+    /// `None` when there is no position, or one that is not readable.
+    pub fn position(&self) -> Option<(f64, f64)> {
+        let (latitude, longitude) = match &self.overlay {
+            Some(Overlay { gps: Some(gps), .. }) => (gps.latitude.as_str(), gps.longitude.as_str()),
+            _ => (
+                self.original.gps_latitude.as_deref()?,
+                self.original.gps_longitude.as_deref()?,
+            ),
+        };
+        Some((
+            parse_gps_coordinate(latitude, 'N', 'S', 90.0)?,
+            parse_gps_coordinate(longitude, 'E', 'W', 180.0)?,
+        ))
+    }
+
     /// Adds a keyword, with its identifier and the current path.
     pub fn push_keyword(&mut self, id: KeywordId, path: impl Into<String>) {
         self.keyword_ids.push(id);
@@ -348,6 +497,7 @@ impl Metadata {
         props.extend(o.to_properties().into_iter().map(Some));
         props.push(custom_property(&self.custom));
         props.push(self.overlay.as_ref().map(overlay_property));
+        props.push(self.place_filled.as_ref().map(place_filled_property));
         props.into_iter().flatten().collect()
     }
 
@@ -399,6 +549,7 @@ impl Metadata {
         o.gps_altitude = x::text(props, ns::EXIF, "GPSAltitude");
         o.gps_altitude_ref = x::text(props, ns::EXIF, "GPSAltitudeRef");
         m.overlay = x::structure(props, ns::AUR, "Overlay").map(overlay_from_fields);
+        m.place_filled = x::structure(props, ns::AUR, "PlaceFilled").map(place_filled_from_fields);
         m.custom = x::struct_items(props, ns::AUR, "Custom")
             .map(|items| items.into_iter().filter_map(custom_from_fields).collect())
             .unwrap_or_default();
@@ -449,6 +600,31 @@ fn custom_from_fields(mut fields: Vec<Property>) -> Option<CustomField> {
     let name = x::text(&mut fields, ns::AUR, "Name")?;
     let value = x::text(&mut fields, ns::AUR, "Value")?;
     Some(CustomField { name, value })
+}
+
+fn place_filled_property(p: &PlaceFilled) -> Property {
+    let mut fields = vec![
+        Property::text(ns::AUR, "Latitude", p.latitude.clone()),
+        Property::text(ns::AUR, "Longitude", p.longitude.clone()),
+    ];
+    fields.extend(x::opt_text(ns::AUR, "City", &p.city));
+    fields.extend(x::opt_text(ns::AUR, "Region", &p.region));
+    fields.extend(x::opt_text(ns::AUR, "Country", &p.country));
+    fields.extend(x::opt_text(ns::AUR, "CountryCode", &p.country_code));
+    fields.extend(p.extra.iter().cloned());
+    Property::structure(ns::AUR, "PlaceFilled", fields)
+}
+
+fn place_filled_from_fields(mut fields: Vec<Property>) -> PlaceFilled {
+    PlaceFilled {
+        latitude: x::text(&mut fields, ns::AUR, "Latitude").unwrap_or_default(),
+        longitude: x::text(&mut fields, ns::AUR, "Longitude").unwrap_or_default(),
+        city: x::text(&mut fields, ns::AUR, "City"),
+        region: x::text(&mut fields, ns::AUR, "Region"),
+        country: x::text(&mut fields, ns::AUR, "Country"),
+        country_code: x::text(&mut fields, ns::AUR, "CountryCode"),
+        extra: fields,
+    }
 }
 
 fn overlay_property(o: &Overlay) -> Property {

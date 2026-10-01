@@ -62,6 +62,9 @@ pub enum EngineError {
     /// twice unless they are merged into it.
     #[error("this folder contains the sources {0}; merge them into it, or add another folder")]
     ContainsSources(String),
+    /// The places file (offline place names) cannot be used: missing, not one, or of another format.
+    #[error(transparent)]
+    Places(#[from] auroraw_places::PlacesError),
     /// The previews database, or decoding a photo for its thumbnail, refused an operation (WP8).
     #[error(transparent)]
     Imaging(#[from] auroraw_imaging::ImagingError),
