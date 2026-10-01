@@ -30,6 +30,10 @@ import org.auroraw.ui
 //                               also select that city in every region of the country). The menu only gives it back.
 //                               **A photo with a city or a region but no country** is not in the tree: `placed` does not
 //                               count it and the filter cannot select it ("placed" is not "has any place field").
+//                               **`pending`** (`"pending": true`) is whether the engine is still filling the places of the
+//                               photos from their files (the first open after an upgrade, about a minute on a large
+//                               library): the tree is then a part of the places, or none, and `placed: 0` does not mean
+//                               that no photo has one. The button says so instead of saying how to get a place.
 //   grid.placeFilter            the filter in force, the `filter` of a node as JSON text, or an empty text for none.
 //   grid.setPlaceFilter(text)   puts the `filter` of a node in force (an empty text lifts it).
 //   grid.placesChanged()        a signal, emitted when the place fields of photos in view may have changed without the
@@ -50,8 +54,8 @@ Item {
     property alias popup: popup
     property alias list: list
 
-    // What the engine last said: the photos in view that have a place, and the tree.
-    property var facets: ({ placed: 0, countries: [] })
+    // What the engine last said: the photos in view that have a place, whether it is still reading them, and the tree.
+    property var facets: ({ placed: 0, pending: false, countries: [] })
     // The nodes opened, by their key (the filter as text).
     property var opened: ({})
 
@@ -133,7 +137,7 @@ Item {
         try {
             menu.facets = JSON.parse(menu.grid.placeFacets())
         } catch (e) {
-            menu.facets = ({ placed: 0, countries: [] })
+            menu.facets = ({ placed: 0, pending: false, countries: [] })
         }
     }
 
@@ -210,7 +214,8 @@ Item {
         ToolTip.visible: hovered
         ToolTip.text: menu.active ? menu.choicePath
                                   : (menu.facets.placed > 0 ? qsTr("Show the photos of one country, region or city")
-                                                            : qsTr("No photo has a place yet. Find place names, in the Tools menu, looks them up."))
+                                  : menu.facets.pending ? qsTr("Reading the places of your photos…")
+                                                        : qsTr("No photo has a place yet. Find place names, in the Tools menu, looks them up."))
         onClicked: popup.opened ? popup.close() : popup.open()
         contentItem: RowLayout {
             spacing: 6

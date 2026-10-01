@@ -105,6 +105,25 @@ TestCase {
         verify(menu.button.ToolTip.text.indexOf("Find place names") >= 0, menu.button.ToolTip.text)
     }
 
+    function test_while_the_engine_is_still_reading_the_places_it_says_so_instead_of_saying_how_to_get_one() {
+        const grid = make(gridComponent)
+        grid.answer = { placed: 0, pending: true, countries: [] }
+        const menu = menuOn(grid)
+        verify(!menu.button.enabled, "nothing to open yet")
+        compare(menu.button.ToolTip.text, "Reading the places of your photos…")
+        verify(menu.button.ToolTip.text.indexOf("Find place names") < 0, "an empty tree here does not mean no photo has a place")
+        // Part of the places are read: the tree opens, and what is there is said as usual.
+        grid.answer = { placed: 30, pending: true, countries: [tc.tree.countries[0]] }
+        grid.placesChanged()
+        tryVerify(() => menu.button.enabled, 2000)
+        compare(menu.button.ToolTip.text, "Show the photos of one country, region or city")
+        // It is done.
+        grid.answer = tc.tree
+        grid.placesChanged()
+        tryVerify(() => menu.facets.placed === 130 && !menu.facets.pending, 2000)
+        verify(menu.button.enabled)
+    }
+
     function test_open_it_lists_the_countries_in_order_with_their_counts_and_nothing_below_them_yet() {
         const menu = menuOn(make(gridComponent))
         open(menu)

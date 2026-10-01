@@ -2710,6 +2710,11 @@
     </message>
     <message>
         <location line="+1"/>
+        <source>Reading the places of your photos…</source>
+        <translation>Lecture des lieux de vos photos…</translation>
+    </message>
+    <message>
+        <location line="+1"/>
         <source>No photo has a place yet. Find place names, in the Tools menu, looks them up.</source>
         <translation>Aucune photo n’a encore de lieu. «&#xa0;Trouver les noms de lieux&#xa0;», dans le menu Outils, les cherche.</translation>
     </message>
