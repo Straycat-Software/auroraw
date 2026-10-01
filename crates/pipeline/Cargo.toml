@@ -18,4 +18,5 @@ pollster.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+png.workspace = true
 proptest.workspace = true

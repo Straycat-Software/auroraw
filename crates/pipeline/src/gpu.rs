@@ -87,6 +87,27 @@ pub(crate) enum GpuError {
     DeviceLost(String),
 }
 
+/// A compiled compute shader and its name.
+pub(crate) struct Kernel {
+    pipeline: wgpu::ComputePipeline,
+}
+
+/// Why a shader could not be compiled or run.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub(crate) enum KernelError {
+    /// The graphics API's compiler refused the shader. The message is its own.
+    #[error("the shader {shader:?} does not compile on this adapter: {message}")]
+    Compile {
+        /// The shader that failed.
+        shader: &'static str,
+        /// What the compiler said.
+        message: String,
+    },
+    /// The device refused an allocation or a call.
+    #[error(transparent)]
+    Gpu(#[from] GpuError),
+}
+
 impl Gpu {
     /// Requests a device on `adapter` with the engine's floor limits ([`EngineLimits::FLOOR`]), and
     /// watches for its loss.
@@ -180,6 +201,86 @@ impl Gpu {
             return Err(GpuError::DeviceLost(self.lost_reason().unwrap_or_default()));
         }
         Ok(buffer)
+    }
+
+    /// Compiles `source` into a compute pipeline whose entry point is `main`.
+    ///
+    /// A refusal by the graphics API's compiler (a validation error from naga, or a failure of the
+    /// platform compiler behind it, such as FXC, which wgpu reports as an internal error) comes back as
+    /// [`KernelError::Compile`] with the compiler's own words, never as a panic.
+    pub(crate) fn compile(&self, name: &'static str, source: &str) -> Result<Kernel, KernelError> {
+        let validation = self.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let internal = self.device.push_error_scope(wgpu::ErrorFilter::Internal);
+        let module = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(name),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
+            });
+        let pipeline = self
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(name),
+                layout: None,
+                module: &module,
+                entry_point: Some("main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            });
+        // The scopes pop in the reverse order they were pushed.
+        let internal_error = pollster::block_on(internal.pop());
+        let validation_error = pollster::block_on(validation.pop());
+        match validation_error.or(internal_error) {
+            Some(error) => Err(KernelError::Compile {
+                shader: name,
+                message: error.to_string(),
+            }),
+            None => Ok(Kernel { pipeline }),
+        }
+    }
+
+    /// Runs `kernel` over a `width` by `height` grid of 16 x 16 workgroups, with `params` as binding 0
+    /// (a uniform block) and `buffers` as bindings 1, 2, ... (storage buffers), and submits it. It does
+    /// not wait: [`Gpu::wait`] or a read-back does.
+    pub(crate) fn dispatch(
+        &self,
+        kernel: &Kernel,
+        params: &[u8],
+        buffers: &[&wgpu::Buffer],
+        width: u32,
+        height: u32,
+    ) -> Result<(), GpuError> {
+        let uniform = self.upload(params, wgpu::BufferUsages::UNIFORM)?;
+        let scope = self.device.push_error_scope(wgpu::ErrorFilter::Validation);
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: uniform.as_entire_binding(),
+        }];
+        for (i, buffer) in buffers.iter().enumerate() {
+            entries.push(wgpu::BindGroupEntry {
+                binding: i as u32 + 1,
+                resource: buffer.as_entire_binding(),
+            });
+        }
+        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &kernel.pipeline.get_bind_group_layout(0),
+            entries: &entries,
+        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+            pass.set_pipeline(&kernel.pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            pass.dispatch_workgroups(width.div_ceil(16), height.div_ceil(16), 1);
+        }
+        self.queue.submit([encoder.finish()]);
+        match pollster::block_on(scope.pop()) {
+            Some(error) => Err(GpuError::Rejected(error.to_string())),
+            None => Ok(()),
+        }
     }
 
     /// A buffer with `bytes` in it, for a shader to read.
