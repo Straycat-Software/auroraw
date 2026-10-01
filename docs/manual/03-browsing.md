@@ -60,9 +60,11 @@ they list.
   is in it, a region all its cities); the button then shows its name, and **Any place** at the top of the menu lifts the
   filter. The small arrow before a country or a region opens it without choosing it, and Up, Down, Right, Left,
   Return and Escape work in the open menu. The counts are those of the photos the *other* filters list, so choosing
-  Québec still shows Ontario with its count. The button is greyed out while no photo in view has a country: places
-  come from [Find place names](06-keywords.md), or from what you typed in the Metadata tab. A photo with a city or a
-  region but no country is not in the menu.
+  Québec still shows Ontario with its count. A photo that has a city or a region but **no country** (typed by hand,
+  written by another application, or a country you emptied on purpose) is listed under **(no country)**, at the end of
+  the menu, with its regions and cities as for a country. The button is greyed out while no photo in view has a place:
+  places come from [Find place names](06-keywords.md), or from what you typed in the Metadata tab. (While Auroraw reads
+  the places of your photos for the first time, which takes a minute on a large library, the button says so.)
 - **Keyword**: choose *Show the photos with this keyword* in the keyword panel's menu; a chip *Keyword: Peru ×*
   appears, and its × removes the filter.
 
