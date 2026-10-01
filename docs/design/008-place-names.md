@@ -9,7 +9,8 @@
 > remembered of the data sets, not a measurement, and the first slice settled it. **Slices 1 and 2 are
 > built (#49, #52): §8 says what was measured and where the build departs from §2 to §4** (the city rule,
 > where a person's write is caught, what the record holds, the order country then region); a paragraph of
-> those sections that is no longer true carries a pointer to it.
+> those sections that is no longer true carries a pointer to it. **The engine's side of slice 3 (the filter and
+> the tree) is built (#62): §5.1.**
 
 ## 1. The question, and what exists
 
