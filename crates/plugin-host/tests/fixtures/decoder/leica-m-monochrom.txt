@@ -1,4 +1,4 @@
-file: Leica_-_M_Monochrom_-_16bit_(3:2).DNG
+file: Leica_-_M_Monochrom_-_16bit_(3x2).DNG
 readout: 5216 x 3472
 layout: mono
 samples: U16 x 18109952, blake3 844b2faf8dd18c24b4feab35fc41caecb1d25d64ac2d9866659bdfcfbc0517f8

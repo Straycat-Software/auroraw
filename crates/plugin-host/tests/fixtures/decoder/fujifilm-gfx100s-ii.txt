@@ -1,4 +1,4 @@
-file: Fujifilm_-_GFX100S_II_-_16bit_compressed_(4:3).RAF
+file: Fujifilm_-_GFX100S_II_-_16bit_compressed_(4x3).RAF
 readout: 11808 x 8754
 layout: cfa 2x2 [0, 1, 1, 2]
 samples: U16 x 103367232, blake3 4d62076e360fffab80fa8593d1ba59b012cd76a011c1dd92b49d10694db00011

@@ -130,8 +130,8 @@ fn a_truncated_sample_fails_cleanly_not_a_panic() {
 fn the_exif_orientation_of_two_sony_files_is_not_the_one_rawlers_decode_reports() {
     let Some(dir) = samples_dir() else { return };
     for (name, exif) in [
-        ("Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3:2).ARW", 6),
-        ("Sony_-_SLT-A58_-_12bit_12bit_compressed_(3:2).ARW", 8),
+        ("Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3x2).ARW", 6),
+        ("Sony_-_SLT-A58_-_12bit_12bit_compressed_(3x2).ARW", 8),
     ] {
         let path = dir.join(name);
         if !path.is_file() {

@@ -1,4 +1,4 @@
-file: Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3:2).ARW
+file: Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3x2).ARW
 readout: 4608 x 3072
 layout: cfa 2x2 [0, 1, 1, 2]
 samples: U16 x 14155776, blake3 fb0962e2b3f5712af36691233c92fc3ea372a1c6ad9ba1ccd5e87b6392b4a0bf

@@ -428,12 +428,12 @@ samples! {
     olympus_e_m5_iii_is_the_same_through_the_sandbox: "PB290154.ORF", "olympus-e-m5-iii";
     leica_m9_is_the_same_through_the_sandbox: "L1049390.DNG", "leica-m9";
     canon_5d_iii_float_dng_is_the_same_through_the_sandbox: "Canon_-_EOS_5D_Mark_III_-_32bit_32bit_RAW.dng", "canon-5d-iii-float";
-    fujifilm_gfx100s_ii_103_megapixels_is_the_same_through_the_sandbox: "Fujifilm_-_GFX100S_II_-_16bit_compressed_(4:3).RAF", "fujifilm-gfx100s-ii";
-    leica_m_monochrom_has_no_matrix_and_no_white_balance: "Leica_-_M_Monochrom_-_16bit_(3:2).DNG", "leica-m-monochrom";
-    eyedeas_e1_is_grbg_and_rotated: "Eyedeas_-_E1_-_16bit_(4:3).DNG", "eyedeas-e1";
-    sony_a450_is_the_same_through_the_sandbox: "Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3:2).ARW", "sony-a450";
-    sony_a58_is_the_same_through_the_sandbox: "Sony_-_SLT-A58_-_12bit_12bit_compressed_(3:2).ARW", "sony-a58";
+    fujifilm_gfx100s_ii_103_megapixels_is_the_same_through_the_sandbox: "Fujifilm_-_GFX100S_II_-_16bit_compressed_(4x3).RAF", "fujifilm-gfx100s-ii";
+    leica_m_monochrom_has_no_matrix_and_no_white_balance: "Leica_-_M_Monochrom_-_16bit_(3x2).DNG", "leica-m-monochrom";
+    eyedeas_e1_is_grbg_and_rotated: "Eyedeas_-_E1_-_16bit_(4x3).DNG", "eyedeas-e1";
+    sony_a450_is_the_same_through_the_sandbox: "Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3x2).ARW", "sony-a450";
+    sony_a58_is_the_same_through_the_sandbox: "Sony_-_SLT-A58_-_12bit_12bit_compressed_(3x2).ARW", "sony-a58";
     samsung_sm_g973u_is_refused_without_make_and_model: "Samsung_-_SM-G973U_-_16bit_16bit_(2.1132075471698).dng", "samsung-sm-g973u";
-    parrot_bebop_is_refused_for_its_compression: "PARROT_-_Bebop_Drone_-_16bit_(4:3).dng", "parrot-bebop";
-    gopro_hero6_gpr_is_refused_for_its_compression: "GoPro_-_HERO6_Black_-_16bit_(4:3).GPR", "gopro-hero6";
+    parrot_bebop_is_refused_for_its_compression: "PARROT_-_Bebop_Drone_-_16bit_(4x3).dng", "parrot-bebop";
+    gopro_hero6_gpr_is_refused_for_its_compression: "GoPro_-_HERO6_Black_-_16bit_(4x3).GPR", "gopro-hero6";
 }

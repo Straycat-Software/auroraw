@@ -72,6 +72,10 @@ fn an_infinite_loop_is_interrupted_by_its_time_budget() {
             result.is_err(),
             "an infinite loop must be interrupted, not returned from"
         );
+        // The reason is in the message, not only the backtrace: a decode stopped by its budget was once reported
+        // by CI as a backtrace that could not be told from a crash.
+        let message = result.unwrap_err().to_string();
+        assert!(message.contains("interrupt"), "{message}");
         // The host's timer is a free-running 1 ms tick (`plugin::EPOCH_TICK`), not a fresh timer
         // per call: the first tick counted toward this call's deadline can land anywhere up to a
         // full tick after the deadline was set, so a call can finish up to one tick early.

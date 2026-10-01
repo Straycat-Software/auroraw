@@ -267,7 +267,13 @@ natively costs nothing (the pages are never touched) and in the sandbox reaches 
 sees `DecoderError::Failed` and not `Invalid`. Both mean "cannot decode this file", and the fixture records which it is, so
 that a `rawler` that refuses it cleanly shows as a change. The two Sony files whose EXIF says a rotation that `rawler`'s decode
 does not report are a test in `imaging`, as §3.3b asked. The decoder tests run one for each file, and the 103 MP file fits
-the ceiling.
+the ceiling. **It does not fit the time budget of 30 s that the host first gave a decode**: the plugin is one thread
+(`rayon` has none in `wasm32-wasip1`), the file takes about 10 s on a fast desktop core and more than 30 s on a loaded
+four-core CI runner, where the host interrupted it; the budget is now 120 s (it guards against a hang, not a slow file).
+Two consequences for the engine (WP14, WP18): a full decode of a very large mosaic through the sandbox is a matter of
+seconds, so it is done once per photo and its result is cached, not repeated per render; and the host's error for a
+trap now carries the trap's reason (`wasm trap: interrupt`), which the plain message hid. The sample names are the
+site's with `(4:3)` written `(4x3)`, because a colon is not part of a Windows file name.
 
 ### 3.3 What `rawler` gives on the eight sample files [measured, 2026-09-30]
 

@@ -1,4 +1,4 @@
-file: Eyedeas_-_E1_-_16bit_(4:3).DNG
+file: Eyedeas_-_E1_-_16bit_(4x3).DNG
 readout: 4640 x 3480
 layout: cfa 2x2 [1, 0, 2, 1]
 samples: U16 x 16147200, blake3 d63166bef3b2a709568572581263d32136aeef165f19451b0e3a486ee73d91af

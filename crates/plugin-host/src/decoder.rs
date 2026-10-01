@@ -25,10 +25,12 @@ const OUT_SIZE: usize = 16;
 /// ceiling fails that file rather than the host.
 const DEFAULT_MEMORY_LIMIT: usize = 512 << 20;
 
-/// How long a single decode may run before the host interrupts it. Generous: a slow decode is
-/// still a real one (spike 4's own slowest sample took over a second natively), and this guards
-/// against a hang, not against a merely slow file.
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+/// How long a single decode may run before the host interrupts it. It guards against a hang, not
+/// against a merely slow file, and a slow file is slower than it looks: the plugin is one thread
+/// (`rayon` has no threads in `wasm32-wasip1`), so the 103 MP GFX100S II takes about 10 s here, and
+/// longer than 30 s on a loaded four-core CI runner (the first value of this constant, which
+/// interrupted it there). Two minutes leaves room for a slower machine and a larger file.
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// [`Decoder`] implemented by `plugins/rawler-decoder` running under [`PluginHost`]. A fresh
 /// instance is started for every call (spike 4's own measurement shape: instantiating from an
