@@ -134,8 +134,13 @@ jobs:
       - run: cargo test --workspace --doc --locked
       - name: Say which graphics adapter this runner offered, and run the engine's smoke test on it
         run: cargo run --locked --package auroraw-pipeline --example adapters
+      # The binary that `cargo build --workspace` made above, not `cargo run --package auroraw-app`: that one resolves the
+      # features of the application alone, which are not the workspace's (`hashbrown`, `bytemuck`, `half`, `num-traits`
+      # have more of them across the workspace), so it builds the application a second time: 79 crates, 4 minutes on a
+      # cold cache and 1.4 to 2.8 at the median, to run something that answers in under a second (issue #77).
       - name: Launch test
-        run: cargo run --locked --package auroraw-app -- --self-test
+        shell: bash
+        run: target/debug/auroraw --self-test
 
   dependencies:
     name: dependencies
