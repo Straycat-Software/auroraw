@@ -19,6 +19,7 @@ auroraw-sources = { path = "../sources" }
 auroraw-plugin-api = { path = "../plugin-api" }
 auroraw-import = { path = "../import" }
 auroraw-imaging = { path = "../imaging" }
+auroraw-places = { path = "../places" }
 auroraw-plugin-host = { path = "../plugin-host" }
 auroraw-types = { path = "../types" }
 thiserror.workspace = true

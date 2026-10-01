@@ -146,6 +146,7 @@ dependencies = [
  "auroraw-catalogue",
  "auroraw-engine",
  "auroraw-format",
+ "auroraw-places",
  "auroraw-sources",
  "auroraw-testkit",
  "auroraw-types",
@@ -160,6 +161,7 @@ dependencies = [
  "auroraw-format",
  "auroraw-imaging",
  "auroraw-import",
+ "auroraw-places",
  "auroraw-plugin-api",
  "auroraw-plugin-host",
  "auroraw-sources",
@@ -222,9 +224,22 @@ dependencies = [
 name = "auroraw-pipeline"
 version = "0.0.0"
 dependencies = [
+ "png",
  "pollster",
+ "proptest",
  "thiserror 2.0.20",
  "wgpu",
+]
+
+[[package]]
+name = "auroraw-places"
+version = "0.0.0"
+dependencies = [
+ "auroraw-testkit",
+ "fastrand",
+ "rusqlite",
+ "serde_json",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

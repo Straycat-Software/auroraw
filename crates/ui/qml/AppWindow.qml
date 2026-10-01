@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Window
 
 // A resizable dialog as a genuine secondary window (D-113), the resizable-dialog counterpart to `AppDialog.qml`:
@@ -37,10 +38,19 @@ Window {
         control.show()
     }
 
-    Item {
-        id: content
+    // A `Window` has no font to hand down: what is drawn in it would be set in the system's own typeface and size, not in
+    // the application's (`Main.qml` gives it to the main window only). A `Control` passes its font on to the labels and
+    // buttons below it, so it carries the host window's.
+    Control {
+        id: fontCarrier
         anchors.fill: parent
-        anchors.margins: 16
+        font: control.hostWindow ? control.hostWindow.font : Qt.application.font
+
+        Item {
+            id: content
+            anchors.fill: parent
+            anchors.margins: 16
+        }
     }
 
     Shortcut {

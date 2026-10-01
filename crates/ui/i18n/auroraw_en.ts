@@ -200,6 +200,14 @@
             <numerusform>Undo accepting external changes to %n photos</numerusform>
         </translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="70"/>
+        <source>Undo finding the place names of %n photo(s)</source>
+        <translation>
+            <numerusform>Undo finding the place names of %n photo</numerusform>
+            <numerusform>Undo finding the place names of %n photos</numerusform>
+        </translation>
+    </message>
     <message>
         <location filename="../qml/AppActions.qml" line="70"/>
         <source>Undo keyword properties</source>
@@ -486,6 +494,14 @@
         <translation>
             <numerusform>Redo accepting external changes to %n photo</numerusform>
             <numerusform>Redo accepting external changes to %n photos</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/AppActions.qml" line="116"/>
+        <source>Redo finding the place names of %n photo(s)</source>
+        <translation>
+            <numerusform>Redo finding the place names of %n photo</numerusform>
+            <numerusform>Redo finding the place names of %n photos</numerusform>
         </translation>
     </message>
     <message>
@@ -1411,15 +1427,25 @@
     </message>
     <message numerus="yes">
         <location line="+12"/>
-        <source>%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</source>
+        <source>Another application changed the XMP file beside the original of %n photo(s).</source>
         <translation>
-            <numerusform>%n photo has a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</numerusform>
-            <numerusform>%n photos have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.</numerusform>
+            <numerusform>Another application changed the XMP file beside the original of %n photo.</numerusform>
+            <numerusform>Another application changed the XMP files beside the originals of %n photos.</numerusform>
         </translation>
     </message>
     <message>
         <location filename="../qml/ExternalChangesDialog.qml" line="104"/>
         <source>Nothing is waiting.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Accept applies what the file says to the photo, in one step you can undo. Ignore keeps the photo as it is; the file is offered again only if it changes.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Nothing is applied until you choose. Auroraw changes these files only when you export XMP files.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

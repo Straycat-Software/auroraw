@@ -18,6 +18,15 @@ AppWindow {
     property alias list: list
     property alias acceptAllButton: acceptAllButton
     property alias ignoreAllButton: ignoreAllButton
+    property alias closeButton: closeButton
+    property alias introLabel: introLabel
+    property alias answersLabel: answersLabel
+    property alias safetyLabel: safetyLabel
+    // The three buttons of the footer are as wide as the widest label asks, and never narrower than 128px: a row that
+    // fills its window squeezes its buttons down to nothing when the window is small, and a label ("Tout accepter")
+    // would be cut.
+    readonly property real footerButtonWidth: Math.max(128, acceptAllButton.implicitWidth, ignoreAllButton.implicitWidth,
+                                                       closeButton.implicitWidth)
 
     title: qsTr("Metadata changed by another application")
 
@@ -95,13 +104,29 @@ AppWindow {
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
+        // What this is, what the two answers do, and what is safe: three short paragraphs rather than one long sentence.
         Label {
+            id: introLabel
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            color: Theme.quiet
             text: dialog.entries.length > 0
-                  ? qsTr("%n photo(s) have a file, beside the original, that another application changed. Nothing is applied until you accept; Auroraw changes those files only when you ask it to export XMP files.", "", dialog.entries.length)
+                  ? qsTr("Another application changed the XMP file beside the original of %n photo(s).", "", dialog.entries.length)
                   : qsTr("Nothing is waiting.")
+        }
+        Label {
+            id: answersLabel
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            visible: dialog.entries.length > 0
+            text: qsTr("Accept applies what the file says to the photo, in one step you can undo. Ignore keeps the photo as it is; the file is offered again only if it changes.")
+        }
+        Label {
+            id: safetyLabel
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            visible: dialog.entries.length > 0
+            color: Theme.quiet
+            text: qsTr("Nothing is applied until you choose. Auroraw changes these files only when you export XMP files.")
         }
         AppListFrame {
             Layout.fillWidth: true
@@ -207,13 +232,16 @@ AppWindow {
                         ColumnLayout {
                             Layout.alignment: Qt.AlignTop
                             spacing: 4
+                            // Both as wide as the wider one.
                             AppButton {
                                 objectName: "acceptOne"
+                                Layout.fillWidth: true
                                 text: qsTr("Accept")
                                 onClicked: dialog.acceptOne(entry.modelData.id)
                             }
                             AppButton {
                                 objectName: "ignoreOne"
+                                Layout.fillWidth: true
                                 text: qsTr("Ignore")
                                 onClicked: dialog.external.ignore(JSON.stringify([entry.modelData.id]))
                             }
@@ -228,6 +256,8 @@ AppWindow {
             Item { Layout.fillWidth: true }
             AppButton {
                 id: acceptAllButton
+                Layout.minimumWidth: dialog.footerButtonWidth
+                Layout.preferredWidth: dialog.footerButtonWidth
                 text: qsTr("Accept all")
                 highlighted: true
                 enabled: dialog.entries.length > 0
@@ -235,11 +265,16 @@ AppWindow {
             }
             AppButton {
                 id: ignoreAllButton
+                Layout.minimumWidth: dialog.footerButtonWidth
+                Layout.preferredWidth: dialog.footerButtonWidth
                 text: qsTr("Ignore all")
                 enabled: dialog.entries.length > 0
                 onClicked: dialog.external.ignoreAll()
             }
             AppButton {
+                id: closeButton
+                Layout.minimumWidth: dialog.footerButtonWidth
+                Layout.preferredWidth: dialog.footerButtonWidth
                 text: qsTr("Close")
                 onClicked: dialog.close()
             }
