@@ -135,6 +135,23 @@ TestCase {
         compare(app.externalDialog.entries.length, count, "the review lists the wrong number of photos")
     }
 
+    // The property of the delegate at `index` of `view`, read now: `undefined` while the view has not made that delegate.
+    function delegateValue(view, index, property) {
+        const item = view.itemAtIndex(index)
+        return item ? item[property] : undefined
+    }
+
+    // Waits until `read()` gives `expected`, and reads again at each poll. Not `tryCompare(grid.itemAtIndex(2), "rating", v)`
+    // (nor `tryCompare(cell(3), …)`): `tryCompare(obj, property, v)` takes `obj` once, when it is called, so it waits on a
+    // delegate the view may make again, or on `null` while it has not made it (issues #63 and #68). Nor `tryVerify` with a
+    // message: the message is made before the wait. The failure says what was read when the wait ended.
+    function tryRead(read, expected, timeout, message) {
+        const deadline = Date.now() + (timeout === undefined ? 5000 : timeout)
+        while (read() !== expected && Date.now() < deadline)
+            wait(20)
+        compare(read(), expected, message)
+    }
+
     // Clicks the centre of an item as a person would.
     function click(item) {
         mouseClick(item)
