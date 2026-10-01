@@ -807,6 +807,14 @@ fn ten_thousand_photos_are_filled_as_one_step_and_undone_as_one() {
     let ids: Vec<PhotoId> = photos.iter().map(|p| p.photo_id).collect();
     let f = fixture(&photos);
 
+    // The preview first: the same lookups, nothing written.
+    let started = Instant::now();
+    let preview = f.preview(&ids, "fr", false);
+    eprintln!("{n} photos previewed in {:?}", started.elapsed());
+    assert_eq!((preview.report.photos, preview.report.filled), (n, n));
+    assert!(preview.groups_total <= 8, "{}", preview.groups_total);
+    assert_eq!(f.undo_label(), None);
+
     let started = Instant::now();
     let found = f.find(&ids, "fr", false);
     let took = started.elapsed();
