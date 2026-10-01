@@ -10,6 +10,8 @@
 //! - [`rebuild`] builds a fresh catalogue file from a workspace's content, atomically.
 //! - [`write`] applies a change to one photo's or one keyword's existing row (WP3's engine).
 //! - [`query`] answers the questions the grid and the search panel ask, with keyset paging.
+//! - [`place`] keeps the place of a photo as columns and keys, and answers the place filter and the tree of places
+//!   the library's menu shows.
 //! - [`reconcile`] says which sidecars the catalogue's copy no longer matches.
 //! - [`effective`] computes the effective rating and flag a version's overrides give a photo
 //!   (D-063).
@@ -19,11 +21,13 @@
 //!   here from spike 3, M1 plan WP2).
 
 mod collections;
+mod country;
 mod effective;
 mod error;
 mod external;
 mod location;
 mod open;
+mod place;
 mod populate;
 mod query;
 mod rebuild;
@@ -41,6 +45,7 @@ pub use error::CatalogueError;
 pub use external::{ExternalKnown, ExternalPending, ExternalRow, ExternalStat};
 pub use location::{DuplicatePhoto, LocationRef};
 pub use open::{CURRENT_SCHEMA, Catalogue};
+pub use place::{PlaceColumns, PlaceFacets, PlaceFilter, PlaceNode, fold_place};
 pub use query::{
     Cursor, Filter, FingerprintCandidate, FlagFilter, KeywordRow, PhotoRow, SeriesFilter,
     SourceCounts, SourceRow,
