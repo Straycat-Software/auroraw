@@ -13,7 +13,7 @@ The Qt Quick user interface (decision D-094; it replaced a first one in Slint, D
   `qsTr` string with `cargo xtask translations`, then translate what is new. It runs Qt's `lupdate` on both
   files and **puts back the locations the committed messages already had** (`lupdate` rewrites every
   location, which makes one new string a diff of a thousand lines): the diff is the new messages and
-  nothing else. On a branch stacked on another, `cargo xtask translations origin/<base>` keeps the base's
+  nothing else, and it says which messages are new and which are gone (a reworded one loses its translation: its old text is the place to start). On a branch stacked on another, `cargo xtask translations origin/<base>` keeps the base's
   locations instead of `HEAD`'s. English is the source text but has a file too (`auroraw_en.ts`), because
   only a translation can hold plural forms (`qsTr("%n photo(s)", "", count)`): give the new plural messages
   their forms there and leave the rest as it is. `tests/translations.rs` checks them.

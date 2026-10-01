@@ -96,11 +96,16 @@ pub struct Restored {
     pub kept: usize,
     /// How many messages are new (`old` did not have them).
     pub added: usize,
+    /// The messages `old` had and `new` no longer has (context and source text): reworded, or removed. A reworded one
+    /// loses its translation (that is `lupdate`'s doing, with `-no-obsolete`), and its old text is the translator's
+    /// starting point for the new one.
+    pub gone: Vec<(String, String)>,
 }
 
 /// `new` (what `lupdate` wrote) with the locations of the messages `old` (the committed file) already had.
 pub fn restore(old: &str, new: &str) -> Restored {
     let mut known: HashMap<Key, Vec<String>> = HashMap::new();
+    let mut seen: std::collections::HashSet<Key> = std::collections::HashSet::new();
     for piece in pieces(old) {
         if let Piece::Message { context, lines } = piece {
             let (key, locations, _) = split(&context, &lines);
@@ -115,6 +120,7 @@ pub fn restore(old: &str, new: &str) -> Restored {
             Piece::Line(line) => out.push(line),
             Piece::Message { context, lines } => {
                 let (key, locations, rest) = split(&context, &lines);
+                seen.insert(key.clone());
                 let locations = match known.get(&key) {
                     Some(old_locations) => {
                         kept += 1;
@@ -135,7 +141,19 @@ pub fn restore(old: &str, new: &str) -> Restored {
     if new.ends_with('\n') {
         text.push_str(newline);
     }
-    Restored { text, kept, added }
+    let mut gone: Vec<(String, String)> = known
+        .into_keys()
+        .filter(|key| !seen.contains(key))
+        .map(|(context, source, _)| (context, source))
+        .collect();
+    gone.sort();
+    gone.dedup();
+    Restored {
+        text,
+        kept,
+        added,
+        gone,
+    }
 }
 
 /// The directory of Qt's command line tools, from the `qmake` the interface's build uses (`QMAKE`, or `qmake6`, or
@@ -209,8 +227,13 @@ pub fn run(reference: Option<String>) -> bool {
         let file = format!("crates/ui/i18n/auroraw_{language}.ts");
         let status = Command::new(&lupdate)
             .args(&screens)
+            // (Absolute locations: a new message's own location says the file and the line whole. A relative one is
+            // "so many lines after the previous message's", and the previous message has just got its old location
+            // back, so it would point at a place that has nothing to do with the new string.)
             .args([
                 "-no-obsolete",
+                "-locations",
+                "absolute",
                 "-ts",
                 &format!("i18n/auroraw_{language}.ts"),
             ])
@@ -253,6 +276,17 @@ pub fn run(reference: Option<String>) -> bool {
              English only the plural forms)",
             restored.kept, restored.added
         );
+        if !restored.gone.is_empty() {
+            println!(
+                "{file}: {} of {reference}'s messages are gone (reworded, or removed); if one was reworded, its \
+                 old translation is the place to start:",
+                restored.gone.len()
+            );
+            for (context, source) in &restored.gone {
+                let shown: String = source.chars().take(80).collect();
+                println!("    {context}: {shown}");
+            }
+        }
     }
     true
 }
@@ -291,6 +325,22 @@ mod tests {
         // The same text with another comment is another message: it is new.
         let other = NEW.replace("<comment>a menu</comment>", "<comment>another</comment>");
         assert_eq!(restore(OLD, &other).added, 2);
+    }
+
+    #[test]
+    fn a_message_the_new_file_no_longer_has_is_reported_as_gone() {
+        // `Dialog`'s "Open" was reworded: the old one is gone, and the new one is new.
+        let reworded = NEW.replace(
+            "<source>Open</source>\n        <translation>Ouvert",
+            "<source>Opened</source>\n        <translation>Ouvert",
+        );
+        let restored = restore(OLD, &reworded);
+        assert_eq!(
+            restored.gone,
+            vec![("Dialog".to_string(), "Open".to_string())]
+        );
+        assert_eq!(restored.added, 2, "the reworded one and the new one");
+        assert!(restore(OLD, NEW).gone.is_empty());
     }
 
     #[test]
