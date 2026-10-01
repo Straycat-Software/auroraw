@@ -5,7 +5,7 @@
 //! job log says which adapter each platform's runner actually offered (the tests' own output is
 //! hidden when they pass), and it is the seed of `cargo xtask gpu-check` (CI doc §4).
 
-use auroraw_pipeline::{AdapterChoice, Config, Pipeline, list_adapters};
+use auroraw_pipeline::{AdapterChoice, Backend, Config, Pipeline, list_adapters};
 
 fn main() {
     let adapters = list_adapters();
@@ -18,6 +18,12 @@ fn main() {
         println!("{}", info.describe());
         println!("  driver: {} {}", info.driver, info.driver_info);
         println!("  shaders: {}", info.backend.shader_route());
+        if info.backend == Backend::Dx12 {
+            println!(
+                "  DirectX shader compiler: {}",
+                auroraw_pipeline::adapter::dx12_compiler_name()
+            );
+        }
         println!(
             "  max buffer: {} MiB, max storage binding: {} MiB",
             info.max_buffer_size >> 20,

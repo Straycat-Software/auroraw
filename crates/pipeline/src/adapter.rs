@@ -40,13 +40,18 @@ impl Backend {
     /// How a shader reaches the GPU through this API, as a short sentence for reports (design note 006
     /// §3.2; review of the pipeline crate, point 8): the WGSL is translated by naga, and then compiled by
     /// something that differs per API and is where a construct one API accepts can fail on another.
+    ///
+    /// The DirectX sentence comes from [`DX12_COMPILER`], the same constant that sets the compiler, so the
+    /// report cannot go on saying FXC after the engine has been changed.
     pub const fn shader_route(self) -> &'static str {
         match self {
             Backend::Vulkan => "WGSL to SPIR-V by naga, then the driver's compiler",
             Backend::Metal => "WGSL to MSL by naga, then Apple's Metal compiler",
-            Backend::Dx12 => {
-                "WGSL to HLSL by naga, then FXC (fixed in the engine, not left to wgpu)"
-            }
+            Backend::Dx12 => match DX12_COMPILER {
+                Dx12Compiler::Fxc => {
+                    "WGSL to HLSL by naga, then FXC (fixed in the engine, not left to wgpu)"
+                }
+            },
         }
     }
 
@@ -239,24 +244,65 @@ pub fn list_adapters() -> Vec<AdapterInfo> {
     enumerate().into_iter().map(|(_, info)| info).collect()
 }
 
+/// The DirectX shader compilers the engine can be set to use. A variant is added here, with the text of
+/// its route in [`Backend::shader_route`], on the day the engine changes it (a decision: it changes what
+/// would be shipped).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Dx12Compiler {
+    /// FXC, Microsoft's legacy compiler, which ships with Windows.
+    Fxc,
+}
+
+impl Dx12Compiler {
+    /// The compiler's name, as the report says it.
+    pub(crate) const fn name(self) -> &'static str {
+        match self {
+            Dx12Compiler::Fxc => "FXC",
+        }
+    }
+
+    /// The setting wgpu takes.
+    fn to_wgpu(self) -> wgpu::Dx12Compiler {
+        match self {
+            Dx12Compiler::Fxc => wgpu::Dx12Compiler::Fxc,
+        }
+    }
+}
+
+/// The compiler the engine uses for DirectX 12: one constant for the instance and for the report.
+pub(crate) const DX12_COMPILER: Dx12Compiler = Dx12Compiler::Fxc;
+
+/// The name of the DirectX 12 shader compiler the engine is set to use, for reports and diagnostics
+/// (M2 plan, WP24: "the diagnostic that tells a person which compiler a machine is using").
+pub const fn dx12_compiler_name() -> &'static str {
+    DX12_COMPILER.name()
+}
+
 /// The one graphics-API instance of the process.
 ///
 /// Created once and never dropped: creating and destroying Vulkan instances from several threads at
 /// the same time crashed the process (a segmentation fault, 14 runs in 15, with two adapters on one
 /// machine), and there is no reason to have more than one. Every adapter and device comes from it.
 ///
-/// **The DirectX shader compiler is FXC, set here and not left to wgpu.** wgpu's default is `Auto`: the
-/// statically linked DXC if it was built in, else a `dxcompiler.dll` found on the PATH, else FXC, so the
-/// compiler a machine used would depend on what happens to be installed on it. FXC is the strictest of
-/// them (it is the one that rejected a construct Vulkan and Metal accept, in spike 1), so a shader that
-/// compiles under it compiles under DXC, it needs no DLL shipped with the application, and every machine
-/// then behaves like the continuous-integration runner. DXC stays an option (design note 006, risk 2 of
-/// the M2 plan); changing it is a decision, since it changes what is shipped.
+/// **The DirectX shader compiler is [`DX12_COMPILER`] (FXC), set here and not left to wgpu.** wgpu's
+/// default is `Auto`: the statically linked DXC if it was built in, else a `dxcompiler.dll` found on the
+/// PATH, else FXC, so the compiler a machine used would depend on what happens to be installed on it.
+/// Fixing it means **every machine behaves like the continuous-integration runner**, and nothing has to
+/// be shipped beside the application (FXC comes with Windows). That is the reason; it is **not** that FXC
+/// is a stricter superset of DXC's front end, which nothing shows: that FXC rejected a construct in spike 1
+/// does not make a shader that FXC accepts acceptable to DXC.
+///
+/// What it costs, for the decision entry that fixes it: FXC compiles shader model 5.x, so **no `f16`
+/// arithmetic and no subgroup operations** on DirectX 12 while it is the compiler (note 005 §7's route,
+/// storing intermediates as packed f16 and computing in f32, is unaffected); Microsoft treats it as legacy;
+/// and its compile time on large unrolled loops is known to be bad, with the non-local means (a search
+/// radius of 5, 121 candidates) the first shader where it could show, **not measured here**. It is
+/// reversible by changing the constant, and DXC stays an option (M2 plan, risk 2).
 fn instance() -> &'static wgpu::Instance {
     static INSTANCE: std::sync::OnceLock<wgpu::Instance> = std::sync::OnceLock::new();
     INSTANCE.get_or_init(|| {
         let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
-        descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::Fxc;
+        descriptor.backend_options.dx12.shader_compiler = DX12_COMPILER.to_wgpu();
         wgpu::Instance::new(descriptor)
     })
 }
@@ -458,6 +504,18 @@ mod tests {
             (list[i].name.clone(), list[i].backend)
         };
         assert_eq!(pick(&forward), pick(&backward));
+    }
+
+    #[test]
+    fn the_report_names_the_compiler_the_engine_is_set_to() {
+        // One constant sets the compiler and words the route: they cannot disagree.
+        assert!(
+            Backend::Dx12.shader_route().contains(DX12_COMPILER.name()),
+            "{}",
+            Backend::Dx12.shader_route()
+        );
+        assert_eq!(DX12_COMPILER.name(), "FXC");
+        assert!(!Backend::Vulkan.shader_route().contains("FXC"));
     }
 
     #[test]

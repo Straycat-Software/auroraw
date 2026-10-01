@@ -11,7 +11,7 @@
 //! it, so that a new shader cannot skip the smoke test.
 
 use crate::adapter::AdapterInfo;
-use crate::gpu::{Gpu, GpuError, KernelError};
+use crate::gpu::{Gpu, KernelError};
 use crate::reference;
 use crate::scenes::{self, BLACK, WHITE};
 use crate::stages::{self, BayerPattern, Kernels, Levels};
@@ -274,8 +274,8 @@ impl SmokeError {
         }
     }
 
-    /// A graphics-API failure while running `shader`.
-    pub(crate) fn gpu(shader: &'static str, error: GpuError) -> SmokeError {
+    /// A failure of the graphics API, or of the stage's own input checks, while running `shader`.
+    pub(crate) fn gpu(shader: &'static str, error: impl std::fmt::Display) -> SmokeError {
         SmokeError::Gpu {
             shader,
             message: error.to_string(),

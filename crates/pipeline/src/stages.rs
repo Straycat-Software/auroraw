@@ -23,6 +23,24 @@ pub(crate) const INPUT_COLOUR_WGSL: &str = include_str!("shaders/input_colour.wg
 pub(crate) const EXPOSURE_WGSL: &str = include_str!("shaders/exposure.wgsl");
 pub(crate) const OUTPUT_WGSL: &str = include_str!("shaders/output.wgsl");
 
+/// Why a stage could not run: the input was refused, or the device failed.
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
+pub(crate) enum StageError {
+    /// The black level pattern does not hold `rows * cols` values (or has none).
+    #[error("the black level pattern is {rows} by {cols} and holds {values} values")]
+    LevelsShape { rows: u32, cols: u32, values: usize },
+    /// A level that is not a finite number. A decoder's data is whatever the file says (D-141).
+    #[error("a black or white level is not a finite number")]
+    LevelsNotFinite,
+    /// A white level that is not above a black level: the division by `white - black` would be by zero or
+    /// by a negative number, and `mosaic-linear` would hold infinities and NaNs.
+    #[error("the white level {white} is not above the black level {black}")]
+    WhiteNotAboveBlack { white: f32, black: f32 },
+    /// The device refused an allocation or a call.
+    #[error(transparent)]
+    Gpu(#[from] GpuError),
+}
+
 /// The black and white levels of a mosaic, as the decoder gives them (D-141): the black level is a
 /// repeating pattern of `rows` by `cols` values, the white level one value.
 #[derive(Debug, Clone, PartialEq)]
@@ -45,9 +63,28 @@ impl Levels {
         }
     }
 
-    /// Whether the pattern is well formed: at least one value and as many as it says.
-    pub(crate) fn is_valid(&self) -> bool {
-        self.rows >= 1 && self.cols >= 1 && self.black.len() == (self.rows * self.cols) as usize
+    /// Checks that these levels can be applied: a pattern of the shape it says, finite values, and a white
+    /// level above **every** black value. A decoder's data is whatever the file says (D-141), so this is an
+    /// error to return and not a panic of the GPU thread.
+    pub(crate) fn validate(&self) -> Result<(), StageError> {
+        let values = self.black.len();
+        if self.rows < 1 || self.cols < 1 || values != (self.rows as usize) * (self.cols as usize) {
+            return Err(StageError::LevelsShape {
+                rows: self.rows,
+                cols: self.cols,
+                values,
+            });
+        }
+        if !self.white.is_finite() || self.black.iter().any(|b| !b.is_finite()) {
+            return Err(StageError::LevelsNotFinite);
+        }
+        if let Some(&black) = self.black.iter().find(|&&b| self.white <= b) {
+            return Err(StageError::WhiteNotAboveBlack {
+                white: self.white,
+                black,
+            });
+        }
+        Ok(())
     }
 }
 
@@ -249,11 +286,8 @@ pub(crate) fn run_levels(
     width: u32,
     height: u32,
     levels: &Levels,
-) -> Result<Vec<f32>, GpuError> {
-    assert!(
-        levels.is_valid(),
-        "a black level pattern with the wrong number of values"
-    );
+) -> Result<Vec<f32>, StageError> {
+    levels.validate()?;
     let raw = storage_with(gpu, &pack_samples(samples))?;
     let black = storage_with(gpu, &f32_bytes(&levels.black))?;
     let out = out_buffer(gpu, pixels(width, height) * 4)?;
@@ -437,11 +471,8 @@ pub(crate) fn develop(
     width: u32,
     height: u32,
     p: &Develop,
-) -> Result<Vec<u32>, GpuError> {
-    assert!(
-        p.levels.is_valid(),
-        "a black level pattern with the wrong number of values"
-    );
+) -> Result<Vec<u32>, StageError> {
+    p.levels.validate()?;
     let n = pixels(width, height);
     let raw = storage_with(gpu, &pack_samples(samples))?;
     let black = storage_with(gpu, &f32_bytes(&p.levels.black))?;

@@ -532,3 +532,295 @@ proptest! {
         prop_assert!((twice[0][0] - once[0][0]).abs() <= 1e-4 * once[0][0].max(1.0));
     }
 }
+
+// ---- the demosaic keeps the whole distribution of a dark, noisy area ----
+
+/// Gaussian noise from a fixed generator (xorshift and Box-Muller), so that the test is the same every run.
+struct Noise(u64);
+
+impl Noise {
+    fn uniform(&mut self) -> f64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        ((self.0 >> 11) as f64 + 0.5) / (1_u64 << 53) as f64
+    }
+
+    fn gauss(&mut self) -> f64 {
+        let (a, b) = (self.uniform(), self.uniform());
+        (-2.0 * a.ln()).sqrt() * (2.0 * std::f64::consts::PI * b).cos()
+    }
+}
+
+/// The mean of the interior of a demosaiced image, per channel, with the edges left out.
+fn interior_mean(image: &[[f32; 3]], width: usize, height: usize) -> [f64; 3] {
+    let mut sum = [0.0_f64; 3];
+    let mut n = 0.0;
+    for y in 4..height - 4 {
+        for x in 4..width - 4 {
+            for c in 0..3 {
+                sum[c] += f64::from(image[y * width + x][c]);
+            }
+            n += 1.0;
+        }
+    }
+    sum.map(|s| s / n)
+}
+
+/// A flat dark patch with noise, as a mosaic of `mosaic-linear` values: the signal `signal` plus Gaussian
+/// noise of standard deviation `sigma`, **negative where the noise takes it below the black level**.
+fn dark_noisy_mosaic(width: u32, height: u32, signal: f64, sigma: f64) -> Vec<f32> {
+    let mut noise = Noise(0x9E37_79B9_7F4A_7C15);
+    (0..width * height)
+        .map(|_| (signal + sigma * noise.gauss()) as f32)
+        .collect()
+}
+
+#[test]
+fn the_demosaic_does_not_lift_a_dark_noisy_area() {
+    // The signal is a fifth of the noise: about 40 % of the samples are below the black level. A noise-model
+    // denoiser needs that whole distribution (note 006 §4: the transform sees `y / a + 3/8 + b / a²`), and a
+    // demosaic that cuts it at zero raises the local mean, a lifted black and a colour cast in the shadows.
+    let (width, height) = (96_u32, 96_u32);
+    let (signal, sigma) = (0.002_f64, 0.01_f64);
+    for pattern in PATTERNS {
+        let mosaic = dark_noisy_mosaic(width, height, signal, sigma);
+        let image = reference::demosaic_bayer(&mosaic, width, height, pattern);
+        let kept = interior_mean(&image, width as usize, height as usize);
+        // What a demosaic that clamped at zero would give: the same image with its negatives cut.
+        let cut: Vec<[f32; 3]> = image.iter().map(|p| p.map(|v| v.max(0.0))).collect();
+        let clamped = interior_mean(&cut, width as usize, height as usize);
+        for c in 0..3 {
+            // The interpolation weights sum to one, so the mean of the output is the mean of the input.
+            assert!(
+                (kept[c] - signal).abs() < 6e-4,
+                "{pattern:?}: channel {c} has a mean of {} for a signal of {signal}",
+                kept[c]
+            );
+            // And the clamp would have lifted it by a large fraction of the signal itself.
+            assert!(
+                clamped[c] > signal * 2.0,
+                "{pattern:?}: the clamped mean {} is not above twice the signal {signal}: the test no longer shows the bias",
+                clamped[c]
+            );
+        }
+        println!(
+            "{pattern:?}: signal {signal}, mean kept {:.5} / {:.5} / {:.5}, mean if clamped {:.5} / {:.5} / {:.5}",
+            kept[0], kept[1], kept[2], clamped[0], clamped[1], clamped[2]
+        );
+    }
+}
+
+// ---- a known colour through the demosaic: the one check whose truth the code does not define ----
+
+#[test]
+fn a_constant_colour_comes_back_in_every_phase_and_at_every_size() {
+    // The golden renders come from the reference, and a flat mosaic gives a flat image even if red and
+    // blue were swapped (every site has the same value), so neither compares the demosaic with a truth the
+    // code does not itself define. A constant colour sampled through each pattern does: red, green and
+    // blue must come back as they went in. Sizes down to 2 x 2, where the edges do all the work; an image
+    // one pixel wide cannot be tested this way, as it holds no photosite of some colours at all.
+    let colour = [0.8_f32, 0.4, 0.2];
+    for pattern in PATTERNS {
+        for (w, h) in [(20_u32, 12_u32), (3, 3), (4, 3), (2, 2), (2, 5), (5, 2)] {
+            let mosaic = scenes::mosaic_of(&scenes::flat(w, h, colour), pattern, BLACK, WHITE);
+            let linear = reference::levels(&mosaic, w, h, &Levels::uniform(BLACK, WHITE));
+            for px in reference::demosaic_bayer(&linear, w, h, pattern) {
+                for c in 0..3 {
+                    assert!(
+                        (px[c] - colour[c]).abs() < 2e-4,
+                        "{pattern:?} {w}x{h}: {px:?} for {colour:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn the_gpu_returns_a_constant_colour_too_including_on_two_pixel_images() {
+    let colour = [0.8_f32, 0.4, 0.2];
+    for engine in engines() {
+        for pattern in PATTERNS {
+            for (w, h) in [(20_u32, 12_u32), (3, 3), (2, 2), (2, 5), (5, 2)] {
+                let mosaic16 =
+                    scenes::mosaic_of(&scenes::flat(w, h, colour), pattern, BLACK, WHITE);
+                let mosaic = reference::levels(&mosaic16, w, h, &Levels::uniform(BLACK, WHITE));
+                let image = engine
+                    .run(move |gpu| {
+                        let kernels = Kernels::compile(gpu).expect("the stages compile");
+                        stages::run_demosaic(gpu, &kernels, &mosaic, w, h, pattern)
+                    })
+                    .expect("the job ran")
+                    .expect("a demosaic");
+                for px in image {
+                    for c in 0..3 {
+                        assert!(
+                            (px[c] - colour[c]).abs() < 2e-4,
+                            "{pattern:?} {w}x{h} on {}: {px:?} for {colour:?}",
+                            engine.adapter().describe()
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_two_pixel_image_reflects_at_the_edges_as_often_as_it_must() {
+    // A single reflection sent x + 3 on a two-pixel image to the wrong parity: this is the case that
+    // the first version got wrong (the colour came back as 0.75, 0.40, 0.225 for 0.8, 0.4, 0.2). The
+    // mirror repeats every 2 (n - 1) pixels.
+    let colour = [0.8_f32, 0.4, 0.2];
+    let mosaic = scenes::mosaic_of(
+        &scenes::flat(2, 2, colour),
+        BayerPattern::Rggb,
+        BLACK,
+        WHITE,
+    );
+    let linear = reference::levels(&mosaic, 2, 2, &Levels::uniform(BLACK, WHITE));
+    let image = reference::demosaic_bayer(&linear, 2, 2, BayerPattern::Rggb);
+    for px in image {
+        assert!(
+            (px[0] - 0.8).abs() < 2e-4 && (px[1] - 0.4).abs() < 2e-4 && (px[2] - 0.2).abs() < 2e-4,
+            "{px:?}"
+        );
+    }
+}
+
+// ---- levels a decoder gave that cannot be applied are refused, not a panic of the GPU thread ----
+
+#[test]
+fn levels_that_cannot_be_applied_are_refused_with_the_reason() {
+    use crate::stages::StageError;
+    let ok = Levels::uniform(512.0, 15360.0);
+    assert_eq!(ok.validate(), Ok(()));
+    let shape = |rows, cols, n| Levels {
+        rows,
+        cols,
+        black: vec![0.0; n],
+        white: 100.0,
+    };
+    assert!(matches!(
+        shape(2, 2, 3).validate(),
+        Err(StageError::LevelsShape {
+            rows: 2,
+            cols: 2,
+            values: 3
+        })
+    ));
+    assert!(
+        matches!(
+            shape(0, 2, 0).validate(),
+            Err(StageError::LevelsShape { .. })
+        ),
+        "no rows"
+    );
+    assert!(
+        matches!(
+            shape(2, 0, 0).validate(),
+            Err(StageError::LevelsShape { .. })
+        ),
+        "no columns"
+    );
+    for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        let white = Levels {
+            white: bad,
+            ..ok.clone()
+        };
+        assert_eq!(
+            white.validate(),
+            Err(StageError::LevelsNotFinite),
+            "white {bad}"
+        );
+        let black = Levels {
+            black: vec![bad],
+            ..ok.clone()
+        };
+        assert_eq!(
+            black.validate(),
+            Err(StageError::LevelsNotFinite),
+            "black {bad}"
+        );
+    }
+    // White at or below the black: the division would be by zero or by a negative number.
+    let equal = Levels::uniform(512.0, 512.0);
+    assert_eq!(
+        equal.validate(),
+        Err(StageError::WhiteNotAboveBlack {
+            white: 512.0,
+            black: 512.0
+        })
+    );
+    let inverted = Levels::uniform(2000.0, 512.0);
+    assert!(matches!(
+        inverted.validate(),
+        Err(StageError::WhiteNotAboveBlack { .. })
+    ));
+    // White above one black value of the pattern but not another: refused, whichever it is.
+    let one_too_high = Levels {
+        rows: 1,
+        cols: 2,
+        black: vec![100.0, 20000.0],
+        white: 15360.0,
+    };
+    assert_eq!(
+        one_too_high.validate(),
+        Err(StageError::WhiteNotAboveBlack {
+            white: 15360.0,
+            black: 20000.0
+        })
+    );
+}
+
+#[test]
+fn the_stages_return_the_refusal_instead_of_panicking_on_the_gpu_thread() {
+    use crate::stages::StageError;
+    for engine in engines() {
+        let bad = Levels::uniform(2000.0, 512.0);
+        let (mosaic, p) = GOLDEN[0].inputs();
+        let outcome = engine
+            .run({
+                let (bad, mosaic, p) = (bad.clone(), mosaic.clone(), p.clone());
+                move |gpu| {
+                    let kernels = Kernels::compile(gpu).expect("the stages compile");
+                    let alone = stages::run_levels(
+                        gpu,
+                        &kernels,
+                        &mosaic,
+                        GOLDEN_WIDTH,
+                        GOLDEN_HEIGHT,
+                        &bad,
+                    );
+                    let chain = stages::develop(
+                        gpu,
+                        &kernels,
+                        &mosaic,
+                        GOLDEN_WIDTH,
+                        GOLDEN_HEIGHT,
+                        &Develop { levels: bad, ..p },
+                    );
+                    (alone.map(|_| ()), chain.map(|_| ()))
+                }
+            })
+            .expect("the job ran, and the GPU thread did not panic");
+        assert!(
+            matches!(outcome.0, Err(StageError::WhiteNotAboveBlack { .. })),
+            "{:?}",
+            outcome.0
+        );
+        assert!(
+            matches!(outcome.1, Err(StageError::WhiteNotAboveBlack { .. })),
+            "{:?}",
+            outcome.1
+        );
+        // The engine is still there afterwards.
+        engine.smoke_test().expect("the smoke test still runs");
+        assert_eq!(
+            engine.generation(),
+            0,
+            "a refusal is not a panic: the device was not re-created"
+        );
+    }
+}

@@ -2,7 +2,8 @@
 //
 // Stage `scene-linear`, the operation `exposure` (design note 006 §3.3): a gain on the scene-linear
 // values, `2^EV` computed by the caller. It is a multiplication in the working space, so it commutes with
-// nothing that is not linear and is applied exactly where the recipe puts it.
+// the other linear operations and with none that is not linear, and it is applied exactly where the recipe
+// puts it.
 
 struct Params {
     width: u32,

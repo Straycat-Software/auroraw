@@ -137,8 +137,8 @@ one a refinement of D-142's three:
 | Data space | What it is | D-142's space |
 | --- | --- | --- |
 | `sensor-raw` | The decoder's samples, as counts, one per photosite (or per component for a linear input), with the black and white levels not yet applied | raw |
-| `mosaic-linear` | One linear value per photosite, levels applied, normalised so that the sensor's white is 1.0, the colour filter pattern still present | raw |
-| `camera-linear` | Linear RGB per pixel, **in the camera's primaries**, white balance **not yet applied** (§4), no upper bound | scene-linear |
+| `mosaic-linear` | One linear value per photosite, levels applied, normalised so that the sensor's white is 1.0, the colour filter pattern still present; **a sample below its black stays negative** | raw |
+| `camera-linear` | Linear RGB per pixel, **in the camera's primaries**, white balance **not yet applied** (§4), **no upper bound and no lower bound**: a noise-model denoiser needs the samples that noise took below the black level, and the demosaic keeps them | scene-linear |
 | `working-linear` | Linear RGB per pixel in the **working space's primaries** (§5), scene-referred, no upper bound | scene-linear |
 | `display-referred` | Values in the output space's encoding, bounded to 0..1 | display-referred |
 

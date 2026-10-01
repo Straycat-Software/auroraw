@@ -2,8 +2,13 @@
 //
 // Stage `demosaic`, for a 2x2 Bayer mosaic (design note 006 §3.3): gradient-corrected bilinear
 // interpolation (Malvar, He and Cutler, 2004) of `mosaic-linear` into `camera-linear` RGB, the method
-// spike 1 measured (20 to 60 MP in 24 to 63 ms). Edges are mirrored. A negative result is clamped to
-// zero (an interpolation artefact, not a signal); there is no upper bound.
+// spike 1 measured (20 to 60 MP in 24 to 63 ms). Edges are mirrored, reflecting as often as the image is
+// small (a 2 x 2 image works). **Nothing is clamped**: `camera-linear` has no upper bound and no lower
+// bound either. In a dark area about half the samples are below their black level because of noise, and a
+// noise-model denoiser, which comes next, needs that whole distribution; cutting it here would raise the
+// local mean (measured: a signal of 0.002 under noise of 0.01 came out at 0.0045 to 0.0052). The
+// interpolation's overshoot at an edge is small, and an operation that cannot take a negative clamps for
+// itself, as the output transform does.
 //
 // `flip` says which of the four phases the pattern has at the image's origin, relative to RGGB: bit 0
 // swaps the column parity, bit 1 the row parity (RGGB 0, GRBG 1, GBRG 2, BGGR 3).
@@ -22,15 +27,21 @@ struct Params {
 @group(0) @binding(1) var<storage, read> mosaic: array<f32>;
 @group(0) @binding(2) var<storage, read_write> out: array<vec4<f32>>;
 
+// Reflects a coordinate into 0..n as many times as it takes: the pattern repeats every 2 (n - 1) pixels.
+// (A single reflection sends x + 3 on a 2-pixel image to the wrong parity, so to the wrong colour.)
 fn mirror(i: i32, n: i32) -> i32 {
-    var r = i;
+    if (n == 1) {
+        return 0;
+    }
+    let period = 2 * (n - 1);
+    var r = i % period;
     if (r < 0) {
-        r = -r;
+        r = r + period;
     }
     if (r >= n) {
-        r = 2 * n - 2 - r;
+        r = period - r;
     }
-    return clamp(r, 0, n - 1);
+    return r;
 }
 
 fn at(x: i32, y: i32) -> f32 {
@@ -84,5 +95,5 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let b_here = (5.0 * c + 4.0 * (w + e) - (nw + ne + sw + se) - (ww + ee) + 0.5 * (nn + ss)) / 8.0;
         rgb = vec3<f32>(r_here, c, b_here);
     }
-    out[gid.y * p.width + gid.x] = vec4<f32>(max(rgb, vec3<f32>(0.0)), 1.0);
+    out[gid.y * p.width + gid.x] = vec4<f32>(rgb, 1.0);
 }

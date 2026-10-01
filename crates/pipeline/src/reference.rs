@@ -25,20 +25,27 @@ pub(crate) fn levels(samples: &[u16], width: u32, height: u32, levels: &Levels) 
     out
 }
 
-/// A coordinate reflected into `0..n`, as the shader does at the edges.
+/// A coordinate reflected into `0..n` as many times as it takes, as the shader does at the edges: the
+/// pattern repeats every `2 (n - 1)` pixels. A single reflection would send `x + 3` on a two-pixel image
+/// to the wrong parity, and so to the wrong colour.
 fn mirror(i: i32, n: i32) -> i32 {
-    let mut r = i;
+    if n == 1 {
+        return 0;
+    }
+    let period = 2 * (n - 1);
+    let mut r = i % period;
     if r < 0 {
-        r = -r;
+        r += period;
     }
     if r >= n {
-        r = 2 * n - 2 - r;
+        r = period - r;
     }
-    r.clamp(0, n - 1)
+    r
 }
 
 /// Stage `demosaic` for a Bayer mosaic: gradient-corrected bilinear interpolation (Malvar, He and
-/// Cutler), edges mirrored, negative results clamped to zero.
+/// Cutler), edges mirrored. **Nothing is clamped**: a noise-model denoiser needs the samples that noise
+/// took below the black level, and cutting them here would raise the local mean of a dark area.
 pub(crate) fn demosaic_bayer(
     mosaic: &[f32],
     width: u32,
@@ -93,7 +100,7 @@ pub(crate) fn demosaic_bayer(
                     }
                 }
             };
-            out.push(rgb.map(|v| v.max(0.0)));
+            out.push(rgb);
         }
     }
     out
