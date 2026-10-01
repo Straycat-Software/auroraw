@@ -40,3 +40,21 @@ missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+
+# The dev profile is the one the tests run in, and a few of them decode RAW files (the `rawler` decoder native in
+# `imaging`, and compiled to WebAssembly under `wasmtime` in `plugin-host`): at `opt-level = 0` the two decode tests were
+# a third of the tests' CPU time (issue #77, lever 2), and the compilation of the plugin (4.8 MB of WebAssembly) alone cost
+# two CPU-minutes for each test process that did it. So the dependencies are optimised, as are the three crates of ours
+# that do the heavy work in those tests. They are cached with the rest (`rust-cache`); the price is a longer cold build, and
+# stepping through these crates in a debugger shows optimised code (set the package back to 0 for that, locally).
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.auroraw-imaging]
+opt-level = 2
+
+[profile.dev.package.auroraw-plugin-api]
+opt-level = 2
+
+[profile.dev.package.auroraw-plugin-host]
+opt-level = 2
