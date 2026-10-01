@@ -101,7 +101,7 @@ fn xmp_coordinate(whole: &[Rational; 3], reference: &str) -> String {
     )
 }
 
-/// Reads what this crate can find, dispatching by extension ([`is_standard`]). Never a full RAW
+/// Reads what this crate can find, dispatching by extension (`is_standard`). Never a full RAW
 /// decode: only the container's own metadata and, for the pixel dimensions, the embedded
 /// preview's (WP5 does not build the full demosaic path; that needs the image engine, M2).
 pub fn read_metadata(path: &Path) -> Result<Metadata> {

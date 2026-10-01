@@ -6,14 +6,14 @@
 //! incremental changes through [`Catalogue::apply_photo_metadata`] and
 //! [`Catalogue::apply_keyword`].
 //!
-//! - [`open`] creates and opens a catalogue, with its migrations (`PRAGMA user_version`).
-//! - [`rebuild`] builds a fresh catalogue file from a workspace's content, atomically.
-//! - [`write`] applies a change to one photo's or one keyword's existing row (WP3's engine).
-//! - [`query`] answers the questions the grid and the search panel ask, with keyset paging.
-//! - [`reconcile`] says which sidecars the catalogue's copy no longer matches.
-//! - [`effective`] computes the effective rating and flag a version's overrides give a photo
+//! - `open` creates and opens a catalogue, with its migrations (`PRAGMA user_version`).
+//! - `rebuild` builds a fresh catalogue file from a workspace's content, atomically.
+//! - `write` applies a change to one photo's or one keyword's existing row (WP3's engine).
+//! - `query` answers the questions the grid and the search panel ask, with keyset paging.
+//! - `reconcile` says which sidecars the catalogue's copy no longer matches.
+//! - `effective` computes the effective rating and flag a version's overrides give a photo
 //!   (D-063).
-//! - [`registry`] is the small, local, per-machine list of a person's catalogues (design note
+//! - `registry` is the small, local, per-machine list of a person's catalogues (design note
 //!   001 §5.7).
 //! - [`dataset`] generates a synthetic but realistic catalogue for tests and benchmarks (moved
 //!   here from spike 3, M1 plan WP2).
