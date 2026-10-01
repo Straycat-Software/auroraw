@@ -241,7 +241,7 @@ translation can fail unnoticed. What is checked:
 
 ## 8. Robustness [proposed]
 
-- **Fuzzing** targets: the XMP and JSON readers, the plugin declaration parser, the import of a
+- **Fuzzing** targets: the XMP and JSON readers, the plugin declaration parser, the block that carries a decoder's metadata (`raw_block`, seeded with the block of each sample file), the import of a
   card's folder names and file names, the metadata reader, and the decoders (through the sandbox,
   where a hang or an out-of-memory becomes a plugin failure, itself tested). Fuzzing runs
   nightly for a fixed time; a crash is a bug with a saved input that joins the corpus.

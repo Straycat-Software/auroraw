@@ -534,14 +534,6 @@ impl RawImage {
     pub fn from_block(block: &[u8], samples: Samples) -> Result<RawImage, BlockError> {
         let all = sections(block)?;
         let (kind, count) = samples_section(&all)?;
-        if kind != samples.kind() || count != samples.len() as u64 {
-            return Err(BlockError::SamplesMismatch {
-                expected: kind,
-                expected_count: count,
-                given: samples.kind(),
-                given_count: samples.len() as u64,
-            });
-        }
         let mut geometry = None;
         let mut layout: Option<SensorLayout> = None;
         let mut levels = None;
@@ -697,6 +689,16 @@ impl RawImage {
                 // A tag this reader does not know: skipped, whatever its number.
                 _ => {}
             }
+        }
+        // (After the sections, so that a block that is not well formed is reported as that, whatever samples came
+        // with it.)
+        if kind != samples.kind() || count != samples.len() as u64 {
+            return Err(BlockError::SamplesMismatch {
+                expected: kind,
+                expected_count: count,
+                given: samples.kind(),
+                given_count: samples.len() as u64,
+            });
         }
         let (width, height) = geometry.ok_or(BlockError::Missing(tag::GEOMETRY))?;
         let mut layout = layout.ok_or(BlockError::Missing(tag::LAYOUT))?;

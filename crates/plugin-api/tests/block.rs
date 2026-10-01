@@ -604,3 +604,38 @@ proptest! {
         let _ = RawImage::from_block(&block, image.samples.clone());
     }
 }
+
+#[test]
+fn the_blocks_of_the_sample_files_are_read_up_to_their_samples() {
+    // The corpus of the fuzz target is seeded with the block of each sample file (written by the decoder tests of
+    // `plugin-host` under AUR_UPDATE_GOLDEN=1). Their metadata must parse: with no samples the only error is that the
+    // samples are not the ones the block describes, which comes after every section has been read and checked.
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/raw_block");
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        panic!(
+            "{} is missing: the corpus is part of the repository",
+            dir.display()
+        );
+    };
+    let mut seeds = 0;
+    for entry in entries.flatten() {
+        let block = std::fs::read(entry.path()).unwrap();
+        let (kind, count) = RawImage::block_samples(&block)
+            .unwrap_or_else(|e| panic!("{}: {e}", entry.path().display()));
+        assert!(count > 0);
+        assert!(
+            matches!(
+                RawImage::from_block(&block, Samples::U16(Vec::new())),
+                Err(BlockError::SamplesMismatch { expected, expected_count, .. })
+                    if expected == kind && expected_count == count
+            ),
+            "{}",
+            entry.path().display()
+        );
+        seeds += 1;
+    }
+    assert!(
+        seeds >= 14,
+        "{seeds} seeds: one for each sample file that decodes"
+    );
+}

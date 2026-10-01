@@ -120,8 +120,9 @@ fn map(image: Decoded, iso: Option<u32>) -> Option<api::RawImage> {
     // `rawler`'s fourth value is NaN on every sample file, and a file without a balance has all NaN or all zero:
     // three finite, positive values or nothing.
     let [r, g, b, _] = image.wb_coeffs;
-    let white_balance = (r.is_finite() && g.is_finite() && b.is_finite() && r > 0.0 && g > 0.0 && b > 0.0)
-        .then_some([r, g, b]);
+    let white_balance =
+        (r.is_finite() && g.is_finite() && b.is_finite() && r > 0.0 && g > 0.0 && b > 0.0)
+            .then_some([r, g, b]);
     // In the order of the EXIF light source code, so that the block is the same on every run (a HashMap is not).
     let mut colour: Vec<api::ColourMatrix> = image
         .color_matrix
@@ -132,11 +133,14 @@ fn map(image: Decoded, iso: Option<u32>) -> Option<api::RawImage> {
                 12 => 4u8,
                 _ => return None,
             };
-            values.iter().all(|v| v.is_finite()).then(|| api::ColourMatrix {
-                illuminant: api::Illuminant(*illuminant as u8),
-                rows,
-                xyz_to_camera: values.clone(),
-            })
+            values
+                .iter()
+                .all(|v| v.is_finite())
+                .then(|| api::ColourMatrix {
+                    illuminant: api::Illuminant(*illuminant as u8),
+                    rows,
+                    xyz_to_camera: values.clone(),
+                })
         })
         .collect();
     colour.sort_by_key(|m| m.illuminant.0);

@@ -243,6 +243,32 @@ Reasons and choices, with what Alice's review changed:
 7. `plugin-api` changes are decisions (D-080: experimental until M5, MIT OR Apache-2.0): this is
    **D-141**, reserved by Alice, and no code changes `RawImage` before it is written.
 
+### 3.2b As built (WP13, first pull request) [built]
+
+The proposal of §3.2 is built as written, with these choices that the code made. **The block** is `auroraw_plugin_api::block`
+(its module documentation is the specification): magic `ARIB`, version 1, then sections of `tag u16, length u32, payload`; the
+required ones are the geometry, the layout, the samples' type and count, and the levels, and the others are the white balance,
+the colour matrices (repeatable), the crop and the active area, the orientation, the camera, the input profile, the ISO and the
+noise profile. A reader skips a tag it does not know; no float may be NaN or infinite, on either side; the block is capped at
+16 MiB (an ICC profile). **The samples** keep their own path: the plugin holds them in its memory, `import` gives their
+address and length in bytes next to the block's, and the host reads them in the type the block says (`u16` or `f32`) and
+refuses a plugin whose block and samples disagree. **Choices**: an illuminant is the EXIF `LightSource` code (any decoder can
+write it without our table); a colour matrix has 3 or 4 rows of 3 (four-colour sensors); a CFA colour is `0` red, `1`
+green, `2` blue, `3` a fourth colour, and a pattern with another colour (a CMY sensor) is refused for now; the orientation
+has an `Unknown` of its own, which is not `Normal`; the white balance is three values or nothing.
+
+**Findings from the seventeen files.** All fourteen files `rawler` decodes pass through the sandbox bit for bit, the float
+DNG included (a float *mosaic* with a black pattern of 2047, 2047, 2048, 2047). `rawler` 0.8.0 does **not** surface a DNG's
+`NoiseProfile` on a decoded image (its `dng_tags` are for its own DNG writer), so the tag is defined and tested in the
+block and the plugin does not emit it; the ISO is available through the EXIF in a second pass over the metadata. The
+Parrot Bebop DNG, which `rawler` refuses natively ("Unsupported DNG compression"), is not refused inside the sandbox but
+**stopped by its memory ceiling**: `rawler` allocates a size it read from the file's TIFF structure before checking it, which
+natively costs nothing (the pages are never touched) and in the sandbox reaches the 512 MiB ceiling and traps, so the caller
+sees `DecoderError::Failed` and not `Invalid`. Both mean "cannot decode this file", and the fixture records which it is, so
+that a `rawler` that refuses it cleanly shows as a change. The two Sony files whose EXIF says a rotation that `rawler`'s decode
+does not report are a test in `imaging`, as §3.3b asked. The decoder tests run one for each file, and the 103 MP file fits
+the ceiling.
+
 ### 3.3 What `rawler` gives on the eight sample files [measured, 2026-09-30]
 
 Run on the CC0 samples of `tools/fetch-samples.sh` (Patrick approved the download; every file
