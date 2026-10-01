@@ -187,6 +187,43 @@ AppTestCase {
         tryCompare(app.externalDialog.entries, "length", 1)
         compare(app.externalDialog.title, "Métadonnées modifiées par une autre application")
         verify(app.externalDialog.acceptAllButton.text !== "Accept all")
+        // French labels are the longest: the three buttons of the footer are as wide as each other, at least 128px, and
+        // none is cut, even with the window at its smallest.
+        app.externalDialog.width = app.externalDialog.minimumWidth
+        const footer = [app.externalDialog.acceptAllButton, app.externalDialog.ignoreAllButton, app.externalDialog.closeButton]
+        tryVerify(() => footer.every(b => b.width >= 128), 5000, footer.map(b => b.width).join(", "))
+        for (const b of footer) {
+            fuzzyCompare(b.width, footer[0].width, 0.5, b.text + " is as wide as the others")
+            verify(!b.contentItem.truncated, b.text + " is not cut at " + b.width)
+            verify(b.width >= b.implicitWidth - 0.5, b.text + " is not squeezed below what it asks")
+        }
         app.externalDialog.close()
+    }
+
+    function test_the_review_is_set_in_the_applications_own_typeface_and_size_like_the_main_window() {
+        edit("IMG_0012", "Base")
+        edit("IMG_0012", "Base", 3)
+        openReview()
+        // (A separate window does not inherit the main window's font: without the font it carries, it is the system's.)
+        compare(app.externalDialog.acceptAllButton.font.family, app.font.family)
+        compare(app.externalDialog.acceptAllButton.font.pointSize, app.font.pointSize)
+        app.externalDialog.close()
+    }
+
+    function test_what_the_review_says_is_three_short_paragraphs_and_one_line_when_nothing_waits() {
+        edit("IMG_0013", "Base")
+        edit("IMG_0013", "Base", 2)
+        openReview()
+        tryCompare(app.externalDialog.entries, "length", 1)
+        const dialog = app.externalDialog
+        compare(dialog.introLabel.text, "Another application changed the XMP file beside the original of 1 photo.")
+        verify(dialog.answersLabel.visible && dialog.answersLabel.text.indexOf("Accept applies") === 0, dialog.answersLabel.text)
+        verify(dialog.answersLabel.text.indexOf("Ignore keeps the photo as it is") > 0)
+        verify(dialog.safetyLabel.visible && dialog.safetyLabel.text.indexOf("Nothing is applied until you choose") === 0)
+        click(dialog.acceptAllButton)
+        tryCompare(dialog.entries, "length", 0)
+        compare(dialog.introLabel.text, "Nothing is waiting.")
+        verify(!dialog.answersLabel.visible && !dialog.safetyLabel.visible, "nothing to explain when nothing waits")
+        dialog.close()
     }
 }
