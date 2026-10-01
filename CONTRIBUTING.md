@@ -35,6 +35,9 @@ cargo xtask check             # SPDX headers and the allowed dependencies betwee
 
 Sample RAW files for the tests come from `tools/fetch-samples.sh` (CC0 files, about 225 MB, kept
 out of git in `testdata/samples/`).
+The file of place names (design note 008) is built from public data by `tools/fetch-places.sh` (about 65 MB
+of downloads, a 24 MB file, kept out of git in `testdata/places/`); the tests of `auroraw-places` on the real
+boundaries are skipped without it, and everything else needs nothing of it.
 
 ## Ground rules
 

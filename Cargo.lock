@@ -230,6 +230,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "auroraw-places"
+version = "0.0.0"
+dependencies = [
+ "auroraw-testkit",
+ "fastrand",
+ "rusqlite",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "auroraw-plugin-api"
 version = "0.0.0"
 dependencies = [
