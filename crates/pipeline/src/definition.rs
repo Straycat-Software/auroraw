@@ -60,11 +60,36 @@ pub mod names {
         "working-linear",
         "display-referred",
     ];
-
-    /// The working space of definition v1: linear Rec.2020 primaries, D65 white (provisional until the
-    /// ProPhoto measurement, note 006 §5).
-    pub const WORKING_SPACE_V1: &str = "rec2020-linear-d65";
 }
+
+/// A working space: linear RGB with these primaries and this white, as CIE 1931 `xy` chromaticities.
+///
+/// The definition holds **the numbers, not a label**: the maths of the working space is a reason for a new
+/// version (note 006 §3.6), so the fingerprint must see it, and the matrices of the colour stages are derived
+/// from these chromaticities and not from a second copy of them (review of this definition).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WorkingSpace {
+    /// A name for reports; it is in the fingerprint with the numbers.
+    pub name: &'static str,
+    /// The red primary.
+    pub red: [f64; 2],
+    /// The green primary.
+    pub green: [f64; 2],
+    /// The blue primary.
+    pub blue: [f64; 2],
+    /// The white point.
+    pub white: [f64; 2],
+}
+
+/// Linear Rec.2020 primaries (ITU-R BT.2020) with the D65 white: the working space of definition v1,
+/// **provisional** until the ProPhoto measurement (note 006 §5).
+pub const REC2020_D65: WorkingSpace = WorkingSpace {
+    name: "rec2020-linear-d65",
+    red: [0.708, 0.292],
+    green: [0.170, 0.797],
+    blue: [0.131, 0.046],
+    white: [0.3127, 0.3290],
+};
 
 /// A state of the data that matters for whether an operation is correct (note 006 §3.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -162,9 +187,6 @@ pub struct Stage {
     pub input: DataSpace,
     /// The space the stage returns.
     pub output: DataSpace,
-    /// The space an operation of this stage reads and returns. It differs from `input` where a spine step
-    /// that changes the space runs first (the levels, in `raw-linear`).
-    pub operations_read: DataSpace,
     /// What the definition always does in this stage.
     pub spine: &'static [SpineStep],
     /// The built-in operations of this stage, in their **canonical order** (note 006 §3.4): their
@@ -172,13 +194,30 @@ pub struct Stage {
     pub operations: &'static [&'static str],
 }
 
+impl Stage {
+    /// The space an operation of this stage reads and returns, **derived from the spine** so that there is
+    /// one source of truth (review of this definition): where the stage changes the space and its spine
+    /// runs **before** the operations (the levels, in `raw-linear`), the operations read what the spine
+    /// returns; otherwise they read what the stage receives (the camera-to-working matrix and the output
+    /// transform run after the operations, which therefore still see the input space).
+    pub fn operations_read(&self) -> DataSpace {
+        let spine_changes_it_first = self.input != self.output
+            && self.spine.iter().any(|s| s.runs == Runs::BeforeOperations);
+        if spine_changes_it_first {
+            self.output
+        } else {
+            self.input
+        }
+    }
+}
+
 /// A pipeline definition: an immutable, versioned value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Definition {
     /// The version, which enters every recipe's hash (note 006 §3.6).
     pub version: u32,
     /// The working space, part of the definition: changing it is a new version.
-    pub working_space: &'static str,
+    pub working_space: WorkingSpace,
     /// The stages, in order.
     pub stages: &'static [Stage],
 }
@@ -192,7 +231,6 @@ const V1_STAGES: &[Stage] = &[
         id: names::RAW_LINEAR,
         input: DataSpace::SensorRaw,
         output: DataSpace::MosaicLinear,
-        operations_read: DataSpace::MosaicLinear,
         spine: &[spine("levels", Runs::BeforeOperations)],
         operations: &["auroraw.hot-pixels"],
     },
@@ -200,15 +238,15 @@ const V1_STAGES: &[Stage] = &[
         id: names::DEMOSAIC,
         input: DataSpace::MosaicLinear,
         output: DataSpace::CameraLinear,
-        operations_read: DataSpace::MosaicLinear,
-        spine: &[spine("demosaic", Runs::BeforeOperations)],
+        // The operations of this stage, none in M2, would be on the mosaic before the interpolation; the
+        // demosaic itself runs after them, so they read what the stage receives.
+        spine: &[spine("demosaic", Runs::AfterOperations)],
         operations: &[],
     },
     Stage {
         id: names::CAMERA_RGB,
         input: DataSpace::CameraLinear,
         output: DataSpace::CameraLinear,
-        operations_read: DataSpace::CameraLinear,
         spine: &[],
         operations: &["auroraw.noise-reduction"],
     },
@@ -216,7 +254,6 @@ const V1_STAGES: &[Stage] = &[
         id: names::INPUT_COLOUR,
         input: DataSpace::CameraLinear,
         output: DataSpace::WorkingLinear,
-        operations_read: DataSpace::CameraLinear,
         spine: &[spine("camera-to-working", Runs::AfterOperations)],
         operations: &["auroraw.white-balance", "auroraw.highlight-reconstruction"],
     },
@@ -224,7 +261,6 @@ const V1_STAGES: &[Stage] = &[
         id: names::SCENE_LINEAR,
         input: DataSpace::WorkingLinear,
         output: DataSpace::WorkingLinear,
-        operations_read: DataSpace::WorkingLinear,
         spine: &[],
         operations: &[
             "auroraw.exposure",
@@ -239,7 +275,6 @@ const V1_STAGES: &[Stage] = &[
         id: names::GEOMETRY,
         input: DataSpace::WorkingLinear,
         output: DataSpace::WorkingLinear,
-        operations_read: DataSpace::WorkingLinear,
         spine: &[spine("orientation-and-crop", Runs::BeforeOperations)],
         operations: &["auroraw.crop", "auroraw.straighten"],
     },
@@ -247,7 +282,6 @@ const V1_STAGES: &[Stage] = &[
         id: names::DETAIL,
         input: DataSpace::WorkingLinear,
         output: DataSpace::WorkingLinear,
-        operations_read: DataSpace::WorkingLinear,
         spine: &[],
         operations: &["auroraw.sharpening"],
     },
@@ -255,7 +289,6 @@ const V1_STAGES: &[Stage] = &[
         id: names::DISPLAY,
         input: DataSpace::WorkingLinear,
         output: DataSpace::DisplayReferred,
-        operations_read: DataSpace::WorkingLinear,
         spine: &[spine("output-transform", Runs::AfterOperations)],
         operations: &["auroraw.tone-map"],
     },
@@ -264,7 +297,7 @@ const V1_STAGES: &[Stage] = &[
 /// The definition v1 (note 006 §3.3): eight stages. **Not released**: see the module documentation.
 pub const V1: Definition = Definition {
     version: 1,
-    working_space: names::WORKING_SPACE_V1,
+    working_space: REC2020_D65,
     stages: V1_STAGES,
 };
 
@@ -309,13 +342,22 @@ impl Definition {
         let mut out = Vec::new();
         text(&mut out, "auroraw-pipeline-definition");
         out.extend_from_slice(&self.version.to_le_bytes());
-        text(&mut out, self.working_space);
+        text(&mut out, self.working_space.name);
+        for v in self
+            .working_space
+            .red
+            .iter()
+            .chain(&self.working_space.green)
+            .chain(&self.working_space.blue)
+            .chain(&self.working_space.white)
+        {
+            out.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
         out.extend_from_slice(&(self.stages.len() as u32).to_le_bytes());
         for stage in self.stages {
             text(&mut out, stage.id);
             text(&mut out, stage.input.name());
             text(&mut out, stage.output.name());
-            text(&mut out, stage.operations_read.name());
             out.extend_from_slice(&(stage.spine.len() as u32).to_le_bytes());
             for step in stage.spine {
                 text(&mut out, step.name);
@@ -483,15 +525,45 @@ mod tests {
 
     #[test]
     fn an_operation_reads_the_space_its_stage_delivers_to_it() {
-        // Operations read what the stage receives, except in `raw-linear`, where the levels (the spine,
-        // before the operations) turn counts into mosaic values first.
+        // Written from note 006 §3.3, stage by stage, and not derived by the rule under test: the levels run
+        // first in `raw-linear`, so its operations read mosaic values; the demosaic, the camera-to-working
+        // matrix and the output transform run after the operations of their stages, which read what the
+        // stage receives.
+        let expected = [
+            (names::RAW_LINEAR, DataSpace::MosaicLinear),
+            (names::DEMOSAIC, DataSpace::MosaicLinear),
+            (names::CAMERA_RGB, DataSpace::CameraLinear),
+            (names::INPUT_COLOUR, DataSpace::CameraLinear),
+            (names::SCENE_LINEAR, DataSpace::WorkingLinear),
+            (names::GEOMETRY, DataSpace::WorkingLinear),
+            (names::DETAIL, DataSpace::WorkingLinear),
+            (names::DISPLAY, DataSpace::WorkingLinear),
+        ];
+        for (id, space) in expected {
+            let stage = V1.stages[V1.stage_index(id).expect("a stage")];
+            assert_eq!(stage.operations_read(), space, "stage {id}");
+        }
+    }
+
+    #[test]
+    fn a_stage_never_contradicts_itself_about_its_operations() {
+        // The review's case: a spine step that runs first and changes the space cannot sit in a stage whose
+        // operations are said to read the space before it. With one derived value there is nothing to
+        // contradict; what is left to check is that the value is always one of the stage's two spaces.
         for stage in V1.stages {
-            let expected = if stage.id == names::RAW_LINEAR {
-                stage.output
-            } else {
-                stage.input
-            };
-            assert_eq!(stage.operations_read, expected, "stage {}", stage.id);
+            let read = stage.operations_read();
+            assert!(
+                read == stage.input || read == stage.output,
+                "stage {}",
+                stage.id
+            );
+            if read == stage.output && stage.input != stage.output {
+                assert!(
+                    stage.spine.iter().any(|s| s.runs == Runs::BeforeOperations),
+                    "stage {} reads its output but no spine step runs first",
+                    stage.id
+                );
+            }
         }
     }
 
@@ -567,11 +639,11 @@ mod tests {
         V1_STAGES[6],
         V1_STAGES[7],
     ];
-    const OTHER_SPACE: &[Stage] = &[
+    const OTHER_OUTPUT_SPACE: &[Stage] = &[
         V1_STAGES[0],
         V1_STAGES[1],
         Stage {
-            operations_read: DataSpace::WorkingLinear,
+            output: DataSpace::WorkingLinear,
             ..V1_STAGES[2]
         },
         V1_STAGES[3],
@@ -587,9 +659,32 @@ mod tests {
         let variants = [
             ("the version", Definition { version: 2, ..V1 }),
             (
-                "the working space",
+                "the working space's name",
                 Definition {
-                    working_space: "prophoto-linear-d50",
+                    working_space: WorkingSpace {
+                        name: "prophoto-linear-d50",
+                        ..REC2020_D65
+                    },
+                    ..V1
+                },
+            ),
+            (
+                "one chromaticity of the working space (the maths, with its name unchanged)",
+                Definition {
+                    working_space: WorkingSpace {
+                        red: [0.7081, 0.292],
+                        ..REC2020_D65
+                    },
+                    ..V1
+                },
+            ),
+            (
+                "the white point of the working space",
+                Definition {
+                    working_space: WorkingSpace {
+                        white: [0.3457, 0.3585],
+                        ..REC2020_D65
+                    },
                     ..V1
                 },
             ),
@@ -629,9 +724,9 @@ mod tests {
                 },
             ),
             (
-                "a space an operation reads",
+                "a space a stage returns",
                 Definition {
-                    stages: OTHER_SPACE,
+                    stages: OTHER_OUTPUT_SPACE,
                     ..V1
                 },
             ),
@@ -645,6 +740,38 @@ mod tests {
                 "two variants share a fingerprint: {what}"
             );
         }
+    }
+
+    /// A definition of one stage and one operation, small enough to read, whose fingerprint is pinned.
+    const TINY_STAGES: &[Stage] = &[Stage {
+        id: "only",
+        input: DataSpace::SensorRaw,
+        output: DataSpace::DisplayReferred,
+        spine: &[SpineStep {
+            name: "everything",
+            runs: Runs::AfterOperations,
+        }],
+        operations: &["tiny.op"],
+    }];
+    const TINY: Definition = Definition {
+        version: 1,
+        working_space: REC2020_D65,
+        stages: TINY_STAGES,
+    };
+
+    #[test]
+    fn the_encoding_itself_is_pinned_by_a_tiny_definition() {
+        // `verify_released` protects the definitions, and the pinned digest below protects the **encoding**
+        // that computes their fingerprints: if someone tidies `canonical_bytes`, every released fingerprint
+        // would change at once. If this test fails, the encoding changed: that is a decision, not a cleanup,
+        // since it invalidates `RELEASED`. Update the digest only together with that table. (It was pinned from
+        // the encoding as it stood when the review asked for it: it holds the encoding still, it does not prove
+        // it is the right one.)
+        assert_eq!(
+            TINY.fingerprint(),
+            "67fdb3fb2c31e93d07ac75ff4a382c40d1d37f38439922c4a7a58b7fb1328c1c",
+            "the canonical encoding of a definition changed"
+        );
     }
 
     #[test]

@@ -6,7 +6,11 @@
 //! A registry is **checked when it is loaded**, never silently repaired (design note 006 §3.4): a
 //! declaration that names no stage the definition has, that reads a data space its stage does not deliver,
 //! that constrains itself, that names an operation of another stage, or whose constraints cannot all hold
-//! with the canonical order, is refused with the reason, and the rest of the registry stays valid.
+//! with the canonical order, is **refused with the reason, and the rest of the registry stays valid**:
+//! [`OperationRegistry::load`] returns the registry of every declaration that was accepted together with
+//! the refusals, so that one plugin with a typo in its stage name does not leave the engine without a
+//! registry. **The built-in operations are never refused** (the definition owns them); a cycle is cut by
+//! refusing the plugin operations in it.
 //!
 //! **A stand-in for the declaration.** What an operation declares (its stage, its placement, its input data
 //! space, its versions) is layer 1 of D-142, in `plugin-api`, with work package 13. [`OperationInfo`] is the
@@ -18,6 +22,11 @@ use crate::definition::{DataSpace, Definition};
 use crate::recipe::OperationId;
 
 /// What the pipeline needs to know of an operation.
+///
+/// It says an operation **reads and returns one space** (`input_space`). That holds as long as the spine,
+/// and not an operation, changes the space; D-142 declares an input **and** an output space, so the real
+/// declaration keeps both and work package 13 validates that they are equal for an operation (the pipeline
+/// reads one of the two). The cost class is `develop`'s, not the pipeline's, and is absent here on purpose.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OperationInfo {
     /// The operation's identifier.
@@ -119,16 +128,38 @@ pub struct OperationRegistry {
     entries: BTreeMap<OperationId, Entry>,
 }
 
+/// The outcome of loading a registry: what was accepted, and why the rest was refused.
+#[derive(Debug, Clone)]
+pub struct Loaded {
+    /// Every built-in operation and every declaration that was not refused.
+    pub registry: OperationRegistry,
+    /// Why each refused declaration was refused. Empty when everything was accepted.
+    pub refused: Vec<RegistryError>,
+}
+
+impl Loaded {
+    /// The registry if nothing was refused, else every refusal: all or nothing, for a caller that wants it
+    /// (the engine at start-up uses [`Loaded::registry`] and reports [`Loaded::refused`] instead).
+    pub fn complete(self) -> Result<OperationRegistry, Vec<RegistryError>> {
+        if self.refused.is_empty() {
+            Ok(self.registry)
+        } else {
+            Err(self.refused)
+        }
+    }
+}
+
 impl OperationRegistry {
-    /// The built-in operations of `definition` (version 1 of each) and `external` declarations (a
-    /// plugin's), checked together.
+    /// The built-in operations of `definition` (version 1 of each) and the `external` declarations (a
+    /// plugin's) that are valid, with the reasons the others were refused.
     ///
-    /// Returns every problem found, so that one bad declaration does not hide another.
-    pub fn new(
-        definition: &'static Definition,
-        external: Vec<OperationInfo>,
-    ) -> Result<OperationRegistry, Vec<RegistryError>> {
-        let mut errors = Vec::new();
+    /// Every problem is reported, so that one bad declaration does not hide another, and **none of them
+    /// leaves the engine without a registry**. A built-in operation is never refused.
+    ///
+    /// **Duplicates**: the first declaration of an identifier is kept, and a later one (or a plugin
+    /// taking a built-in's identifier) is refused.
+    pub fn load(definition: &'static Definition, external: Vec<OperationInfo>) -> Loaded {
+        let mut refused = Vec::new();
         let mut entries: BTreeMap<OperationId, Entry> = BTreeMap::new();
 
         for (stage_index, stage) in definition.stages.iter().enumerate() {
@@ -138,7 +169,7 @@ impl OperationRegistry {
                     stage: stage.id.to_string(),
                     after: Vec::new(),
                     before: Vec::new(),
-                    input_space: stage.operations_read,
+                    input_space: stage.operations_read(),
                     allows_several: false,
                     versions: vec![1],
                 };
@@ -155,19 +186,19 @@ impl OperationRegistry {
 
         for info in external {
             if entries.contains_key(&info.id) {
-                errors.push(RegistryError::DuplicateId { operation: info.id });
+                refused.push(RegistryError::DuplicateId { operation: info.id });
                 continue;
             }
             let Some(stage_index) = definition.stage_index(&info.stage) else {
-                errors.push(RegistryError::UnknownStage {
+                refused.push(RegistryError::UnknownStage {
                     operation: info.id,
                     stage: info.stage,
                 });
                 continue;
             };
-            let expected = definition.stages[stage_index].operations_read;
+            let expected = definition.stages[stage_index].operations_read();
             if info.input_space != expected {
-                errors.push(RegistryError::WrongSpace {
+                refused.push(RegistryError::WrongSpace {
                     operation: info.id,
                     stage: info.stage,
                     declared: info.input_space,
@@ -186,49 +217,64 @@ impl OperationRegistry {
         }
 
         // Constraints: each names operations of its own stage, and not itself.
-        let mut refused = BTreeSet::new();
+        let mut cut = BTreeSet::new();
         for (id, entry) in &entries {
             for other_id in entry.info.after.iter().chain(&entry.info.before) {
                 if other_id == id {
-                    errors.push(RegistryError::SelfConstraint {
+                    refused.push(RegistryError::SelfConstraint {
                         operation: id.clone(),
                     });
-                    refused.insert(id.clone());
+                    cut.insert(id.clone());
                 } else if let Some(other) = entries.get(other_id)
                     && other.stage != entry.stage
                 {
-                    errors.push(RegistryError::ConstraintAcrossStages {
+                    refused.push(RegistryError::ConstraintAcrossStages {
                         operation: id.clone(),
                         stage: entry.info.stage.clone(),
                         other: other_id.clone(),
                         other_stage: other.info.stage.clone(),
                     });
-                    refused.insert(id.clone());
+                    cut.insert(id.clone());
                 }
             }
         }
-        for id in &refused {
+        for id in &cut {
             entries.remove(id);
         }
 
-        // Constraints that cannot all hold together with the canonical order.
+        // Constraints that cannot all hold together with the canonical order: the operations **in** a cycle
+        // (a strongly connected component), not what merely hangs off it. The plugin operations in it are
+        // refused; a built-in is part of the cycle but never leaves, the definition owning it.
         for (stage_index, stage) in definition.stages.iter().enumerate() {
-            if let Some(cycle) = find_cycle(&entries, stage_index) {
-                errors.push(RegistryError::ConstraintCycle {
+            for cycle in cycles(&entries, stage_index) {
+                for id in &cycle {
+                    if entries.get(id).is_some_and(|e| e.canonical_rank.is_none()) {
+                        entries.remove(id);
+                    }
+                }
+                refused.push(RegistryError::ConstraintCycle {
                     stage: stage.id.to_string(),
                     operations: cycle,
                 });
             }
         }
 
-        if errors.is_empty() {
-            Ok(OperationRegistry {
+        Loaded {
+            registry: OperationRegistry {
                 definition,
                 entries,
-            })
-        } else {
-            Err(errors)
+            },
+            refused,
         }
+    }
+
+    /// [`OperationRegistry::load`], all or nothing: the registry if no declaration was refused, else every
+    /// refusal.
+    pub fn new(
+        definition: &'static Definition,
+        external: Vec<OperationInfo>,
+    ) -> Result<OperationRegistry, Vec<RegistryError>> {
+        OperationRegistry::load(definition, external).complete()
     }
 
     /// The definition the registry was loaded against.
@@ -246,67 +292,103 @@ impl OperationRegistry {
     }
 }
 
-/// The operations of a stage that cannot be put in any order that respects the canonical order and
-/// every constraint, or `None` if there is an order. Kahn's algorithm: what is left when no operation is
-/// free of predecessors is the cycle (and what hangs off it).
-fn find_cycle(entries: &BTreeMap<OperationId, Entry>, stage: usize) -> Option<Vec<OperationId>> {
-    let members: Vec<&OperationId> = entries
+/// The cycles among the operations of a stage: every strongly connected component of more than one
+/// operation, in the graph of "must come before" made of the canonical order of the built-ins and every
+/// constraint (Tarjan's algorithm). A component holds the operations that are **in** a cycle, and not what
+/// merely hangs off one, which a topological sort cannot tell apart. Each is sorted, and they come in order.
+fn cycles(entries: &BTreeMap<OperationId, Entry>, stage: usize) -> Vec<Vec<OperationId>> {
+    let nodes: Vec<&OperationId> = entries
         .iter()
         .filter(|(_, e)| e.stage == stage)
         .map(|(id, _)| id)
         .collect();
-    // `edges` holds `(first, second)`: first must run before second.
-    let mut edges: BTreeSet<(&OperationId, &OperationId)> = BTreeSet::new();
-    let mut canonical: Vec<(usize, &OperationId)> = members
+    let index_of = |id: &OperationId| nodes.iter().position(|n| *n == id);
+    // `successors[a]` holds the operations that must come after `a`.
+    let mut successors: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];
+    let mut canonical: Vec<(usize, usize)> = nodes
         .iter()
-        .filter_map(|id| entries[*id].canonical_rank.map(|rank| (rank, *id)))
+        .enumerate()
+        .filter_map(|(i, id)| entries[*id].canonical_rank.map(|rank| (rank, i)))
         .collect();
-    canonical.sort();
+    canonical.sort_unstable();
     for pair in canonical.windows(2) {
-        edges.insert((pair[0].1, pair[1].1));
+        successors[pair[0].1].push(pair[1].1);
     }
-    for id in &members {
+    for (i, id) in nodes.iter().enumerate() {
         let info = &entries[*id].info;
-        for other in &info.after {
-            if let Some((key, _)) = entries
-                .get_key_value(other)
-                .filter(|(_, e)| e.stage == stage)
-            {
-                edges.insert((key, id));
+        for other in info.after.iter().filter_map(index_of) {
+            successors[other].push(i);
+        }
+        for other in info.before.iter().filter_map(index_of) {
+            successors[i].push(other);
+        }
+    }
+
+    struct Tarjan<'a> {
+        successors: &'a [Vec<usize>],
+        next: usize,
+        index: Vec<Option<usize>>,
+        low: Vec<usize>,
+        on_stack: Vec<bool>,
+        stack: Vec<usize>,
+        components: Vec<Vec<usize>>,
+    }
+    impl Tarjan<'_> {
+        fn visit(&mut self, v: usize) {
+            self.index[v] = Some(self.next);
+            self.low[v] = self.next;
+            self.next += 1;
+            self.stack.push(v);
+            self.on_stack[v] = true;
+            for &w in &self.successors[v] {
+                match self.index[w] {
+                    None => {
+                        self.visit(w);
+                        self.low[v] = self.low[v].min(self.low[w]);
+                    }
+                    Some(order) if self.on_stack[w] => self.low[v] = self.low[v].min(order),
+                    Some(_) => {}
+                }
+            }
+            if Some(self.low[v]) == self.index[v] {
+                let mut component = Vec::new();
+                while let Some(w) = self.stack.pop() {
+                    self.on_stack[w] = false;
+                    component.push(w);
+                    if w == v {
+                        break;
+                    }
+                }
+                self.components.push(component);
             }
         }
-        for other in &info.before {
-            if let Some((key, _)) = entries
-                .get_key_value(other)
-                .filter(|(_, e)| e.stage == stage)
-            {
-                edges.insert((id, key));
-            }
+    }
+    let mut tarjan = Tarjan {
+        successors: &successors,
+        next: 0,
+        index: vec![None; nodes.len()],
+        low: vec![0; nodes.len()],
+        on_stack: vec![false; nodes.len()],
+        stack: Vec::new(),
+        components: Vec::new(),
+    };
+    for v in 0..nodes.len() {
+        if tarjan.index[v].is_none() {
+            tarjan.visit(v);
         }
     }
-    let mut remaining: BTreeSet<&OperationId> = members.into_iter().collect();
-    loop {
-        let free: Vec<&OperationId> = remaining
-            .iter()
-            .copied()
-            .filter(|id| {
-                !edges
-                    .iter()
-                    .any(|(first, second)| second == id && remaining.contains(first))
-            })
-            .collect();
-        if free.is_empty() {
-            break;
-        }
-        for id in free {
-            remaining.remove(id);
-        }
-    }
-    if remaining.is_empty() {
-        None
-    } else {
-        Some(remaining.into_iter().cloned().collect())
-    }
+    let mut found: Vec<Vec<OperationId>> = tarjan
+        .components
+        .into_iter()
+        .filter(|c| c.len() > 1)
+        .map(|c| {
+            let mut ids: Vec<OperationId> = c.into_iter().map(|i| nodes[i].clone()).collect();
+            ids.sort();
+            ids
+        })
+        .collect();
+    found.sort();
+    found
 }
 
 #[cfg(test)]
@@ -497,5 +579,150 @@ mod tests {
         let errors =
             OperationRegistry::new(&V1, vec![bad_stage, bad_space, good]).expect_err("refused");
         assert_eq!(errors.len(), 2, "{errors:?}");
+    }
+
+    // ---- loading keeps what is valid: one bad declaration is not "no registry" ----
+
+    #[test]
+    fn one_bad_declaration_is_refused_and_the_rest_of_the_registry_loads() {
+        let bad = plugin("acme.typo", "scene-linaer", DataSpace::WorkingLinear);
+        let good = plugin("acme.dehaze", names::SCENE_LINEAR, DataSpace::WorkingLinear);
+        let loaded = OperationRegistry::load(&V1, vec![bad, good]);
+        assert_eq!(
+            loaded.refused,
+            vec![RegistryError::UnknownStage {
+                operation: OperationId::from("acme.typo"),
+                stage: "scene-linaer".to_string(),
+            }]
+        );
+        let registry = loaded.registry;
+        assert!(
+            registry.contains(&OperationId::from("acme.dehaze")),
+            "the good plugin loaded"
+        );
+        assert!(
+            registry.contains(&OperationId::from("auroraw.white-balance")),
+            "the built-ins loaded"
+        );
+        assert!(
+            !registry.contains(&OperationId::from("acme.typo")),
+            "the refused one did not"
+        );
+    }
+
+    #[test]
+    fn a_registry_with_nothing_refused_is_complete() {
+        let loaded = OperationRegistry::load(
+            &V1,
+            vec![plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear)],
+        );
+        assert!(loaded.refused.is_empty());
+        assert!(loaded.complete().is_ok());
+        let bad = OperationRegistry::load(
+            &V1,
+            vec![plugin("acme.x", "nowhere", DataSpace::WorkingLinear)],
+        );
+        assert_eq!(bad.complete().expect_err("something was refused").len(), 1);
+    }
+
+    #[test]
+    fn a_cycle_is_cut_by_refusing_the_plugin_operations_in_it_and_the_builtins_stay() {
+        // The case of the registry tests above: a plugin that must come before the balance and after the
+        // reconstruction. The cycle is white balance, reconstruction and the plugin; the plugin goes.
+        let mut cycle = plugin("acme.x", names::INPUT_COLOUR, DataSpace::CameraLinear);
+        cycle.before = ids(&["auroraw.white-balance"]);
+        cycle.after = ids(&["auroraw.highlight-reconstruction"]);
+        let fine = plugin("acme.fine", names::INPUT_COLOUR, DataSpace::CameraLinear);
+        let loaded = OperationRegistry::load(&V1, vec![cycle, fine]);
+        assert_eq!(loaded.refused.len(), 1, "{:?}", loaded.refused);
+        let registry = loaded.registry;
+        assert!(
+            !registry.contains(&OperationId::from("acme.x")),
+            "the plugin in the cycle was refused"
+        );
+        assert!(
+            registry.contains(&OperationId::from("auroraw.white-balance")),
+            "a built-in is never refused"
+        );
+        assert!(registry.contains(&OperationId::from("auroraw.highlight-reconstruction")));
+        assert!(
+            registry.contains(&OperationId::from("acme.fine")),
+            "an unrelated plugin of the same stage stays"
+        );
+    }
+
+    #[test]
+    fn the_cycle_names_the_operations_in_it_and_not_what_hangs_off_it() {
+        // A and B must each come before the other. C only asks to come after A: it is not in the cycle, and
+        // nothing is wrong with it once A is refused (the constraint is relative and optional).
+        let mut a = plugin("acme.a", names::DETAIL, DataSpace::WorkingLinear);
+        let mut b = plugin("acme.b", names::DETAIL, DataSpace::WorkingLinear);
+        let mut c = plugin("acme.c", names::DETAIL, DataSpace::WorkingLinear);
+        a.before = ids(&["acme.b"]);
+        b.before = ids(&["acme.a"]);
+        c.after = ids(&["acme.a"]);
+        let loaded = OperationRegistry::load(&V1, vec![a, b, c]);
+        assert_eq!(
+            loaded.refused,
+            vec![RegistryError::ConstraintCycle {
+                stage: names::DETAIL.to_string(),
+                operations: ids(&["acme.a", "acme.b"]),
+            }]
+        );
+        assert!(
+            loaded.registry.contains(&OperationId::from("acme.c")),
+            "what hangs off a cycle is not in it"
+        );
+        assert!(!loaded.registry.contains(&OperationId::from("acme.a")));
+        assert!(!loaded.registry.contains(&OperationId::from("acme.b")));
+    }
+
+    #[test]
+    fn two_separate_cycles_in_a_stage_are_both_reported() {
+        let mk = |id: &str, before: &str| {
+            let mut p = plugin(id, names::SCENE_LINEAR, DataSpace::WorkingLinear);
+            p.before = ids(&[before]);
+            p
+        };
+        let loaded = OperationRegistry::load(
+            &V1,
+            vec![
+                mk("acme.a", "acme.b"),
+                mk("acme.b", "acme.a"),
+                mk("acme.c", "acme.d"),
+                mk("acme.d", "acme.c"),
+            ],
+        );
+        let cycles: Vec<_> = loaded
+            .refused
+            .iter()
+            .filter_map(|e| match e {
+                RegistryError::ConstraintCycle { operations, .. } => Some(operations.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            cycles,
+            vec![ids(&["acme.a", "acme.b"]), ids(&["acme.c", "acme.d"])]
+        );
+    }
+
+    #[test]
+    fn of_two_declarations_of_one_identifier_the_first_is_kept() {
+        let first = plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear);
+        let mut second = plugin("acme.x", names::SCENE_LINEAR, DataSpace::WorkingLinear);
+        second.versions = vec![9];
+        let loaded = OperationRegistry::load(&V1, vec![first, second]);
+        assert_eq!(
+            loaded.refused,
+            vec![RegistryError::DuplicateId {
+                operation: OperationId::from("acme.x")
+            }]
+        );
+        let kept = loaded
+            .registry
+            .get(&OperationId::from("acme.x"))
+            .expect("the first is kept");
+        assert_eq!(kept.info.stage, names::DETAIL);
     }
 }

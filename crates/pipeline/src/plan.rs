@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! The cache key of a stage, and what a change reruns (design note 005 §2.6, note 006 §3.4).
 //!
-//! The output of stage *n* is cached under **the hash of the recipe up to it**: the definition version, the
-//! stage, and every operation that runs in stages up to *n*, in order, with its identifier, its version and
-//! its typed parameters in their canonical encoding. So a change reruns **its stage and every later one**,
+//! The output of stage *n* is cached under **the hash of the recipe up to it**: the definition version, and
+//! for every stage up to *n* its identifier followed by the operations that run in it, in order, each with
+//! its identifier, its version and its typed parameters in their canonical encoding. The stage identifiers
+//! are in the stream so that it encodes the **partition**: which operation ran in which stage. So a change reruns **its stage and every later one**,
 //! from the cache of the one before, and **nothing earlier**: the earlier keys do not contain the changed
 //! operation. That is the rule of dependence made mechanical: an operation depends only on its own
 //! parameters, on the operations before it, and on the image (note 006 §3.4).
@@ -37,19 +38,23 @@ pub fn stage_keys(recipe: &ValidRecipe) -> Result<Vec<StageKey>, EncodeError> {
     running.update(&definition.version.to_le_bytes());
     let mut keys = Vec::with_capacity(definition.stages.len());
     for (index, stage) in definition.stages.iter().enumerate() {
+        // The stage's identifier opens its operations **in the running hash itself**, not only in the clone
+        // that is finalised: the byte stream encodes which operation ran in which stage. Without it, the
+        // same operations in the same order but in another partition (a plugin that moves from `camera-rgb`
+        // to `input-colour` without bumping its `op_version`) would give the later stages the same keys
+        // though the operation ran in another pass. `develop` stores this hash as the proof of determinism
+        // (D-140), so the byte stream is a contract.
+        running.update(b"stage\0");
+        running.update(&(stage.id.len() as u32).to_le_bytes());
+        running.update(stage.id.as_bytes());
         for op in recipe.active().iter().filter(|op| op.stage == index) {
             let mut bytes = Vec::new();
             op.instance.encode(&mut bytes)?;
             running.update(&bytes);
         }
-        // The stage's own identifier is mixed in after the operations, so that two stages with the same
-        // operations up to them (a stage with none of its own) still have different keys.
-        let mut key = running.clone();
-        key.update(&(stage.id.len() as u32).to_le_bytes());
-        key.update(stage.id.as_bytes());
         keys.push(StageKey {
             stage: stage.id,
-            hash: *key.finalize().as_bytes(),
+            hash: *running.clone().finalize().as_bytes(),
         });
     }
     Ok(keys)
@@ -322,6 +327,53 @@ mod tests {
                 "stage {} has the same key under two definition versions",
                 a.stage
             );
+        }
+    }
+
+    #[test]
+    fn the_same_operations_in_another_partition_give_other_keys_from_where_they_differ() {
+        // A plugin declared in `camera-rgb` by one registry and in `input-colour` by another: the recipe is
+        // the same and both are legal, but the operation ran in another pass. The review's scenario: the
+        // keys of every stage from the first that differs must differ, not only `camera-rgb`'s.
+        use crate::definition::DataSpace;
+        use crate::registry::OperationInfo;
+        let declared_in = |stage: &str| {
+            OperationRegistry::new(
+                &V1,
+                vec![OperationInfo {
+                    id: "acme.x".into(),
+                    stage: stage.to_string(),
+                    after: vec![],
+                    before: vec![],
+                    input_space: DataSpace::CameraLinear,
+                    allows_several: false,
+                    versions: vec![1],
+                }],
+            )
+            .expect("valid")
+        };
+        let r = recipe(&[
+            ("auroraw.noise-reduction", 0.1),
+            ("acme.x", 0.2),
+            ("auroraw.white-balance", 0.3),
+        ]);
+        let key_of = |registry: &OperationRegistry| {
+            stage_keys(&validate(registry, &r).expect("valid")).expect("encodes")
+        };
+        let (early, late) = (
+            key_of(&declared_in(names::CAMERA_RGB)),
+            key_of(&declared_in(names::INPUT_COLOUR)),
+        );
+        for (a, b) in early.iter().zip(&late) {
+            match a.stage {
+                names::RAW_LINEAR | names::DEMOSAIC => {
+                    assert_eq!(a.hash, b.hash, "{} is before the operation", a.stage)
+                }
+                stage => assert_ne!(
+                    a.hash, b.hash,
+                    "stage {stage} has one key whichever stage the operation ran in"
+                ),
+            }
         }
     }
 

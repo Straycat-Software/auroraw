@@ -21,6 +21,15 @@
 //!
 //! Legality is not placement: a recipe in which an operation without constraints sits before a built-in is
 //! legal, and `develop` does not produce it (an unconstrained plugin goes at the end of its stage).
+//!
+//! **Parameters are not checked here.** A recipe with three floats for a two-parameter operation is valid
+//! as far as this module goes, and the only guard on a parameter is that `NaN` has no canonical encoding,
+//! at hashing. Checking a value against the type, the limits and the count a declaration gives needs
+//! `ParamSpec`, which comes with work package 13 (D-142, layer 1): that is where the check will live.
+//!
+//! **An operation that may appear several times** (`allows_several`): a constraint is checked against
+//! **every** copy of the operation it names, so `after: [X]` needs every copy of `X` before it and
+//! `before: [X]` every copy after.
 
 use std::collections::BTreeMap;
 
@@ -269,18 +278,21 @@ pub fn validate(
         }
     }
 
-    // The constraints of the declarations, between operations that are both there.
-    let position: BTreeMap<&OperationId, usize> = active
-        .iter()
-        .enumerate()
-        .map(|(i, op)| (&op.instance.operation, i))
-        .collect();
+    // The constraints of the declarations, between operations that are both there: against every copy of
+    // the operation a constraint names.
+    let mut positions: BTreeMap<&OperationId, Vec<usize>> = BTreeMap::new();
+    for (i, op) in active.iter().enumerate() {
+        positions.entry(&op.instance.operation).or_default().push(i);
+    }
     for (here, op) in active.iter().enumerate() {
         let Some(entry) = registry.get(&op.instance.operation) else {
             continue;
         };
         for other in &entry.info.after {
-            if position.get(other).is_some_and(|&there| there > here) {
+            if positions
+                .get(other)
+                .is_some_and(|copies| copies.iter().any(|&there| there > here))
+            {
                 errors.push(RecipeError::ConstraintViolated {
                     operation: op.instance.operation.clone(),
                     constraint: Constraint::After,
@@ -289,7 +301,10 @@ pub fn validate(
             }
         }
         for other in &entry.info.before {
-            if position.get(other).is_some_and(|&there| there < here) {
+            if positions
+                .get(other)
+                .is_some_and(|copies| copies.iter().any(|&there| there < here))
+            {
                 errors.push(RecipeError::ConstraintViolated {
                     operation: op.instance.operation.clone(),
                     constraint: Constraint::Before,
@@ -566,6 +581,62 @@ mod tests {
         ));
         // The named operations absent: nothing to be relative to, so nothing fails.
         assert!(validate(&registry, &recipe(&["acme.x"])).is_ok());
+    }
+
+    #[test]
+    fn a_constraint_is_checked_against_every_copy_of_an_operation_that_may_appear_several_times() {
+        let mut grain = plugin(
+            "acme.grain",
+            names::DETAIL,
+            DataSpace::WorkingLinear,
+            &[],
+            &[],
+        );
+        grain.allows_several = true;
+        let after_all = plugin(
+            "acme.y",
+            names::DETAIL,
+            DataSpace::WorkingLinear,
+            &["acme.grain"],
+            &[],
+        );
+        let before_all = plugin(
+            "acme.z",
+            names::DETAIL,
+            DataSpace::WorkingLinear,
+            &[],
+            &["acme.grain"],
+        );
+        let registry =
+            OperationRegistry::new(&V1, vec![grain, after_all, before_all]).expect("valid");
+
+        // `after`: every copy before it. [grain, y, grain] has one after it: refused. (For `after` checking
+        // the last copy is the same as checking every one, since the last is the latest.)
+        assert!(validate(&registry, &recipe(&["acme.grain", "acme.grain", "acme.y"])).is_ok());
+        let errors = validate(&registry, &recipe(&["acme.grain", "acme.y", "acme.grain"]))
+            .expect_err("refused");
+        assert_eq!(
+            errors,
+            vec![RecipeError::ConstraintViolated {
+                operation: OperationId::from("acme.y"),
+                constraint: Constraint::After,
+                other: OperationId::from("acme.grain"),
+            }]
+        );
+
+        // `before`: every copy after it. [grain, z, grain] has one before it: refused. Here the first copy
+        // is the one that decides, and a check against the last copy alone would have let this through.
+        assert!(validate(&registry, &recipe(&["acme.z", "acme.grain", "acme.grain"])).is_ok());
+        let errors = validate(&registry, &recipe(&["acme.grain", "acme.z", "acme.grain"]))
+            .expect_err("refused");
+        assert_eq!(
+            errors,
+            vec![RecipeError::ConstraintViolated {
+                operation: OperationId::from("acme.z"),
+                constraint: Constraint::Before,
+                other: OperationId::from("acme.grain"),
+            }]
+        );
     }
 
     #[test]
