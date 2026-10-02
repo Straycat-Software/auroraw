@@ -76,7 +76,15 @@ Five rules, each with its reason:
    declaration (a missing key takes its default; a key the declaration does not know is kept in the
    file and not rendered). The value is `plugin-api`'s `ParamValue`, which already serialises with its
    kind (`{"float":0.7}`, `{"colour":[1,0.5,0]}`), so a parameter of a plugin that is gone is still
-   exactly what it was: an integer stays an integer, an enum an enum.
+   exactly what it was: an integer stays an integer, an enum an enum. **An instance is stored with
+   every parameter its declaration had when it was written, defaults included**, for the reason of
+   rule 4: a default that a later release changes cannot move an edit that was saved. A parameter added
+   later is absent from an old instance and takes its declared default, which a new optional parameter
+   makes neutral. **A stored value that no longer fits its declaration** (the kind changed, or the value
+   is outside limits that an update tightened) **makes the instance inert**, marked "stored value no
+   longer valid for this version" and kept as it is: `develop` does not clamp, since clamping rewrites
+   an edit nobody made. The pipeline's own check of a recipe's values against the declaration (Charlie's
+   next slice of WP14) is the second line.
 3. **The order used is stored, and an operation is placed once.** The order comes from the
    declarations (note 006 §3.4), and a plugin's update may change its constraints. If the order were
    computed at every open, an old edit could render in another order after an update. So the sidecar
@@ -145,7 +153,7 @@ The state in the XMP is **typed in its structure and compact in its values** (th
 <aur:PipelineSchema>1</aur:PipelineSchema>
 <aur:DefinitionVersion>1</aur:DefinitionVersion>
 <aur:BaseLook>neutral</aur:BaseLook>
-<aur:RecipeDigest>9f2c…(64 hex)</aur:RecipeDigest>   <!-- the pipeline's hash of the recipe, note 005 §2.2 -->
+<aur:StateDigest>9f2c…(64 hex)</aur:StateDigest>     <!-- the digest of the keyed state, §4.4 -->
 <aur:HistoryCount>14</aur:HistoryCount>              <!-- lines of the history file that are real -->
 <aur:HistoryCursor>12</aur:HistoryCursor>            <!-- steps applied; the others can be redone -->
 <aur:Operations><rdf:Seq>
@@ -191,7 +199,7 @@ an ordinary edit.
   the keys it changed with their value before and after; `before` absent means the instance was added
   (`after` is then the whole instance), `after` absent means it was removed. `enabled` is a field
   like the others. A step is reversible by reading it the other way, as in D-096, and **no step
-  stores a whole recipe**. `digest` is the pipeline's hash of the recipe **after** the step.
+  stores a whole recipe**. `digest` is the state digest (§4.4) **after** the step.
 - A line, a header or a change may carry **fields this version does not know**; they are kept when
   the file is rewritten (`serde` `flatten` into a map). An unknown *kind* of change makes the step
   unreadable and the history **read-only from there** (§8).
@@ -214,7 +222,7 @@ the same promise the database has. On opening a version in Develop:
 | --- | --- | --- |
 | The file has more lines than `HistoryCount` | A crash between 1 and 2 | The extra lines are ignored, and removed at the next write. Nothing was lost that the person had been shown. |
 | `HistoryCount` is larger than the file | The history file was damaged or lost | The state is kept; the history **restarts** from it, empty, and the person is told. The XMP is not touched. |
-| The step at the cursor has a `digest` that is not `RecipeDigest` | One of the two files was edited by something else | The state is kept; the history is **set aside** (renamed `….history.jsonl.set-aside`, never deleted) and a new one starts from the state. |
+| The step at the cursor has a `digest` that is not `StateDigest` | One of the two files was edited by something else | The state is kept; the history is **set aside** (renamed `….history.jsonl.set-aside`, never deleted) and a new one starts from the state. |
 | The history file is absent and `HistoryCount` is 0 | A version with no step | Normal. |
 
 The cost of an edit is an append and a small atomic write: well under a frame, and the render does not
@@ -225,6 +233,34 @@ the gesture in progress and nothing before it.
 the development. It does not parse it: it sends the coordinator its intent (D-126) and the
 coordinator rewrites the file **with the development carried over as it is** (`extra`). All writers
 of a version sidecar are the coordinator.
+
+### 4.4 The state digest [proposed]
+
+`StateDigest`, the `digest` of every step, and the key of the main version's thumbnail are one
+function of **the state as stored**, not of the recipe the pipeline receives. The pipeline's recipe is
+positional, so its hash is a function of the state **and the declarations**: an Auroraw update that
+adds an optional parameter to a built-in, a plugin update, or a declaration that reorders its
+parameters would change every recomputed digest, and §4.3 would set every user's history aside as
+"edited by something else". So the digest is a `blake3` over:
+
+- a **version tag** of the digest itself (so that its definition can change without confusion), then
+  the **definition version**;
+- for each instance, **in the stored order**: the operation identifier, the `op_version`, `enabled`,
+  and the stored `(key, value)` pairs **sorted by key**, each value through the pipeline's canonical
+  encoding (`recipe::encode_param`: the bit pattern, `-0.0` as `+0.0`, NaN refused).
+
+It does **not** cover the plugin's release (`PluginVersion` is provenance), the declarations, or the
+positional list. `enabled` **is** in it, though the pipeline's stage keys leave a disabled instance
+out (right for a cache, wrong for "did the state change"). The pipeline exposes it as a function of a
+small keyed struct, with no registry; its bytes are a **persisted contract** (like the stage keys'
+proof of determinism, D-140): a golden test holds them, and changing what it covers is a new tag. A
+digest with a tag this build does not know is not checked, the history is kept, and the next write
+recomputes it. The thumbnail's key is the digest **and the source image's identity**, which is the
+catalogue's.
+
+If the pipeline's recipe later becomes keyed itself (resolved against the declarations by the pipeline,
+defaults filled there), its hash and this digest can be one function. The sidecar does not change
+either way, since it already stores keys.
 
 ## 5. The history and the undo [proposed]
 
@@ -317,7 +353,7 @@ for the JSON Lines); the coordinator is the only writer.
 | `Snapshot`, `RestoreSnapshot`, `DeleteSnapshot` | §6 | `RestoreSnapshot` by `UndoDevelopment`; the others by nothing |
 | `UndoDevelopment`, `RedoDevelopment`, `CompactHistory` | §5 | `CompactHistory` by nothing |
 
-Events: `VersionsChanged { photo }`, `DevelopmentChanged { version, step, recipe_digest }` (the render
+Events: `VersionsChanged { photo }`, `DevelopmentChanged { version, step, state_digest }` (the render
 service of WP18 listens to the second, and renders from `Develop::recipe(version)`), and
 `HistoryChanged { version }` for the interface's Edit menu.
 
@@ -338,6 +374,7 @@ never silently migrates a workspace file to an older format. For the development
 | **A plugin is absent** | Its instances are in the recipe as `enabled: false` and marked in the interface ("the plugin X is missing"). Other operations render and can be edited. | Its parameters, byte for byte, and its place. When the plugin returns, the person's own `enabled` applies again. |
 | **A stored `op_version` is higher than the plugin knows** (a file from a newer Auroraw) | The same as an absent plugin, marked "needs a newer X". | The same. |
 | **A stored `op_version` is one the plugin `also_reads`** | Rendered by the plugin, which interprets the old values. The instance is **not rewritten** until the person edits it. | The old version, until an edit. |
+| **A stored value that no longer fits its declaration** (kind changed, outside tightened limits) | The instance is **inert**, marked "stored value no longer valid for this version"; the rest renders. `develop` checks with `ParamKind::check` before it builds the recipe. | The value, as it is: never clamped. |
 | **A parameter key the declaration does not know** | Not rendered, not shown. | In the file. |
 | **A definition version this build does not have** (a newer file) | The version opens **read-only for the development**: it is shown with its metadata and its last thumbnail, not rendered, not edited. | Everything. |
 | **A newer `PipelineSchema`** | The same: read-only for the development, the metadata still works (that is what a schema of its own is for, §9). | Everything. |
@@ -365,9 +402,9 @@ record `op_version` per instance, which it does.
   (kept), a file with a development and a history, one with a missing plugin, and one from "the
   future" (an unknown field, an unknown kind of change, a higher definition version, a higher
   `PipelineSchema`), which an M1-style edit of a rating must leave intact.
-- **The catalogue** gains, on `version`, the definition version and the **recipe digest**. The
-  digest is what the main version's thumbnail is keyed by (a thumbnail is stale when the digest
-  changes) and what makes a rebuild comparable. No history, no snapshot and no operation is indexed:
+- **The catalogue** gains, on `version`, the definition version and the **state digest**. The
+  digest, with the identity of the source image (the catalogue's), is what the main version's thumbnail
+  is keyed by (a thumbnail is stale when the digest changes) and what makes a rebuild comparable. No history, no snapshot and no operation is indexed:
   a rebuild reads the XMP and not the history file. The migration of the catalogue is a rebuild, as
   always (architecture §5.5).
 - **The grid** shows the main version's thumbnail: a developed photo's is a render, so it waits on
@@ -397,6 +434,7 @@ work package:
 | --- | --- |
 | A state written and read back is the same state and the same digest, including **every bit of every float** | Round trip, and a property test on random `f64` bit patterns |
 | The bytes are canonical: the same state, the same file; an unchanged file is not rewritten | A test, as for the other sidecars |
+| **The state digest does not move** when a declaration gains an optional parameter, reorders its parameters, or the plugin's release changes; it moves when a value, an `enabled`, the order or the definition changes | A golden of its bytes, and a test that rebuilds the recipe under a changed declaration |
 | A process killed at each point of §4.3 reopens to the state before or after the edit, never in between, with a consistent history | A test that stops the coordinator after step 1, and after step 2; and WP17's scripted CLI session that kills the process |
 | What a newer file contains is kept when an older build edits something else in it | The "future" fixture of §9, edited and compared |
 | A missing plugin opens disabled, marked, with its values intact; the plugin's return restores it | WP17's "done when" |
@@ -412,7 +450,7 @@ work package:
 | --- | --- | --- |
 | `crates/format`, `sidecar::version` and a new `history` module | The development part, the JSON Lines, the future fixtures, the fuzz target | Alice (WP17) |
 | New crate `develop` | The pure model of §7; depends on `plugin-api`, `pipeline` (the `Recipe`, the definition, the registry) and `types`; `xtask`'s table says so | Alice (WP17) |
-| `crates/pipeline` | Exposes the recipe digest as a function `develop` and the catalogue can call (it is the canonical encoding of note 005 §2.2, already there) | Charlie |
+| `crates/pipeline` | Exposes the **state digest** of §4.4 as a function of a small keyed struct (version tag, golden); checks a recipe's values against the declaration (`OperationInfo` gets the `ParamSpec`s) | Charlie |
 | `crates/engine` | The commands and events of §7 | Alice |
 | `crates/catalogue` | Two columns on `version`, rebuilt | Alice |
 | The remove job and `DeleteVersion` | Move **both** files of a version to `removed/` (D-091) | Alice |
@@ -431,7 +469,7 @@ work package:
    each named in the Edit menu. If you would rather have one, it is a larger change (one history that
    holds both kinds of step) that I would put in a note of its own.
 
-**For Charlie**: the digest function, and the mapping of §3 rule 2 (by key to the recipe's position).
+**For Charlie**: the digest function (§4.4), the check of values (§3 rule 2), and, if he judges it right before WP15, a keyed `Recipe`; the sidecar does not depend on it.
 **For Bob**: §5.3 and the marking of an inert operation (§8). **For Django**: the table of §11.
 
 **Not settled here**: what happens to an instance at an older `op_version` when it is edited (§8; a
