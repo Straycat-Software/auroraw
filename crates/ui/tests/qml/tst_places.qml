@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls
 import QtTest
 import org.auroraw.ui
 
@@ -278,6 +279,133 @@ AppTestCase {
         dialog.close()
         undoAll("IMG_0007", "country")
         compare(field("IMG_0007", "country"), "")
+    }
+
+    function test_the_place_menu_of_the_filter_bar_follows_a_run_and_filters_the_grid() {
+        const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
+        const menu = app.library.placeMenu
+        verify(menu.available && menu.visible, "the grid answers for the engine: the menu is in the bar")
+        // The machine's one photo with a place is `IMG_0004`, whose city a person typed (no country): it is under "(no country)",
+        // and it alone enables the button.
+        tryVerify(() => menu.facets.placed === 1)
+        verify(menu.button.enabled)
+        compare(menu.facets.countries.length, 0)
+        compare(menu.facets.noCountry.count, 1)
+        compare(menu.facets.noCountry.children.map(node => node.label), ["Mine"])
+        // A run gives six photos a place. The photos in view are the same, only their places changed: the menu is told.
+        selectOnly(...six)
+        const dialog = openDialog()
+        runFind(dialog)
+        dialog.close()
+        tryVerify(() => menu.facets.placed === 7, 5000, "the tree was read again after the run")
+        compare(app.photos.count, 12)
+        // The tree as the engine counts it: Aland 6, in its regions West 4 and East 2, the cities under them; and the photo
+        // with no country, still apart.
+        compare(menu.facets.noCountry.count, 1)
+        compare(menu.facets.countries.length, 1)
+        const aland = menu.facets.countries[0]
+        compare(aland.label, "Aland")
+        compare(aland.count, 6)
+        compare(aland.children.map(node => node.label + " " + node.count).sort(), ["East 2", "West 4"])
+        const west = aland.children.find(node => node.label === "West")
+        compare(west.children.map(node => node.label + " " + node.count), ["Westville 4"])
+        // Choosing West lists its four photos, and the tree stays one to move around in: East is still there. A new filter is a
+        // new list: the six photos of the run were selected, and nothing of the old list stays selected (Django's review of #90).
+        compare(app.photos.selectedCount, 6)
+        app.photos.setPlaceFilter(JSON.stringify(west.filter))
+        tryCompare(app.photos, "count", 4)
+        tryCompare(app.photos, "selectedCount", 0, 5000, "a new place filter clears the selection, as the other filters do")
+        compare(JSON.parse(app.photos.placeFilter), west.filter, "the filter in force is what was given back")
+        compare(menu.choiceText, "West")
+        verify(menu.button.highlighted)
+        // The open menu, as the manual draws it: the path to the choice open, the photos with no country after the countries.
+        mouseClick(menu.button)
+        tryVerify(() => menu.popup.opened)
+        tryVerify(() => menu.list.itemAtIndex(0) !== null)
+        drawn(menu.list.itemAtIndex(0))
+        snapshot("place-menu")
+        menu.popup.close()
+        tryVerify(() => !menu.popup.opened)
+        // (The tree is read again now rather than after the menu's pause: what is asked is that the counts leave the place
+        // filter out.)
+        menu.refresh()
+        compare(menu.facets.countries[0].children.length, 2, "the counts leave the place filter out: East is still there")
+        compare(menu.facets.placed, 7)
+        // A text that says nothing lifts it, and so does an empty one.
+        app.photos.setPlaceFilter("not a filter")
+        tryCompare(app.photos, "count", 12)
+        compare(app.photos.placeFilter, "")
+        app.photos.setPlaceFilter(JSON.stringify(west.filter))
+        tryCompare(app.photos, "count", 4)
+        app.photos.setPlaceFilter("")
+        tryCompare(app.photos, "count", 12)
+        compare(menu.choiceText, "Any place")
+        // "(no country)": the photo whose country is not there, by the engine's filter given back untouched.
+        app.photos.setPlaceFilter(JSON.stringify(menu.facets.noCountry.filter))
+        tryCompare(app.photos, "count", 1)
+        compare(menu.choiceText, "(no country)")
+        app.photos.setPlaceFilter(JSON.stringify(menu.facets.noCountry.children[0].filter))
+        tryCompare(app.photos, "count", 1)
+        compare(menu.choicePath, "(no country), Mine")
+        app.photos.setPlaceFilter("")
+        tryCompare(app.photos, "count", 12)
+        // Undo takes the places away from the photos in view, which are the same: the menu is told that too. What a person
+        // typed is not part of that step, so the photo with no country stays.
+        undoAll("IMG_0000", "country")
+        compare(field("IMG_0000", "country"), "")
+        tryVerify(() => menu.facets.placed === 1, 5000, "the tree was read again after Undo")
+        compare(menu.facets.countries.length, 0)
+    }
+
+    // "The counts are those of the photos the *other* filters list" (the manual): a photo of the West is rejected, the default
+    // filter lists the photos that are not rejected, and the tree counts those (a tree made with an empty filter would say 4).
+    function test_the_trees_counts_are_those_of_the_other_filters() {
+        const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
+        const menu = app.library.placeMenu
+        selectOnly(...six)
+        const dialog = openDialog()
+        runFind(dialog)
+        dialog.close()
+        const westCount = () => {
+            const aland = menu.facets.countries.length > 0 ? menu.facets.countries[0] : null
+            const west = aland ? aland.children.find(node => node.label === "West") : null
+            return west ? west.count : undefined
+        }
+        tryVerify(() => westCount() === 4, 5000, "the tree has the four photos of the West")
+        selectOnly("IMG_0000")
+        compare(app.photos.flagSelection("reject"), 1)
+        tryVerify(() => westCount() === 3, 5000, "the tree counts the photos the other filters list: the rejected one is not")
+        // And with another flag filter than the default (a tree made with the default filter would still say 3): only the
+        // rejected photos are listed, and the tree counts those.
+        app.photos.filterFlags(3)
+        tryCompare(app.photos, "count", 1)
+        tryVerify(() => westCount() === 1, 5000, "the tree counts the rejected photos when only those are listed")
+        app.photos.filterFlags(0)
+        tryCompare(app.photos, "count", 11)
+        tryVerify(() => westCount() === 3, 5000, "and the other photos again when the filter is lifted")
+        undoAll("IMG_0000", "country")
+        compare(field("IMG_0000", "country"), "")
+    }
+
+    function test_the_no_country_row_is_said_in_the_interfaces_language() {
+        const menu = app.library.placeMenu
+        tryVerify(() => menu.facets.placed === 1)
+        tryVerify(() => menu.noCountry !== null && menu.noCountry.label === "(no country)")
+        app.launcher.chooseLanguage("fr")
+        tryVerify(() => menu.noCountry !== null && menu.noCountry.label === "(sans pays)", 5000, "the row is said in French")
+        app.photos.setPlaceFilter(JSON.stringify(menu.facets.noCountry.filter))
+        tryCompare(app.photos, "count", 1)
+        tryVerify(() => menu.choiceText === "(sans pays)")
+        app.photos.setPlaceFilter("")
+        tryCompare(app.photos, "count", 12)
+    }
+
+    function test_the_places_filled_in_a_catalogue_made_before_they_were_kept_reach_the_menu() {
+        const told = createTemporaryQmlObject('import QtTest; SignalSpy { }', app)
+        told.target = app.photos
+        told.signalName = "placesChanged"
+        Bus.placeColumnsFilled()
+        compare(told.count, 1, "the grid says it")
     }
 
     function test_the_progress_says_how_far_it_is() {

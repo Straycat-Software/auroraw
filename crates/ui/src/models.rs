@@ -40,6 +40,9 @@ pub mod qobject {
         #[qproperty(QString, keyword_filter, cxx_name = "keywordFilter")]
         #[qproperty(QString, collection_filter, cxx_name = "collectionFilter")]
         #[qproperty(QString, label_filter, cxx_name = "labelFilter")]
+        // (Read-only for QML, which sets it through `setPlaceFilter`, the place menu's contract: a writable property
+        // would have a setter of the same name.)
+        #[qproperty(QString, place_filter, cxx_name = "placeFilter", READ, NOTIFY)]
         #[qproperty(i32, total)]
         #[qproperty(i32, series_count, cxx_name = "seriesCount")]
         #[qproperty(i32, mark_serial, cxx_name = "markSerial")]
@@ -215,6 +218,27 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "filterLabel"]
         fn filter_label(self: Pin<&mut PhotoGrid>, name: &QString);
+
+        /// The tree of places the photos in view are in, with the number of photos at each node, as the JSON text the
+        /// place menu of the filter bar reads (`{ "placed": N, "countries": [Node] }`, design note 008 §5, D-151):
+        /// the engine's `Catalogue::place_facets`, which leaves the place filter's own place out so that the tree
+        /// stays one to move around in while a place is chosen.
+        #[qinvokable]
+        #[cxx_name = "placeFacets"]
+        fn place_facets(self: &PhotoGrid) -> QString;
+
+        /// Puts a place filter in force: the `filter` of a node of the tree, as the JSON text the menu gives back (an
+        /// empty or unreadable text lifts it). The other filters stay; nothing is selected any more.
+        #[qinvokable]
+        #[cxx_name = "setPlaceFilter"]
+        fn set_place_filter_text(self: Pin<&mut PhotoGrid>, text: &QString);
+
+        /// The place fields of photos in view may have changed without the photos in view changing (a run of place
+        /// names, a hand-typed city, Undo and Redo of either): the place menu reads its tree again, once things have
+        /// settled. One for each photo changed; the menu's pause makes a run of them one reading.
+        #[qsignal]
+        #[cxx_name = "placesChanged"]
+        fn places_changed(self: Pin<&mut PhotoGrid>);
 
         /// Flags the selection as one action: `pick`, `reject` (the flag is cleared instead when every
         /// selected photo has it already) or `clear`. How many photos were changed.
@@ -943,7 +967,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 
-use auroraw_catalogue::{Cursor, Filter, FlagFilter};
+use auroraw_catalogue::{Cursor, Filter, FlagFilter, PlaceFilter};
 use auroraw_engine::{Command, Engine, JobId, KnownWorkspace, Outcome};
 use auroraw_types::{PhotoId, SeriesId};
 use cxx_qt::CxxQtType;
@@ -1010,6 +1034,8 @@ pub struct PhotoGridRust {
     keyword_filter: QString,
     collection_filter: QString,
     label_filter: QString,
+    /// The place filter in force, as the JSON text of a node's `filter` (empty for none).
+    place_filter: QString,
     /// Everything the filters list, in order (the rows are derived from it: a collapsed series is one of them).
     all: Vec<Item>,
     /// Where each photo of `all` is, so that a change to one photo reaches the copy a collapsed series hides.
@@ -1265,8 +1291,32 @@ impl qobject::PhotoGrid {
             collection: auroraw_types::CollectionId::from_str(&self.collection_filter.to_string())
                 .ok(),
             // (The place menu of the filter bar sets it: the interface's part of design note 008 §5.)
-            place: None,
+            place: PlaceFilter::from_json(&self.place_filter.to_string()),
         }
+    }
+
+    pub fn place_facets(&self) -> QString {
+        // (An error, no session or a catalogue that cannot be read, gives an empty tree, so the button is greyed as when no
+        // photo has a place: the right degradation for a menu, and on purpose.)
+        // (`self.filter()` holds the place filter: the catalogue leaves it out of the tree itself, so that Ontario is
+        // still there, with its count, when Québec is chosen.)
+        let facets = session::current()
+            .and_then(|session| session.engine.read_catalogue().ok())
+            .and_then(|catalogue| catalogue.place_facets(&self.filter()).ok())
+            .unwrap_or_default();
+        QString::from(facets.to_json().as_str())
+    }
+
+    pub fn set_place_filter_text(mut self: Pin<&mut Self>, text: &QString) {
+        // What the engine reads back is what is kept (an unreadable text, or one that constrains nothing, lifts it).
+        let kept =
+            PlaceFilter::from_json(&text.to_string()).map_or_else(String::new, |p| p.to_json());
+        if kept != self.place_filter.to_string() {
+            self.as_mut().rust_mut().place_filter = QString::from(kept.as_str());
+            self.as_mut().place_filter_changed();
+        }
+        self.as_mut().rust_mut().selection.none();
+        self.load();
     }
 
     pub fn filter_flags(mut self: Pin<&mut Self>, flags: i32) {
@@ -2426,6 +2476,9 @@ impl qobject::PhotoGrid {
         if row.is_none() && !self.all_pos.contains_key(&id) {
             return;
         }
+        // (A photo in view changed: its place may be what changed, and the place menu's tree is about the photos in
+        // view.)
+        self.as_mut().places_changed();
         let Some(session) = session::current() else {
             return;
         };
