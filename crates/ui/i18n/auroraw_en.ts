@@ -2692,6 +2692,12 @@
 <context>
     <name>PlaceMenu</name>
     <message>
+        <location filename="../qml/PlaceMenu.qml" line="95"/>
+        <location filename="../qml/PlaceMenu.qml" line="118"/>
+        <source>(no country)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../qml/PlaceMenu.qml" line="+87"/>
         <location line="+7"/>
         <location line="+96"/>

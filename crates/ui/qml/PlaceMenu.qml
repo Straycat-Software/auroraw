@@ -28,8 +28,19 @@ import org.auroraw.ui
 //                               directly under it, with `filter: { country, region: "", city }`: the empty key of a region
 //                               means "no region", so that the node selects exactly its count (`{ country, city }` would
 //                               also select that city in every region of the country). The menu only gives it back.
-//                               **A photo with a city or a region but no country** is not in the tree: `placed` does not
-//                               count it and the filter cannot select it ("placed" is not "has any place field").
+//                               **A photo with a city or a region but no country** (typed by hand, written by another
+//                               application, or a country a person emptied on purpose) is under **`noCountry`**, next to
+//                               `countries`: `null` when no photo in view needs it, else a Node `{ "label": "", "count",
+//                               "filter": { "country": "" }, "children": [Node] }`, whose children are what is under it as
+//                               for a country (a region `{ country: "", region }`, a city `{ country: "", region, city }`,
+//                               a city with no region `{ country: "", region: "", city }`). The empty country key means "no
+//                               country, with a region or a city"; the menu gives it back like any other. **The menu says
+//                               "(no country)" itself, in the interface's language, and puts it after the countries** (the
+//                               engine's `label` is empty and ignored). `placed` counts these photos, so that they alone
+//                               enable the button. A photo with no place field at all is in no node. Two nodes of one label
+//                               under it (a region Berlin and a city Berlin) are two rows: **a row is its filter, never its
+//                               label**. (Chosen in #60, Patrick: the photographer who empties a country keeps the photo
+//                               reachable by its city.)
 //                               **`pending`** (`"pending": true`) is whether the engine is still filling the places of the
 //                               photos from their files (the first open after an upgrade, about a minute on a large
 //                               library): the tree is then a part of the places, or none, and `placed: 0` does not mean
@@ -55,7 +66,7 @@ Item {
     property alias list: list
 
     // What the engine last said: the photos in view that have a place, whether it is still reading them, and the tree.
-    property var facets: ({ placed: 0, pending: false, countries: [] })
+    property var facets: ({ placed: 0, pending: false, countries: [], noCountry: null })
     // The nodes opened, by their key (the filter as text).
     property var opened: ({})
 
@@ -78,7 +89,12 @@ Item {
         return JSON.stringify([filter.country || "", filter.region || "", filter.city || ""])
     }
 
-    // The labels from the country down to the node of `filter`, or what the filter itself says when the tree has no
+    // The first level of the tree as the menu shows it after the countries: "(no country)" when the engine has the node, with
+    // the label this interface says it in (the engine's is empty).
+    readonly property var noCountry: menu.facets.noCountry
+        ? Object.assign({}, menu.facets.noCountry, { label: qsTr("(no country)") }) : null
+
+    // The labels from the first level down to the node of `filter`, or what the filter itself says when the tree has no
     // such node (the photos in view changed under it).
     function pathOf(filter) {
         const wanted = menu.keyOf(filter)
@@ -94,9 +110,13 @@ Item {
             }
             return false
         }
-        if (walk(menu.facets.countries))
+        if (walk(menu.noCountry ? menu.facets.countries.concat([menu.noCountry]) : menu.facets.countries))
             return found
-        return [filter.city, filter.region, filter.country].filter(part => part).reverse()
+        const parts = [filter.city, filter.region, filter.country].filter(part => part).reverse()
+        // (The empty country key is "no country": said, even when the tree no longer has the node.)
+        if (filter.country === "")
+            parts.unshift(qsTr("(no country)"))
+        return parts
     }
 
     // What the button says: "Any place", or the deepest place that filters.
@@ -107,23 +127,28 @@ Item {
     // The whole path, for the one who cannot see the tree (a screen reader, the tooltip).
     readonly property string choicePath: menu.active ? menu.pathOf(menu.active).join(", ") : ""
 
-    // The rows of the tree as they are shown: "Any place", then each node, its children after it while it is open.
+    // The rows of the tree as they are shown: "Any place", then each node, its children after it while it is open, and
+    // "(no country)", when there is such a node, after the countries.
     readonly property var rows: {
         const out = [{ any: true, label: qsTr("Any place"), depth: 0, count: 0, hasChildren: false, open: false, key: "" }]
+        const add = (node, depth) => {
+            const key = menu.keyOf(node.filter)
+            const children = node.children || []
+            const open = children.length > 0 && menu.opened[key] === true
+            out.push({ any: false, label: node.label, depth: depth, count: node.count, filter: node.filter,
+                       hasChildren: children.length > 0, open: open, key: key })
+            if (open)
+                walk(children, depth + 1)
+        }
         const walk = (nodes, depth) => {
             // (Sorted as JavaScript's `localeCompare` does, in the system's locale: the interface's language is not set as the
             // default locale, which is immaterial for English and French place names.)
-            for (const node of nodes.slice().sort((a, b) => a.label.localeCompare(b.label))) {
-                const key = menu.keyOf(node.filter)
-                const children = node.children || []
-                const open = children.length > 0 && menu.opened[key] === true
-                out.push({ any: false, label: node.label, depth: depth, count: node.count, filter: node.filter,
-                           hasChildren: children.length > 0, open: open, key: key })
-                if (open)
-                    walk(children, depth + 1)
-            }
+            for (const node of nodes.slice().sort((a, b) => a.label.localeCompare(b.label)))
+                add(node, depth)
         }
         walk(menu.facets.countries, 0)
+        if (menu.noCountry)
+            add(menu.noCountry, 0)
         return out
     }
 
@@ -137,7 +162,7 @@ Item {
         try {
             menu.facets = JSON.parse(menu.grid.placeFacets())
         } catch (e) {
-            menu.facets = ({ placed: 0, pending: false, countries: [] })
+            menu.facets = ({ placed: 0, pending: false, countries: [], noCountry: null })
         }
     }
 
