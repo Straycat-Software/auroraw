@@ -33,6 +33,25 @@ TestCase {
         return app
     }
 
+    // The application on `machine`, once the launcher is on `screen` (`"workspace"` when the machine's last workspace opens).
+    // The launcher gets there by reading the disk, on a machine that has just closed a workspace: after `launch()`'s 400 ms the
+    // window may still be on `welcome`, so a test that reads the screen once at that moment fails on a slow runner (issue #100,
+    // the grid suite's `init()` on Windows). As `launchWithPhotos` does, it waits on what it asserts, and a window that opens
+    // nothing is closed and made again. Not for `"welcome"`: the window is on it before it has opened anything.
+    function launchOn(machine, screen) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            launch(machine)
+            const deadline = Date.now() + 12000
+            while (app.launcher.screen !== screen && Date.now() < deadline)
+                wait(100)
+            if (app.launcher.screen === screen)
+                return
+            quit()
+            wait(1000)
+        }
+        compare(app.launcher.screen, screen, "the window reached its screen")
+    }
+
     // The application on the shared machine, with the window widened for the keyword panel, once its grid lists
     // `photos` photos. A slow runner (Windows) sometimes has not let go of the workspace of the window before, and
     // the new one opens nothing: it is then closed and made again.

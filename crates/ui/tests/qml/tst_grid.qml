@@ -10,9 +10,8 @@ AppTestCase {
     name: "Grid"
 
     function init() {
-        launch("")
+        launchOn("", "workspace")
         app.width = 1400 + panelWidth
-        compare(app.launcher.screen, "workspace")
         compare(app.currentTask, "cull", "a workspace with photos opens on the grid")
         tryCompare(app.photos, "count", 80)
         grid = app.library.grid
