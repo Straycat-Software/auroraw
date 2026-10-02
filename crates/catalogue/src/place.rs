@@ -63,9 +63,11 @@ const INVISIBLE: &[(char, char)] = &[
 
 /// Whether `c` is one of the [`INVISIBLE`] characters.
 fn is_invisible(c: char) -> bool {
-    INVISIBLE
-        .iter()
-        .any(|&(first, last)| (first..=last).contains(&c))
+    // (None of them is ASCII, and most of a place name is.)
+    !c.is_ascii()
+        && INVISIBLE
+            .iter()
+            .any(|&(first, last)| (first..=last).contains(&c))
 }
 
 /// Whether `c` is a spacing accent that Unicode's compatibility decomposition makes a space and a combining mark
