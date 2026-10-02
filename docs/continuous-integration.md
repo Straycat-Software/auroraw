@@ -62,7 +62,7 @@ file and the toolchain), tests run in parallel, and the smoke test uses a tiny i
 is ten minutes at the median; a job that grows past it is split or moved to the nightly run.
 
 **The caches.** The repository's Actions caches hold 10 GB, and GitHub evicts the least recently used ones when they
-pass it. A job's Rust cache is 0.6 to 1.2 GB. A cache saved on the default branch (`dev`) is read by every run; one saved on
+pass it. A job's Rust cache is 0.6 to 1.8 GB. A cache saved on the default branch (`dev`) is read by every run; one saved on
 another ref is read only by the runs of that ref. So **only runs on `dev` write the Rust caches** (`save-if` in
 `ci.yml`): a pull request or a queue entry reads `dev`'s and builds what its change adds on top. Saved from a pull
 request, a cache is read by nobody else, and those copies (7.5 GB of the 10) evicted the ones of `dev` that every run
