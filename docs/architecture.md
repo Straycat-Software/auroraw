@@ -532,6 +532,22 @@ buffers, a draft variant, the shader, its CPU twin and tolerance, the portable W
 built-in operations of M2 it is a Rust trait; its data form is defined when the first external GPU
 operation arrives (M3, with the safety check of §8.4).
 
+**As built (WP13, second pull request).** Layer 1 is `auroraw_plugin_api::Declaration`: `Family::Operation`;
+`parameters: Vec<ParamSpec>` (key, label key, and a `ParamKind` that carries the limits and the default);
+`input_space` and `output_space` (names from `plugin_api::spaces`); `cost: Option<CostClass>`. Every new
+field is `#[serde(default)]`, so a declaration written before them still reads. `validate()` knows the
+operation family: an operation must have a placement with a stage, both spaces (known names), a cost class,
+parameters with distinct keys whose limits and defaults hold together (`ParamSpec::validate`), and `after`
+and `before` that are not empty and do not name the operation itself; a declaration of another family that
+gives one of these fields is refused. Whether a stage exists, and whether an `after` or `before` names an
+operation of **the same stage**, depend on the pipeline definition, so `develop` checks them at load time
+(note 006 §3.5), not this crate. `ParamValue` is the eight variants of D-142; `ParamSpec::check` says whether
+a value fits its spec (type, limits, enum range, list length, curve points strictly increasing in x), and
+no declaration admits a NaN. The canonical binary encoding that the cache keys are hashes of stays in
+`pipeline` (it is the pipeline's contract, not the plugin's). The eight stage identifiers and the five
+data-space names are constants (`plugin_api::stages`, `plugin_api::spaces`), and `pipeline` has a test
+that its definition equals them.
+
 ### 8.4 GPU operations [decided, D-077; the descriptor's data form at M3, D-142]
 
 The shader is **data**; a **CPU twin** in WebAssembly gives the same result (spike 4: within 1.5e-8).

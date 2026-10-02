@@ -225,6 +225,7 @@ dependencies = [
 name = "auroraw-pipeline"
 version = "0.0.0"
 dependencies = [
+ "auroraw-plugin-api",
  "blake3",
  "png",
  "pollster",

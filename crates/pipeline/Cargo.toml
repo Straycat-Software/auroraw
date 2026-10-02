@@ -12,6 +12,9 @@ description = "The image engine: a wgpu pipeline that develops RAW images, headl
 workspace = true
 
 [dependencies]
+# The names of the stages and of the data spaces, and (to come) the types of an operation's parameters: what a plugin
+# declares (D-140, D-142). A permissively licensed leaf with no dependency on the application.
+auroraw-plugin-api = { path = "../plugin-api" }
 blake3.workspace = true
 wgpu.workspace = true
 pollster.workspace = true

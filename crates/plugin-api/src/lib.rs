@@ -12,13 +12,19 @@
 pub mod block;
 pub mod declaration;
 pub mod decoder;
+pub mod operation;
 pub mod permissions;
 pub mod raw;
 pub mod source;
+pub mod spaces;
+pub mod stages;
 
 pub use block::BlockError;
 pub use declaration::{Declaration, DeclarationError, Family, HOST_API_VERSION, Placement};
 pub use decoder::{Decoder, DecoderError};
+pub use operation::{
+    CostClass, MAX_KEY_LEN, OperationId, ParamError, ParamKind, ParamSpec, ParamValue,
+};
 pub use permissions::Permissions;
 pub use raw::{
     BlackLevel, CameraId, ColourMatrix, Illuminant, InputProfile, Levels, NamedProfile,

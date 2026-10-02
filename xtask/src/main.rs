@@ -42,7 +42,7 @@ const ALLOWED: &[(&str, &[&str])] = &[
     // The image engine. Its edges are added when the code first needs them (D-140 writes the ones
     // design note 005 §2.2 names: `plugin-api` for `RawImage`, `imaging`): an allowed edge that is
     // unused is a hole in this check, which only refuses what is not in the table.
-    ("auroraw-pipeline", &[]),
+    ("auroraw-pipeline", &["auroraw-plugin-api"]),
     (
         "auroraw-import",
         &[
