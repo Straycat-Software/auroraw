@@ -625,6 +625,249 @@ proptest! {
     }
 }
 
+/// A block made by hand from its sections, the way a plugin in another language might write one (or a hostile one).
+fn hand_made(sections: &[(u16, Vec<u8>)]) -> Vec<u8> {
+    let mut out = MAGIC.to_vec();
+    out.extend_from_slice(&VERSION.to_le_bytes());
+    out.extend_from_slice(&[0, 0]);
+    for (t, payload) in sections {
+        out.extend_from_slice(&t.to_le_bytes());
+        out.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        out.extend_from_slice(payload);
+    }
+    out
+}
+
+/// The four required sections of a block for `width` x `height` pixels of `components` linear channels and `count`
+/// samples of 16 bits.
+fn hand_made_linear(width: u32, height: u32, components: u8, count: u64) -> Vec<u8> {
+    let mut geometry = width.to_le_bytes().to_vec();
+    geometry.extend_from_slice(&height.to_le_bytes());
+    let mut samples = vec![0u8];
+    samples.extend_from_slice(&count.to_le_bytes());
+    // Black: 1 x 1 x 1 value of 0; white: one value of 65535.
+    let mut levels = vec![1, 0, 1, 0, 1];
+    levels.extend_from_slice(&0.0f32.to_le_bytes());
+    levels.push(1);
+    levels.extend_from_slice(&65535.0f32.to_le_bytes());
+    hand_made(&[
+        (tag::GEOMETRY, geometry),
+        (tag::LAYOUT, vec![1, components]),
+        (tag::SAMPLES, samples),
+        (tag::LEVELS, levels),
+    ])
+}
+
+#[test]
+fn a_readout_too_large_to_count_is_refused_and_an_honest_one_is_not() {
+    // Django's review of #92: `width * height * components` of a block the plugin wrote wrapped to 0 in a release
+    // build and equalled the 0 samples it handed over (and panicked in a debug one).
+    for (width, height, components) in [
+        (1u32 << 31, 1u32 << 31, 4u8),
+        (u32::MAX, u32::MAX, 255),
+        (u32::MAX, u32::MAX, 2),
+        (1 << 31, 1 << 31, 1),
+    ] {
+        let block = hand_made_linear(width, height, components, 0);
+        let read = RawImage::from_block(&block, Samples::U16(Vec::new()));
+        assert!(
+            matches!(&read, Err(BlockError::BadSection { tag: t, .. }) if *t == tag::GEOMETRY)
+                || matches!(&read, Err(BlockError::BadSection { tag: t, .. }) if *t == tag::SAMPLES),
+            "{width} x {height} x {components}: {read:?}"
+        );
+    }
+    // The product that overflows is refused for its size, not for the samples that do not match.
+    let read = RawImage::from_block(
+        &hand_made_linear(1 << 31, 1 << 31, 4, 0),
+        Samples::U16(Vec::new()),
+    );
+    assert_eq!(
+        read,
+        Err(BlockError::BadSection {
+            tag: tag::GEOMETRY,
+            what: "the readout is too large"
+        })
+    );
+    // An honest image of 100 x 100 x 4 reads back.
+    let block = hand_made_linear(100, 100, 4, 40_000);
+    let image = RawImage::from_block(&block, Samples::U16(vec![0; 40_000])).unwrap();
+    assert_eq!(
+        (image.width, image.height, image.components()),
+        (100, 100, 4)
+    );
+}
+
+#[test]
+fn a_known_section_with_a_byte_too_many_is_refused() {
+    // "A known section must use exactly its payload": one byte added to each section of an honest block, in turn.
+    let mono = RawImage {
+        layout: SensorLayout::Mono,
+        samples: Samples::U16(vec![0; 8]),
+        ..bayer()
+    };
+    let linear = |profile| RawImage {
+        layout: SensorLayout::LinearRgb {
+            components: 3,
+            profile,
+        },
+        samples: Samples::U16(vec![0; 24]),
+        levels: Levels {
+            black: BlackLevel {
+                rows: 1,
+                columns: 1,
+                components: 3,
+                values: vec![0.0; 3],
+            },
+            white: vec![65535.0; 3],
+        },
+        ..bayer()
+    };
+    let mut checked = std::collections::BTreeSet::new();
+    for image in [
+        bayer(),
+        mono,
+        linear(InputProfile::Named(NamedProfile::Srgb)),
+    ] {
+        let block = image.to_block().unwrap();
+        let mut rest = &block[8..];
+        while !rest.is_empty() {
+            let t = u16::from_le_bytes([rest[0], rest[1]]);
+            let n = u32::from_le_bytes([rest[2], rest[3], rest[4], rest[5]]) as usize;
+            let mut longer = block[..8].to_vec();
+            let mut again = &block[8..];
+            while !again.is_empty() {
+                let u = u16::from_le_bytes([again[0], again[1]]);
+                let m = u32::from_le_bytes([again[2], again[3], again[4], again[5]]) as usize;
+                if u == t && again.as_ptr() == rest.as_ptr() {
+                    longer.extend_from_slice(&u.to_le_bytes());
+                    longer.extend_from_slice(&(m as u32 + 1).to_le_bytes());
+                    longer.extend_from_slice(&again[6..6 + m]);
+                    longer.push(0);
+                } else {
+                    longer.extend_from_slice(&again[..6 + m]);
+                }
+                again = &again[6 + m..];
+            }
+            let read = RawImage::from_block(&longer, image.samples.clone());
+            assert!(
+                matches!(&read, Err(BlockError::BadSection { tag: u, .. }) if *u == t),
+                "tag {t} with a byte too many: {read:?}"
+            );
+            checked.insert(t);
+            rest = &rest[6 + n..];
+        }
+    }
+    // Every section of the specification, but the input profile of an ICC profile (which is bytes to the end), was
+    // tried; the noise profile and the ISO are in `bayer()` too.
+    let all: std::collections::BTreeSet<u16> = (1..=13).collect();
+    assert_eq!(checked, all);
+}
+
+/// The block of `image` with the payload of the section `tag` replaced.
+fn with_payload(block: &[u8], replaced: u16, payload: &[u8]) -> Vec<u8> {
+    let mut out = block[..8].to_vec();
+    let mut rest = &block[8..];
+    while !rest.is_empty() {
+        let t = u16::from_le_bytes([rest[0], rest[1]]);
+        let n = u32::from_le_bytes([rest[2], rest[3], rest[4], rest[5]]) as usize;
+        if t == replaced {
+            out.extend_from_slice(&t.to_le_bytes());
+            out.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+            out.extend_from_slice(payload);
+        } else {
+            out.extend_from_slice(&rest[..6 + n]);
+        }
+        rest = &rest[6 + n..];
+    }
+    out
+}
+
+#[test]
+fn a_field_that_means_nothing_is_refused_for_its_section() {
+    let image = RawImage {
+        layout: SensorLayout::LinearRgb {
+            components: 3,
+            profile: InputProfile::Named(NamedProfile::Srgb),
+        },
+        samples: Samples::U16(vec![0; 24]),
+        levels: Levels {
+            black: BlackLevel {
+                rows: 1,
+                columns: 1,
+                components: 3,
+                values: vec![0.0; 3],
+            },
+            white: vec![65535.0; 3],
+        },
+        ..bayer()
+    };
+    let block = image.to_block().unwrap();
+    assert_eq!(
+        RawImage::from_block(&block, image.samples.clone()).unwrap(),
+        image
+    );
+    let nothing = |t: u16, payload: &[u8], what: &str| {
+        let changed = with_payload(&block, t, payload);
+        let read = RawImage::from_block(&changed, image.samples.clone());
+        assert!(
+            matches!(&read, Err(BlockError::BadSection { tag: u, .. }) if *u == t),
+            "{what}: {read:?}"
+        );
+    };
+    // The orientation is the EXIF value, 0 to 8.
+    nothing(tag::ORIENTATION, &[9], "orientation 9");
+    nothing(tag::ORIENTATION, &[255], "orientation 255");
+    // The names are UTF-8.
+    nothing(
+        tag::CAMERA,
+        &[2, 0, 0xFF, 0xFE, 0, 0],
+        "a make that is not UTF-8",
+    );
+    nothing(
+        tag::CAMERA,
+        &[0, 0, 1, 0, 0xC3],
+        "a model cut in the middle of a character",
+    );
+    // The input profile kinds are 0 to 4, and a layout and a sample type are the ones that exist.
+    nothing(tag::INPUT_PROFILE, &[5], "profile kind 5");
+    nothing(tag::INPUT_PROFILE, &[255], "profile kind 255");
+    nothing(tag::LAYOUT, &[3], "layout kind 3");
+    let mut count = vec![2u8];
+    count.extend_from_slice(&24u64.to_le_bytes());
+    nothing(tag::SAMPLES, &count, "sample type 2");
+    // A readout has pixels, and a matrix has three or four rows.
+    nothing(tag::GEOMETRY, &[0, 0, 0, 0, 1, 0, 0, 0], "width 0");
+    nothing(tag::GEOMETRY, &[1, 0, 0, 0, 0, 0, 0, 0], "height 0");
+    let mut matrix = vec![21u8, 5];
+    matrix.extend_from_slice(&[0u8; 15 * 4]);
+    let with_matrix = bayer();
+    let changed = with_payload(
+        &with_matrix.to_block().unwrap(),
+        tag::COLOUR_MATRIX,
+        &matrix,
+    );
+    assert!(
+        matches!(
+            RawImage::from_block(&changed, with_matrix.samples.clone()),
+            Err(BlockError::BadSection { tag: u, .. }) if u == tag::COLOUR_MATRIX
+        ),
+        "a matrix of 5 rows"
+    );
+    // The same refusals on the writing side: an image of no pixels has no block.
+    for (width, height) in [(0, 1), (1, 0)] {
+        let empty = RawImage {
+            width,
+            height,
+            samples: Samples::U16(Vec::new()),
+            ..bayer()
+        };
+        assert!(matches!(
+            empty.to_block(),
+            Err(BlockError::BadSection { tag: u, .. }) if u == tag::GEOMETRY
+        ));
+    }
+}
+
 #[test]
 fn the_blocks_of_the_sample_files_are_read_up_to_their_samples() {
     // The corpus of the fuzz target is seeded with the block of each sample file (written by the decoder tests of
@@ -640,6 +883,17 @@ fn the_blocks_of_the_sample_files_are_read_up_to_their_samples() {
     let mut seeds = 0;
     for entry in entries.flatten() {
         let block = std::fs::read(entry.path()).unwrap();
+        // A seed named `malformed-…` is a block that a reader must refuse (a shape the fuzzer should start from),
+        // whatever samples come with it.
+        if entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with("malformed-")
+        {
+            let read = RawImage::from_block(&block, Samples::U16(Vec::new()));
+            assert!(read.is_err(), "{}: {read:?}", entry.path().display());
+            continue;
+        }
         let (kind, count) = RawImage::block_samples(&block)
             .unwrap_or_else(|e| panic!("{}: {e}", entry.path().display()));
         assert!(count > 0);

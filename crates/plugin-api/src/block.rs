@@ -205,8 +205,12 @@ fn check(image: &RawImage) -> Result<(), BlockError> {
         }
         SensorLayout::Mono => {}
     }
+    // (A block comes from a plugin that is not trusted: the product of three numbers it chose can be larger than a `u64`,
+    // and a product that wraps must not be able to equal the samples it handed over.)
     let pixels = u64::from(image.width) * u64::from(image.height);
-    let expected = pixels * image.components() as u64;
+    let Some(expected) = pixels.checked_mul(image.components() as u64) else {
+        return Err(bad(tag::GEOMETRY, "the readout is too large"));
+    };
     if image.samples.len() as u64 != expected {
         return Err(bad(
             tag::SAMPLES,
@@ -217,9 +221,9 @@ fn check(image: &RawImage) -> Result<(), BlockError> {
     if black.rows == 0 || black.columns == 0 || black.components == 0 {
         return Err(bad(tag::LEVELS, "an empty black level pattern"));
     }
-    if black.values.len()
-        != usize::from(black.rows) * usize::from(black.columns) * usize::from(black.components)
-    {
+    // (In `u64`, so that the check says the same on a 32-bit target, where the plugin runs.)
+    let black_len = u64::from(black.rows) * u64::from(black.columns) * u64::from(black.components);
+    if black.values.len() as u64 != black_len {
         return Err(bad(
             tag::LEVELS,
             "black values are not rows * columns * components",
@@ -599,7 +603,10 @@ impl RawImage {
                     let rows = c.u16()?;
                     let columns = c.u16()?;
                     let components = c.u8()?;
-                    let n = usize::from(rows) * usize::from(columns) * usize::from(components);
+                    let n = usize::try_from(
+                        u64::from(rows) * u64::from(columns) * u64::from(components),
+                    )
+                    .map_err(|_| bad(t, "too many values"))?;
                     let values = c.f32s(n)?;
                     let white_n = usize::from(c.u8()?);
                     let white = c.f32s(white_n)?;
@@ -663,10 +670,16 @@ impl RawImage {
                 tag::INPUT_PROFILE => {
                     once(profile.is_some(), t)?;
                     profile = Some(match c.u8()? {
-                        0 => InputProfile::Named(NamedProfile::Srgb),
-                        1 => InputProfile::Named(NamedProfile::AdobeRgb),
-                        2 => InputProfile::Named(NamedProfile::Rec2020),
-                        3 => InputProfile::Named(NamedProfile::ProPhoto),
+                        // (A named profile is its kind and nothing else; an ICC profile is the bytes to the end.)
+                        named @ 0..=3 => {
+                            c.end()?;
+                            InputProfile::Named(match named {
+                                0 => NamedProfile::Srgb,
+                                1 => NamedProfile::AdobeRgb,
+                                2 => NamedProfile::Rec2020,
+                                _ => NamedProfile::ProPhoto,
+                            })
+                        }
                         4 => InputProfile::Icc(c.data.to_vec()),
                         _ => return Err(bad(t, "an unknown input profile")),
                     });
