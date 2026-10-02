@@ -2,14 +2,16 @@ name: Nightly
 
 # Long runs that do not belong in the per-change workflow (docs/continuous-integration.md §3.2):
 # the property tests with many cases, fuzzing, and the large-workspace and large-catalogue
-# measurements on each platform. Runs every night, on demand, and when this file or a measurement
-# changes.
+# measurements on each platform. Runs every night, on demand (from any branch, to try a change of this file), and on a
+# push to `dev` that changes this file or a measurement. Not on every branch: the `paths` filter alone did not keep it
+# from starting on the first push of a branch, so a pull request's branch and each merge-queue entry started a full run.
 
 on:
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
   push:
+    branches: [dev]
     paths:
       - .github/workflows/nightly.yml
       - crates/workspace/tests/large.rs
