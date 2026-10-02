@@ -159,6 +159,7 @@ The state in the XMP is **typed in its structure and compact in its values** (th
 <aur:Operations><rdf:Seq>
   <rdf:li rdf:parseType="Resource">
     <aur:Id>auroraw.exposure</aur:Id>
+    <aur:Name>Exposure</aur:Name>                      <!-- its display name as written, so that an absent plugin can be named -->
     <aur:OpVersion>1</aur:OpVersion>
     <aur:PluginVersion>0.2.0</aur:PluginVersion>       <!-- the release that wrote it: provenance only -->
     <aur:Enabled>True</aur:Enabled>
@@ -167,6 +168,11 @@ The state in the XMP is **typed in its structure and compact in its values** (th
   …
 </rdf:Seq></aur:Operations>
 ```
+
+**The name** (`aur:Name`) is the operation's display name, in English, as the declaration gave it when the instance was
+written: a plugin that is gone has no declaration, and the interface can still say "Sharpen (plugin missing)" and not
+`org.acme.sharpen`. The declaration has no name for an operation today (an identifier and a `panel`); it gets a **label
+key**, as `ParamSpec` has, which I add after this note is accepted (§12).
 
 A reader other than ours sees the list of operations, their versions and whether they are on, and
 the values as JSON text: enough to understand a file, which is all "open and documented" asks. The
@@ -189,7 +195,7 @@ an ordinary edit.
 
 ```json
 {"schema":1,"photo":"…","version":"…","snapshots":[{"name":"Before the crop","at":"2026-10-02T14:03:11Z","definition":1,"operations":[{"id":"auroraw.exposure","v":1,"on":true,"params":{"ev":{"float":0.0}}}]}]}
-{"n":1,"t":"2026-10-02T14:03:40Z","name":"Exposure","changes":[{"op":"auroraw.exposure","before":{"params":{"ev":{"float":0.0}}},"after":{"params":{"ev":{"float":0.7}}}}],"digest":"3f9a…"}
+{"n":1,"t":"2026-10-02T14:03:40Z","kind":"set","changes":[{"op":"auroraw.exposure","before":{"params":{"ev":{"float":0.0}}},"after":{"params":{"ev":{"float":0.7}}}}],"digest":"3f9a…"}
 ```
 
 - **Line 1 is the header**: identity and the **snapshots** (§6). It is rewritten, with the rest of
@@ -199,7 +205,9 @@ an ordinary edit.
   the keys it changed with their value before and after; `before` absent means the instance was added
   (`after` is then the whole instance), `after` absent means it was removed. `enabled` is a field
   like the others. A step is reversible by reading it the other way, as in D-096, and **no step
-  stores a whole recipe**. `digest` is the state digest (§4.4) **after** the step.
+  stores a whole recipe**. `digest` is the state digest (§4.4) **after** the step. A step has a **kind** (`set`, `enable`,
+  `add`, `remove`, `apply-style`, `paste`, `restore-snapshot`, `compact`) and **no sentence**: the words of the Edit
+  menu are the interface's and are translated, made from the kind and the operations (§5.3).
 - A line, a header or a change may carry **fields this version does not know**; they are kept when
   the file is rewritten (`serde` `flatten` into a map). An unknown *kind* of change makes the step
   unreadable and the history **read-only from there** (§8).
@@ -294,14 +302,26 @@ it costs:
 
 - **The command names stay clear.** `Command::Undo` and `Redo` remain the journal's. The version's are
   `Command::UndoDevelopment { version }` and `RedoDevelopment { version }`, and the interface sends the
-  one of the active view. The Edit menu names the step it would undo ("Undo Exposure", "Undo Rating").
+  one of the active view. The Edit menu names the step it would undo ("Undo Exposure", "Undo Rating"). **The
+  engine sends a kind, not a sentence**: `UndoDevelopment` and `RedoDevelopment`, and the history state the
+  interface reads, give the step's kind and its operations (the identifier and the name of §4.1), and the
+  interface makes and translates the words, as it does for the journal today.
 - **What is journaled stays journaled.** The rating, flag and keywords of a photo are metadata, in the
   photo's sidecar (and in the version's when the version overrides them, D-063), and stay in the
   journal in every view. **A rating given in Develop is undone by the journal, not by Develop's
-  Ctrl+Z.** That is the sharp edge of not merging. My proposal for the interface (Bob's to accept): in
-  Develop the Edit menu offers both, "Undo Exposure" on Ctrl+Z and "Undo Rating" on another shortcut,
-  and the one that applies is always named. Merging the two by time would need one history that holds
-  both kinds of step, which D-096 and the sidecars do not give.
+  Ctrl+Z.** That is the sharp edge of not merging, and the interface (Bob, on #110) takes it as follows.
+  The development's undo and redo are on the standard keys in Develop; the journal's are on a **second pair that
+  does the same thing in every view** (Cull, the grid, Develop), so that two keys always mean the same,
+  chosen against the shortcut table and on the three platforms as D-153 does (`Ctrl+Alt+Z` is proposed;
+  AltGr is Ctrl+Alt on some Windows layouts). The Edit menu shows both rows in Develop and today's two
+  elsewhere, and after either undo the status line says what it undid ("Undid Exposure", "Undid rating").
+  Merging the two by time would need one history that holds both kinds of step, which D-096 and the
+  sidecars do not give; if people trip, the upgrade path is the interface's rule over two stacks ("undo the
+  more recent"), not a merged store, and a "Development history" panel (the steps, a click moves the cursor)
+  makes the split visible.
+- **The journal's top step can be about another photo** (a rating in the grid, then Develop on a different
+  photo). The journal's state gives the photo of its top step **before** an undo, as the outcome of an undo
+  already gives the photos it touched, so that the row can name the file when it is not the one on screen.
 - **Switching version or photo does not lose a history**: each version's is in its file. The journal
   is not affected.
 
@@ -355,14 +375,17 @@ for the JSON Lines); the coordinator is the only writer.
 
 Events: `VersionsChanged { photo }`, `DevelopmentChanged { version, step, state_digest }` (the render
 service of WP18 listens to the second, and renders from `Develop::recipe(version)`), and
-`HistoryChanged { version }` for the interface's Edit menu.
+`HistoryChanged { version }` for the interface's Edit menu (the kind and the operations of the step each
+undo and redo would apply, §5.3).
 
 **Making or deleting a version is a journal entry; editing it is a history step.** The first edit of
 an unedited photo is both, and undoing it in Develop returns the version to its first state, not to
 "no version": the version stays (the person can delete it).
 
-`Develop::recipe(version)` returns the `Recipe` and the list of **inert** operations (§8) for the
-interface to mark; the pipeline never sees what is not renderable.
+`Develop::recipe(version)` returns the `Recipe`; `Develop::inert(version)` returns the **inert** operations of
+§8, each with its identifier, its stored name and the **reason**. The pipeline never sees what is not
+renderable, and the engine reports the inert ones with the render's or the export's outcome ("without 2
+operations").
 
 ## 8. When the file is not what the code expects [proposed]
 
@@ -386,6 +409,27 @@ migrate its values, and through what call) is a plugin-API question that does no
 built-in operation is at version 1. It is left open (§12) with this note's constraint: the file must
 record `op_version` per instance, which it does.
 
+### 8.1 The mark, the export, and a version that is read-only as a whole [proposed]
+
+- **An inert operation is reported, with the reason**: `PluginMissing`, `NeedsNewerPlugin { stored, known }`,
+  `ValueInvalid { key }` (`Develop::inert`, §7). The interface (Bob) shows it in the stack as a glyph **and**
+  words, never colour alone ("Sharpen (plugin missing)"); its switch is shown off and disabled with the reason,
+  its parameters are not drawn since nothing can draw them, and Develop shows a bar for the version.
+- **A render, a thumbnail and an export skip it**, as the pipeline does (`enabled: false`). So that this is
+  never silent: the outcome of a render or export says **how many operations were left out**; the key of a
+  **thumbnail** holds the list of inert operations as well as the state digest (§4.4), so that the plugin's
+  return refreshes it (the state is the same, the picture is not).
+- **Export.** When any exported version has an inert operation, the Export dialog says how many and **asks
+  for a confirmation**; the files are rendered without those operations and the export's report lists them
+  file by file. A version that **cannot be rendered at all** (a definition this build does not have) is not
+  exported: it is named, with the reason, and the rest goes on. A job that runs with no person to confirm
+  (a later publication) **skips** such a version and reports it; it never degrades one silently.
+- **A version that is read-only as a whole** (a newer definition or schema, §8) is one pattern for
+  the interface: Develop opens with its development controls disabled and a bar saying why; the rating,
+  flags, keywords and name still work, since they are metadata and the metadata part is readable. An
+  unreadable step makes the **history** read-only, not the state: the controls work, undo goes up to the
+  step before it.
+
 ## 9. Schema, fixture, migration, catalogue [proposed]
 
 - **`aur:Schema` stays at 1; the development has its own, `aur:PipelineSchema`**, reserved in note 003
@@ -404,7 +448,7 @@ record `op_version` per instance, which it does.
   `PipelineSchema`), which an M1-style edit of a rating must leave intact.
 - **The catalogue** gains, on `version`, the definition version and the **state digest**. The
   digest, with the identity of the source image (the catalogue's), is what the main version's thumbnail
-  is keyed by (a thumbnail is stale when the digest changes) and what makes a rebuild comparable. No history, no snapshot and no operation is indexed:
+  is keyed by, with the list of inert operations (§8.1): a thumbnail is stale when either changes and what makes a rebuild comparable. No history, no snapshot and no operation is indexed:
   a rebuild reads the XMP and not the history file. The migration of the catalogue is a rebuild, as
   always (architecture §5.5).
 - **The grid** shows the main version's thumbnail: a developed photo's is a render, so it waits on
@@ -454,7 +498,9 @@ work package:
 | `crates/engine` | The commands and events of §7 | Alice |
 | `crates/catalogue` | Two columns on `version`, rebuilt | Alice |
 | The remove job and `DeleteVersion` | Move **both** files of a version to `removed/` (D-091) | Alice |
-| The Edit menu in Develop | Two undos, each named (§5.3) | Bob |
+| The Edit menu and the shortcuts | Two undos, each named, the journal's on a second pair that works in every view and is chosen against the table (§5.3); the inert operation's mark and the bar (§8.1); the Export dialog's count and confirmation | Bob |
+| The journal (D-096) | Gives the photo of its top step before an undo (§5.3) | Alice |
+| `plugin-api`, `Declaration` | A **label key** for the operation's display name, as `ParamSpec` has one (§4.1), after this note is accepted | Alice |
 | D-142 | Parameters are stored by key, with their kind | this note's decision |
 
 **Asked of Patrick**, each a yes or a change:
