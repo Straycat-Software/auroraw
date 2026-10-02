@@ -6,57 +6,14 @@
 //! The recipe knows nothing of sidecars, history or versions in the catalogue's sense, and has **no `mask`
 //! field before M3**: the definition version is the extension point.
 //!
-//! **A stand-in for `plugin-api`'s types.** D-140 and D-142 put `OperationId`, `ParamSpec` and
-//! `ParamValue` in `plugin-api`, because plugins declare them; they arrive with work package 13 and the
-//! types here move there. What this module holds is **the contract they must keep**: the canonical binary
-//! encoding of a value (the bit pattern, `-0.0` normalised, `NaN` refused, never JSON), which the cache keys
-//! and the proof of determinism are hashes of.
+//! **The types are `plugin-api`'s.** `OperationId` and `ParamValue` are defined there (D-140, D-142), because plugins
+//! declare them and the version sidecar stores them; this module re-exports them so that a recipe reads the same as
+//! before, and holds what is the pipeline's alone: **the canonical binary encoding of a value** (the bit pattern,
+//! `-0.0` normalised, `NaN` refused, never JSON), which the cache keys and the proof of determinism are hashes of.
+//! `plugin-api` says whether a value is *allowed* (`ParamKind::check`); it does not normalise one, and the encoding
+//! cannot be a method of a type this crate does not own, so it is [`encode_param`].
 
-use std::fmt;
-
-/// The identifier of an operation, such as `auroraw.exposure` or a plugin's own.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct OperationId(String);
-
-impl OperationId {
-    /// The identifier as text.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl From<&str> for OperationId {
-    fn from(s: &str) -> Self {
-        OperationId(s.to_string())
-    }
-}
-
-impl fmt::Display for OperationId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-/// A typed parameter value (D-142): bool, int, float, enum, colour, point, list and curve.
-#[derive(Debug, Clone, PartialEq)]
-pub enum ParamValue {
-    /// A switch.
-    Bool(bool),
-    /// A whole number.
-    Int(i64),
-    /// A real number.
-    Float(f64),
-    /// One of a declared set of choices, by its index.
-    Enum(u32),
-    /// A colour, as three linear components.
-    Colour([f64; 3]),
-    /// A point, as two coordinates.
-    Point([f64; 2]),
-    /// A list of values.
-    List(Vec<ParamValue>),
-    /// A curve, as control points `(x, y)` in order.
-    Curve(Vec<[f64; 2]>),
-}
+pub use auroraw_plugin_api::{OperationId, ParamValue};
 
 /// Why a value has no canonical encoding.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -78,55 +35,53 @@ fn put_float(out: &mut Vec<u8>, v: f64) -> Result<(), EncodeError> {
     Ok(())
 }
 
-impl ParamValue {
-    /// Appends the canonical encoding: a tag byte, then the payload; every sequence length-prefixed, so
-    /// that two different values never encode alike.
-    pub fn encode(&self, out: &mut Vec<u8>) -> Result<(), EncodeError> {
-        match self {
-            ParamValue::Bool(b) => out.extend_from_slice(&[0, u8::from(*b)]),
-            ParamValue::Int(i) => {
-                out.push(1);
-                out.extend_from_slice(&i.to_le_bytes());
-            }
-            ParamValue::Float(v) => {
-                out.push(2);
+/// Appends the canonical encoding: a tag byte, then the payload; every sequence length-prefixed, so
+/// that two different values never encode alike.
+pub fn encode_param(value: &ParamValue, out: &mut Vec<u8>) -> Result<(), EncodeError> {
+    match value {
+        ParamValue::Bool(b) => out.extend_from_slice(&[0, u8::from(*b)]),
+        ParamValue::Int(i) => {
+            out.push(1);
+            out.extend_from_slice(&i.to_le_bytes());
+        }
+        ParamValue::Float(v) => {
+            out.push(2);
+            put_float(out, *v)?;
+        }
+        ParamValue::Enum(i) => {
+            out.push(3);
+            out.extend_from_slice(&i.to_le_bytes());
+        }
+        ParamValue::Colour(c) => {
+            out.push(4);
+            for v in c {
                 put_float(out, *v)?;
             }
-            ParamValue::Enum(i) => {
-                out.push(3);
-                out.extend_from_slice(&i.to_le_bytes());
+        }
+        ParamValue::Point(p) => {
+            out.push(5);
+            for v in p {
+                put_float(out, *v)?;
             }
-            ParamValue::Colour(c) => {
-                out.push(4);
-                for v in c {
+        }
+        ParamValue::List(items) => {
+            out.push(6);
+            out.extend_from_slice(&(items.len() as u32).to_le_bytes());
+            for item in items {
+                encode_param(item, out)?;
+            }
+        }
+        ParamValue::Curve(points) => {
+            out.push(7);
+            out.extend_from_slice(&(points.len() as u32).to_le_bytes());
+            for point in points {
+                for v in point {
                     put_float(out, *v)?;
-                }
-            }
-            ParamValue::Point(p) => {
-                out.push(5);
-                for v in p {
-                    put_float(out, *v)?;
-                }
-            }
-            ParamValue::List(items) => {
-                out.push(6);
-                out.extend_from_slice(&(items.len() as u32).to_le_bytes());
-                for item in items {
-                    item.encode(out)?;
-                }
-            }
-            ParamValue::Curve(points) => {
-                out.push(7);
-                out.extend_from_slice(&(points.len() as u32).to_le_bytes());
-                for point in points {
-                    for v in point {
-                        put_float(out, *v)?;
-                    }
                 }
             }
         }
-        Ok(())
     }
+    Ok(())
 }
 
 /// An operation in a recipe.
@@ -163,7 +118,7 @@ impl OperationInstance {
         out.extend_from_slice(&self.op_version.to_le_bytes());
         out.extend_from_slice(&(self.params.len() as u32).to_le_bytes());
         for param in &self.params {
-            param.encode(out)?;
+            encode_param(param, out)?;
         }
         Ok(())
     }
@@ -184,7 +139,7 @@ mod tests {
 
     fn encoded(v: &ParamValue) -> Result<Vec<u8>, EncodeError> {
         let mut out = Vec::new();
-        v.encode(&mut out)?;
+        encode_param(v, &mut out)?;
         Ok(out)
     }
 
