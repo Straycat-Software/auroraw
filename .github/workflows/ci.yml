@@ -76,6 +76,15 @@ jobs:
           - { name: windows-x64, os: windows-2025, arch: win64_msvc2022_64 }
           - { name: macos-arm64, os: macos-15 }
     steps:
+      # The tests make their machines and files in the temporary folder, which is on the runner's C: drive, slower than
+      # the D: drive the workspace is on: the engine's tests took 107 s with it on D: against 227 s (issue #77).
+      - name: The temporary folder on D:, as the workspace is
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p /d/tmp
+          echo "TEMP=D:\\tmp" >> "$GITHUB_ENV"
+          echo "TMP=D:\\tmp" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install the pinned toolchain
         run: rustup show
