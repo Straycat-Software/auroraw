@@ -30,6 +30,7 @@ are compiled at build time).
 cargo build --workspace
 cargo test --workspace        # or: cargo nextest run --workspace
 cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
+RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps   # a link in a doc comment to a private or missing item fails
 cargo xtask check             # SPDX headers, the allowed dependencies between crates, the QML waits (see below)
 ```
 

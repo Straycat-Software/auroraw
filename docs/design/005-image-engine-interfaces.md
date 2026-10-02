@@ -492,10 +492,17 @@ Layer 1 is in `plugin-api` as D-142 and D-146 decided it. What the decisions lef
   cache key; this crate does not normalise a value. *Unknown fields* in a declaration are ignored, not refused: a newer
   API's fields arrive with its `api_version`, which the host checks, and the required fields fail loudly; refusing the
   rest is for the stable API (M5), and `serde` cannot do it through the flattened parameter specs anyway.
-- **The stand-ins in `pipeline`** (`OperationId`, `ParamValue`, the names in `definition::names`) remain until
-  Charlie's follow-up (WP14) replaces them with these types. `ParamValue::encode` cannot become a method of
-  the `plugin-api` type (the canonical encoding is the pipeline's contract and the type is not in its crate),
-  so it becomes a function of `pipeline` that takes the shared type.
+- **The stand-ins in `pipeline` are gone (WP14, first pull request).** `OperationId` and `ParamValue` are `plugin-api`'s and
+  `pipeline::recipe` re-exports them; the stage and space identifiers are `plugin-api`'s constants, which the definition
+  is made of (there is no second table, so what a test still holds is that the definition covers them, in order, and the
+  fingerprint's strings did not move). The canonical encoding, which cannot be a method of a type the crate does not own,
+  is the function `recipe::encode_param`. `OperationInfo::from_declaration` builds what the pipeline reads from a
+  `Declaration`, and the checks that need the definition are `OperationRegistry::load`'s, as above. **Two things the
+  declaration does not say**, so the caller of `from_declaration` does: *which versions of the operation the engine can
+  run* (the declaration's `version` is the plugin's, and the recipe's `op_version` is a number) and *whether a recipe may
+  hold the operation twice*. And **one rule that is the pipeline's and not the declaration's**: an operation reads and
+  writes one space (only the spine changes it), so a declaration whose `input_space` and `output_space` differ is refused
+  by `from_declaration` (`ChangesSpace`).
 
 ## 6. The CPU fallback (item 4) [agreed for M2]
 

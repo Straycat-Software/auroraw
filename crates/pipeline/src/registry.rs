@@ -12,21 +12,25 @@
 //! registry. **The built-in operations are never refused** (the definition owns them); a cycle is cut by
 //! refusing the plugin operations in it.
 //!
-//! **A stand-in for the declaration.** What an operation declares (its stage, its placement, its input data
-//! space, its versions) is layer 1 of D-142, in `plugin-api`, with work package 13. [`OperationInfo`] is the
-//! part of it the pipeline reads, and is built from the declaration when that arrives.
+//! **From the declaration.** What an operation declares (its stage, its placement, its spaces) is layer 1 of D-142, in
+//! `plugin-api`, and [`Declaration::validate`] checks what needs only the declaration. [`OperationInfo`] is the part of
+//! it the pipeline reads, [`OperationInfo::from_declaration`] builds it, and the checks that need **the definition**
+//! (the stage exists, the stage delivers the space the operation reads, `after` and `before` name operations of the same
+//! stage; note 005 §5.3) are the ones [`OperationRegistry::load`] makes.
 
 use std::collections::{BTreeMap, BTreeSet};
+
+use auroraw_plugin_api::{Declaration, DeclarationError, Family};
 
 use crate::definition::{DataSpace, Definition};
 use crate::recipe::OperationId;
 
 /// What the pipeline needs to know of an operation.
 ///
-/// It says an operation **reads and returns one space** (`input_space`). That holds as long as the spine,
-/// and not an operation, changes the space; D-142 declares an input **and** an output space, so the real
-/// declaration keeps both and work package 13 validates that they are equal for an operation (the pipeline
-/// reads one of the two). The cost class is `develop`'s, not the pipeline's, and is absent here on purpose.
+/// It says an operation **reads and returns one space** (`input_space`). That holds as long as the spine, and not an
+/// operation, changes the space; D-142 declares an input **and** an output space, so a declaration keeps both and
+/// [`OperationInfo::from_declaration`] refuses one whose two differ (the pipeline reads one of the two). The cost class
+/// is `develop`'s, not the pipeline's, and is absent here on purpose.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OperationInfo {
     /// The operation's identifier.
@@ -47,9 +51,111 @@ pub struct OperationInfo {
     pub versions: Vec<u32>,
 }
 
+impl OperationInfo {
+    /// What the pipeline reads of the declaration of an operation plugin.
+    ///
+    /// The declaration does not say **which versions of the operation the engine can run** (its own `version` is the
+    /// plugin's) **nor whether a recipe may hold it twice**, so the caller, which knows the implementation, does.
+    ///
+    /// Refused, with the reason: a declaration that [`Declaration::validate`] refuses; one of another family than
+    /// [`Family::Operation`]; one that reads a space and writes another.
+    pub fn from_declaration(
+        declaration: &Declaration,
+        versions: Vec<u32>,
+        allows_several: bool,
+    ) -> Result<OperationInfo, RegistryError> {
+        let id = OperationId::from(declaration.identifier.as_str());
+        declaration
+            .validate()
+            .map_err(|error| RegistryError::BadDeclaration {
+                operation: id.clone(),
+                error,
+            })?;
+        if declaration.family != Family::Operation {
+            return Err(RegistryError::NotAnOperation { operation: id });
+        }
+        // `validate` has checked that an operation has its placement and both spaces; the two checks are in two crates,
+        // so what it would have said is asked for again here, and a gap between them is an error, not a panic.
+        let missing = |error| RegistryError::BadDeclaration {
+            operation: id.clone(),
+            error,
+        };
+        let placement = declaration
+            .placement
+            .as_ref()
+            .ok_or_else(|| missing(DeclarationError::OperationWithoutPlacement))?;
+        let reads = declaration
+            .input_space
+            .as_ref()
+            .ok_or_else(|| missing(DeclarationError::MissingSpace { side: "reads" }))?;
+        let writes = declaration
+            .output_space
+            .as_ref()
+            .ok_or_else(|| missing(DeclarationError::MissingSpace { side: "writes" }))?;
+        if reads != writes {
+            return Err(RegistryError::ChangesSpace {
+                operation: id,
+                reads: reads.clone(),
+                writes: writes.clone(),
+            });
+        }
+        let space = |name: &String| {
+            DataSpace::from_name(name).ok_or_else(|| RegistryError::BadDeclaration {
+                operation: id.clone(),
+                error: DeclarationError::UnknownSpace(name.clone()),
+            })
+        };
+        Ok(OperationInfo {
+            input_space: space(reads)?,
+            stage: placement.stage.clone(),
+            after: placement
+                .after
+                .iter()
+                .map(|name| OperationId::from(name.as_str()))
+                .collect(),
+            before: placement
+                .before
+                .iter()
+                .map(|name| OperationId::from(name.as_str()))
+                .collect(),
+            allows_several,
+            versions,
+            id,
+        })
+    }
+}
+
 /// Why a declaration was refused when the registry was loaded.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RegistryError {
+    /// The declaration does not hold together by itself (`Declaration::validate`): a field is missing, a space
+    /// unknown, a parameter's limits inconsistent.
+    #[error("the declaration of {operation} is refused: {error}")]
+    BadDeclaration {
+        /// The operation, by the identifier its declaration gave.
+        operation: OperationId,
+        /// What is wrong.
+        error: DeclarationError,
+    },
+    /// The declaration is of another family than an operation: it has no place in the pipeline.
+    #[error("{operation} is not an operation plugin, and has no place in the pipeline")]
+    NotAnOperation {
+        /// The plugin.
+        operation: OperationId,
+    },
+    /// An operation that reads one space and writes another. Only the definition's spine changes the space; an operation
+    /// that did would put the next one in front of data it was not written for.
+    #[error(
+        "the operation {operation} reads {reads} and writes {writes}, and an operation does not change the space"
+    )]
+    ChangesSpace {
+        /// The operation.
+        operation: OperationId,
+        /// The space it declared it reads.
+        reads: String,
+        /// The space it declared it writes.
+        writes: String,
+    },
     /// Two operations have the same identifier (a plugin may not take a built-in's).
     #[error("the operation {operation} is declared twice")]
     DuplicateId {
@@ -399,7 +505,10 @@ fn cycles(entries: &BTreeMap<OperationId, Entry>, stage: usize) -> Vec<Vec<Opera
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::definition::{V1, names};
+    use crate::definition::V1;
+    use auroraw_plugin_api::{
+        CostClass, ParamKind, ParamSpec, Permissions, Placement, spaces, stages,
+    };
 
     fn plugin(id: &str, stage: &str, space: DataSpace) -> OperationInfo {
         OperationInfo {
@@ -417,6 +526,136 @@ mod tests {
         list.iter().map(|s| OperationId::from(*s)).collect()
     }
 
+    /// The declaration of an operation plugin that is valid on its own: a stage, one space read and written, a cost.
+    fn declared(id: &str, stage: &str, space: &str) -> Declaration {
+        Declaration {
+            identifier: id.to_string(),
+            version: "1.0.0".to_string(),
+            api_version: auroraw_plugin_api::HOST_API_VERSION,
+            family: Family::Operation,
+            panel: None,
+            placement: Some(Placement {
+                stage: stage.to_string(),
+                after: vec![],
+                before: vec![],
+            }),
+            parameters: vec![ParamSpec {
+                key: "amount".to_string(),
+                label: "dehaze.amount".to_string(),
+                kind: ParamKind::Float {
+                    min: 0.0,
+                    max: 1.0,
+                    default: 0.0,
+                },
+            }],
+            input_space: Some(space.to_string()),
+            output_space: Some(space.to_string()),
+            cost: Some(CostClass::Interactive),
+            permissions: Permissions::default(),
+        }
+    }
+
+    #[test]
+    fn a_declaration_becomes_the_info_the_pipeline_reads() {
+        let mut d = declared("acme.dehaze", stages::SCENE_LINEAR, spaces::WORKING_LINEAR);
+        let placement = d.placement.as_mut().expect("placement");
+        placement.after = vec!["auroraw.exposure".to_string()];
+        placement.before = vec!["auroraw.saturation".to_string()];
+        let info = OperationInfo::from_declaration(&d, vec![1, 2], true).expect("valid");
+        assert_eq!(info.id, OperationId::from("acme.dehaze"));
+        assert_eq!(info.stage, stages::SCENE_LINEAR);
+        assert_eq!(info.input_space, DataSpace::WorkingLinear);
+        assert_eq!(info.after, ids(&["auroraw.exposure"]));
+        assert_eq!(info.before, ids(&["auroraw.saturation"]));
+        assert_eq!(info.versions, vec![1, 2]);
+        assert!(info.allows_several);
+        // And the registry accepts what the declaration gave.
+        assert!(OperationRegistry::new(&V1, vec![info]).is_ok());
+    }
+
+    #[test]
+    fn a_declaration_that_is_not_valid_alone_is_refused_with_its_own_reason() {
+        let mut d = declared("acme.dehaze", stages::SCENE_LINEAR, spaces::WORKING_LINEAR);
+        d.cost = None;
+        assert_eq!(
+            OperationInfo::from_declaration(&d, vec![1], false),
+            Err(RegistryError::BadDeclaration {
+                operation: OperationId::from("acme.dehaze"),
+                error: DeclarationError::MissingCost,
+            })
+        );
+    }
+
+    #[test]
+    fn a_plugin_of_another_family_is_not_an_operation() {
+        let mut d = declared("acme.import", stages::DETAIL, spaces::WORKING_LINEAR);
+        d.family = Family::Import;
+        d.parameters.clear();
+        d.input_space = None;
+        d.output_space = None;
+        d.cost = None;
+        d.placement = None;
+        assert_eq!(
+            OperationInfo::from_declaration(&d, vec![1], false),
+            Err(RegistryError::NotAnOperation {
+                operation: OperationId::from("acme.import")
+            })
+        );
+    }
+
+    #[test]
+    fn an_operation_that_reads_one_space_and_writes_another_is_refused() {
+        let mut d = declared("acme.demosaic", stages::DEMOSAIC, spaces::MOSAIC_LINEAR);
+        d.output_space = Some(spaces::CAMERA_LINEAR.to_string());
+        assert_eq!(
+            OperationInfo::from_declaration(&d, vec![1], false),
+            Err(RegistryError::ChangesSpace {
+                operation: OperationId::from("acme.demosaic"),
+                reads: spaces::MOSAIC_LINEAR.to_string(),
+                writes: spaces::CAMERA_LINEAR.to_string(),
+            })
+        );
+    }
+
+    /// What needs the definition is the registry's, and it is checked there, on what a declaration gave: a typo in the
+    /// stage's name, a space the stage does not deliver, a constraint into another stage.
+    #[test]
+    fn what_needs_the_definition_is_refused_at_load_with_the_declarations_own_words() {
+        let typo = declared("acme.a", "scene-lineer", spaces::WORKING_LINEAR);
+        let wrong_space = declared("acme.b", stages::SCENE_LINEAR, spaces::CAMERA_LINEAR);
+        let mut across = declared("acme.c", stages::SCENE_LINEAR, spaces::WORKING_LINEAR);
+        across.placement.as_mut().expect("placement").after =
+            vec!["auroraw.sharpening".to_string()];
+        let fine = declared("acme.d", stages::DETAIL, spaces::WORKING_LINEAR);
+        let infos = [typo, wrong_space, across, fine]
+            .iter()
+            .map(|d| OperationInfo::from_declaration(d, vec![1], false).expect("valid alone"))
+            .collect();
+        let loaded = OperationRegistry::load(&V1, infos);
+        assert!(loaded.registry.contains(&OperationId::from("acme.d")));
+        for refused in ["acme.a", "acme.b", "acme.c"] {
+            assert!(
+                !loaded.registry.contains(&OperationId::from(refused)),
+                "{refused}"
+            );
+        }
+        assert!(
+            matches!(&loaded.refused[0], RegistryError::UnknownStage { stage, .. } if stage == "scene-lineer")
+        );
+        assert!(matches!(
+            &loaded.refused[1],
+            RegistryError::WrongSpace {
+                declared: DataSpace::CameraLinear,
+                expected: DataSpace::WorkingLinear,
+                ..
+            }
+        ));
+        assert!(
+            matches!(&loaded.refused[2], RegistryError::ConstraintAcrossStages { other_stage, .. } if other_stage == stages::DETAIL)
+        );
+        assert_eq!(loaded.refused.len(), 3, "{:?}", loaded.refused);
+    }
+
     #[test]
     fn the_builtins_alone_form_a_valid_registry() {
         let registry = OperationRegistry::new(&V1, vec![]).expect("the built-ins are valid");
@@ -425,14 +664,18 @@ mod tests {
         let wb = registry
             .get(&OperationId::from("auroraw.white-balance"))
             .expect("known");
-        assert_eq!(wb.info.stage, names::INPUT_COLOUR);
+        assert_eq!(wb.info.stage, stages::INPUT_COLOUR);
         assert_eq!(wb.info.input_space, DataSpace::CameraLinear);
         assert_eq!(wb.canonical_rank, Some(0));
     }
 
     #[test]
     fn a_plugin_in_a_stage_that_reads_its_space_is_accepted() {
-        let p = plugin("acme.dehaze", names::SCENE_LINEAR, DataSpace::WorkingLinear);
+        let p = plugin(
+            "acme.dehaze",
+            stages::SCENE_LINEAR,
+            DataSpace::WorkingLinear,
+        );
         assert!(OperationRegistry::new(&V1, vec![p]).is_ok());
     }
 
@@ -440,7 +683,7 @@ mod tests {
     fn a_plugin_may_not_take_a_builtins_identifier() {
         let p = plugin(
             "auroraw.exposure",
-            names::SCENE_LINEAR,
+            stages::SCENE_LINEAR,
             DataSpace::WorkingLinear,
         );
         let errors = OperationRegistry::new(&V1, vec![p]).expect_err("refused");
@@ -451,7 +694,7 @@ mod tests {
             }]
         );
         // Nor two plugins one another's.
-        let a = plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear);
+        let a = plugin("acme.x", stages::DETAIL, DataSpace::WorkingLinear);
         let errors = OperationRegistry::new(&V1, vec![a.clone(), a]).expect_err("refused");
         assert!(
             matches!(errors.as_slice(), [RegistryError::DuplicateId { .. }]),
@@ -472,13 +715,17 @@ mod tests {
     #[test]
     fn a_working_space_operation_in_a_camera_stage_is_refused() {
         // Saturation is wrong on camera primaries: the declaration's space is what lets the pipeline say so.
-        let p = plugin("acme.saturate", names::CAMERA_RGB, DataSpace::WorkingLinear);
+        let p = plugin(
+            "acme.saturate",
+            stages::CAMERA_RGB,
+            DataSpace::WorkingLinear,
+        );
         let errors = OperationRegistry::new(&V1, vec![p]).expect_err("refused");
         assert_eq!(
             errors,
             vec![RegistryError::WrongSpace {
                 operation: OperationId::from("acme.saturate"),
-                stage: names::CAMERA_RGB.to_string(),
+                stage: stages::CAMERA_RGB.to_string(),
                 declared: DataSpace::WorkingLinear,
                 expected: DataSpace::CameraLinear,
             }]
@@ -488,15 +735,15 @@ mod tests {
     #[test]
     fn the_levels_stage_delivers_mosaic_values_to_its_operations() {
         // `raw-linear` receives counts, but its operations read what the levels turned them into.
-        let ok = plugin("acme.stuck", names::RAW_LINEAR, DataSpace::MosaicLinear);
+        let ok = plugin("acme.stuck", stages::RAW_LINEAR, DataSpace::MosaicLinear);
         assert!(OperationRegistry::new(&V1, vec![ok]).is_ok());
-        let bad = plugin("acme.stuck", names::RAW_LINEAR, DataSpace::SensorRaw);
+        let bad = plugin("acme.stuck", stages::RAW_LINEAR, DataSpace::SensorRaw);
         assert!(OperationRegistry::new(&V1, vec![bad]).is_err());
     }
 
     #[test]
     fn a_constraint_naming_the_operation_itself_is_refused() {
-        let mut p = plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear);
+        let mut p = plugin("acme.x", stages::DETAIL, DataSpace::WorkingLinear);
         p.after = ids(&["acme.x"]);
         let errors = OperationRegistry::new(&V1, vec![p]).expect_err("refused");
         assert_eq!(
@@ -510,16 +757,16 @@ mod tests {
     #[test]
     fn a_constraint_naming_an_operation_of_another_stage_is_an_error_not_ignored() {
         // Sharpening is in `detail`; a plugin of `scene-linear` that asks to come after it.
-        let mut p = plugin("acme.x", names::SCENE_LINEAR, DataSpace::WorkingLinear);
+        let mut p = plugin("acme.x", stages::SCENE_LINEAR, DataSpace::WorkingLinear);
         p.after = ids(&["auroraw.sharpening"]);
         let errors = OperationRegistry::new(&V1, vec![p]).expect_err("refused");
         assert_eq!(
             errors,
             vec![RegistryError::ConstraintAcrossStages {
                 operation: OperationId::from("acme.x"),
-                stage: names::SCENE_LINEAR.to_string(),
+                stage: stages::SCENE_LINEAR.to_string(),
                 other: OperationId::from("auroraw.sharpening"),
-                other_stage: names::DETAIL.to_string(),
+                other_stage: stages::DETAIL.to_string(),
             }]
         );
     }
@@ -527,7 +774,7 @@ mod tests {
     #[test]
     fn a_constraint_naming_an_operation_nobody_declared_is_fine_because_it_is_relative() {
         // A plugin that wants to come after another plugin that is not installed.
-        let mut p = plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear);
+        let mut p = plugin("acme.x", stages::DETAIL, DataSpace::WorkingLinear);
         p.after = ids(&["other.not-installed"]);
         assert!(OperationRegistry::new(&V1, vec![p]).is_ok());
     }
@@ -536,7 +783,7 @@ mod tests {
     fn constraints_that_contradict_the_canonical_order_are_a_cycle() {
         // White balance is before highlight reconstruction in the canonical order of `input-colour`; a
         // plugin that must come before the balance and after the reconstruction cannot be placed.
-        let mut p = plugin("acme.x", names::INPUT_COLOUR, DataSpace::CameraLinear);
+        let mut p = plugin("acme.x", stages::INPUT_COLOUR, DataSpace::CameraLinear);
         p.before = ids(&["auroraw.white-balance"]);
         p.after = ids(&["auroraw.highlight-reconstruction"]);
         let errors = OperationRegistry::new(&V1, vec![p]).expect_err("refused");
@@ -544,7 +791,7 @@ mod tests {
         let RegistryError::ConstraintCycle { stage, operations } = &errors[0] else {
             panic!("expected a cycle, got {errors:?}");
         };
-        assert_eq!(stage, names::INPUT_COLOUR);
+        assert_eq!(stage, stages::INPUT_COLOUR);
         assert_eq!(
             operations,
             &ids(&[
@@ -557,8 +804,8 @@ mod tests {
 
     #[test]
     fn two_plugins_that_each_want_to_be_first_form_a_cycle() {
-        let mut a = plugin("acme.a", names::DETAIL, DataSpace::WorkingLinear);
-        let mut b = plugin("acme.b", names::DETAIL, DataSpace::WorkingLinear);
+        let mut a = plugin("acme.a", stages::DETAIL, DataSpace::WorkingLinear);
+        let mut b = plugin("acme.b", stages::DETAIL, DataSpace::WorkingLinear);
         a.before = ids(&["acme.b"]);
         b.before = ids(&["acme.a"]);
         let errors = OperationRegistry::new(&V1, vec![a, b]).expect_err("refused");
@@ -570,7 +817,7 @@ mod tests {
 
     #[test]
     fn constraints_that_agree_with_the_canonical_order_are_not_a_cycle() {
-        let mut p = plugin("acme.x", names::INPUT_COLOUR, DataSpace::CameraLinear);
+        let mut p = plugin("acme.x", stages::INPUT_COLOUR, DataSpace::CameraLinear);
         p.after = ids(&["auroraw.white-balance"]);
         p.before = ids(&["auroraw.highlight-reconstruction"]);
         assert!(OperationRegistry::new(&V1, vec![p]).is_ok());
@@ -579,8 +826,8 @@ mod tests {
     #[test]
     fn every_problem_is_reported_and_one_bad_declaration_does_not_hide_another() {
         let bad_stage = plugin("acme.a", "nowhere", DataSpace::WorkingLinear);
-        let bad_space = plugin("acme.b", names::DETAIL, DataSpace::CameraLinear);
-        let good = plugin("acme.c", names::DETAIL, DataSpace::WorkingLinear);
+        let bad_space = plugin("acme.b", stages::DETAIL, DataSpace::CameraLinear);
+        let good = plugin("acme.c", stages::DETAIL, DataSpace::WorkingLinear);
         let errors =
             OperationRegistry::new(&V1, vec![bad_stage, bad_space, good]).expect_err("refused");
         assert_eq!(errors.len(), 2, "{errors:?}");
@@ -591,7 +838,11 @@ mod tests {
     #[test]
     fn one_bad_declaration_is_refused_and_the_rest_of_the_registry_loads() {
         let bad = plugin("acme.typo", "scene-linaer", DataSpace::WorkingLinear);
-        let good = plugin("acme.dehaze", names::SCENE_LINEAR, DataSpace::WorkingLinear);
+        let good = plugin(
+            "acme.dehaze",
+            stages::SCENE_LINEAR,
+            DataSpace::WorkingLinear,
+        );
         let loaded = OperationRegistry::load(&V1, vec![bad, good]);
         assert_eq!(
             loaded.refused,
@@ -619,7 +870,7 @@ mod tests {
     fn a_registry_with_nothing_refused_is_complete() {
         let loaded = OperationRegistry::load(
             &V1,
-            vec![plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear)],
+            vec![plugin("acme.x", stages::DETAIL, DataSpace::WorkingLinear)],
         );
         assert!(loaded.refused.is_empty());
         assert!(loaded.complete().is_ok());
@@ -634,10 +885,10 @@ mod tests {
     fn a_cycle_is_cut_by_refusing_the_plugin_operations_in_it_and_the_builtins_stay() {
         // The case of the registry tests above: a plugin that must come before the balance and after the
         // reconstruction. The cycle is white balance, reconstruction and the plugin; the plugin goes.
-        let mut cycle = plugin("acme.x", names::INPUT_COLOUR, DataSpace::CameraLinear);
+        let mut cycle = plugin("acme.x", stages::INPUT_COLOUR, DataSpace::CameraLinear);
         cycle.before = ids(&["auroraw.white-balance"]);
         cycle.after = ids(&["auroraw.highlight-reconstruction"]);
-        let fine = plugin("acme.fine", names::INPUT_COLOUR, DataSpace::CameraLinear);
+        let fine = plugin("acme.fine", stages::INPUT_COLOUR, DataSpace::CameraLinear);
         let loaded = OperationRegistry::load(&V1, vec![cycle, fine]);
         assert_eq!(loaded.refused.len(), 1, "{:?}", loaded.refused);
         let registry = loaded.registry;
@@ -660,9 +911,9 @@ mod tests {
     fn the_cycle_names_the_operations_in_it_and_not_what_hangs_off_it() {
         // A and B must each come before the other. C only asks to come after A: it is not in the cycle, and
         // nothing is wrong with it once A is refused (the constraint is relative and optional).
-        let mut a = plugin("acme.a", names::DETAIL, DataSpace::WorkingLinear);
-        let mut b = plugin("acme.b", names::DETAIL, DataSpace::WorkingLinear);
-        let mut c = plugin("acme.c", names::DETAIL, DataSpace::WorkingLinear);
+        let mut a = plugin("acme.a", stages::DETAIL, DataSpace::WorkingLinear);
+        let mut b = plugin("acme.b", stages::DETAIL, DataSpace::WorkingLinear);
+        let mut c = plugin("acme.c", stages::DETAIL, DataSpace::WorkingLinear);
         a.before = ids(&["acme.b"]);
         b.before = ids(&["acme.a"]);
         c.after = ids(&["acme.a"]);
@@ -670,7 +921,7 @@ mod tests {
         assert_eq!(
             loaded.refused,
             vec![RegistryError::ConstraintCycle {
-                stage: names::DETAIL.to_string(),
+                stage: stages::DETAIL.to_string(),
                 operations: ids(&["acme.a", "acme.b"]),
             }]
         );
@@ -685,7 +936,7 @@ mod tests {
     #[test]
     fn two_separate_cycles_in_a_stage_are_both_reported() {
         let mk = |id: &str, before: &str| {
-            let mut p = plugin(id, names::SCENE_LINEAR, DataSpace::WorkingLinear);
+            let mut p = plugin(id, stages::SCENE_LINEAR, DataSpace::WorkingLinear);
             p.before = ids(&[before]);
             p
         };
@@ -714,8 +965,8 @@ mod tests {
 
     #[test]
     fn of_two_declarations_of_one_identifier_the_first_is_kept() {
-        let first = plugin("acme.x", names::DETAIL, DataSpace::WorkingLinear);
-        let mut second = plugin("acme.x", names::SCENE_LINEAR, DataSpace::WorkingLinear);
+        let first = plugin("acme.x", stages::DETAIL, DataSpace::WorkingLinear);
+        let mut second = plugin("acme.x", stages::SCENE_LINEAR, DataSpace::WorkingLinear);
         second.versions = vec![9];
         let loaded = OperationRegistry::load(&V1, vec![first, second]);
         assert_eq!(
@@ -728,6 +979,6 @@ mod tests {
             .registry
             .get(&OperationId::from("acme.x"))
             .expect("the first is kept");
-        assert_eq!(kept.info.stage, names::DETAIL);
+        assert_eq!(kept.info.stage, stages::DETAIL);
     }
 }

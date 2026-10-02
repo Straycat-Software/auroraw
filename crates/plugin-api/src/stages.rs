@@ -35,3 +35,28 @@ pub const ALL: [&str; 8] = [
     DETAIL,
     DISPLAY,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The strings are what a plugin writes in its declaration (`placement.stage`) and what the pipeline definition's
+    /// fingerprint is made of, so they are held here **as literals**, not as the constants: changing a name is a decision
+    /// that edits this test, and after the definition's release it is a new definition version.
+    #[test]
+    fn the_eight_stages_are_named_as_declarations_write_them() {
+        assert_eq!(
+            ALL,
+            [
+                "raw-linear",
+                "demosaic",
+                "camera-rgb",
+                "input-colour",
+                "scene-linear",
+                "geometry",
+                "detail",
+                "display"
+            ]
+        );
+    }
+}

@@ -27,3 +27,24 @@ pub const ALL: [&str; 5] = [
     WORKING_LINEAR,
     DISPLAY_REFERRED,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The strings are what a plugin writes in its declaration (`input_space`, `output_space`) and what the pipeline
+    /// definition's fingerprint is made of, so they are held here **as literals**, not as the constants (see the stages').
+    #[test]
+    fn the_five_spaces_are_named_as_declarations_write_them() {
+        assert_eq!(
+            ALL,
+            [
+                "sensor-raw",
+                "mosaic-linear",
+                "camera-linear",
+                "working-linear",
+                "display-referred"
+            ]
+        );
+    }
+}
