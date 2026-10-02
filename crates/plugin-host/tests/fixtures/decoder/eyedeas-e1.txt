@@ -1,0 +1,15 @@
+file: Eyedeas_-_E1_-_16bit_(4x3).DNG
+readout: 4640 x 3480
+layout: cfa 2x2 [1, 0, 2, 1]
+samples: U16 x 16147200, blake3 d63166bef3b2a709568572581263d32136aeef165f19451b0e3a486ee73d91af
+black: 2 rows x 2 columns x 1 components [1024.0, 1024.0, 1024.0, 1024.0]
+white: [16380.0]
+white balance: Some([2.4277737, 1.0, 1.5176809])
+colour matrix: illuminant 17 (3 rows) [0.9784, -0.4995, 0.003, -0.3625, 1.1454, 0.2475, -0.0961, 0.2097, 0.6377]
+colour matrix: illuminant 21 (3 rows) [0.677, -0.1895, -0.0744, -0.5232, 1.3145, 0.2303, -0.1664, 0.2691, 0.5703]
+crop: None
+active area: None
+orientation: Rotate90
+camera: Eyedeas E1
+iso: Some(200)
+noise profile: None

@@ -8,8 +8,11 @@
 //! Skipped locally when `plugins/hostile` has not been built (`tools/build-plugins.sh`); required
 //! in CI (`AUR_REQUIRE_PLUGINS=1`).
 
-use auroraw_plugin_host::{Grants, PluginHost};
+use auroraw_plugin_api::block::{MAGIC, MAX_BLOCK_LEN, VERSION, tag};
+use auroraw_plugin_api::{Decoder, DecoderError, RawImage};
+use auroraw_plugin_host::{Grants, PluginHost, WasmDecoder};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 fn plugin_wasm() -> Option<Vec<u8>> {
@@ -72,6 +75,10 @@ fn an_infinite_loop_is_interrupted_by_its_time_budget() {
             result.is_err(),
             "an infinite loop must be interrupted, not returned from"
         );
+        // The reason is in the message, not only the backtrace: a decode stopped by its budget was once reported
+        // by CI as a backtrace that could not be told from a crash.
+        let message = result.unwrap_err().to_string();
+        assert!(message.contains("interrupt"), "{message}");
         // The host's timer is a free-running 1 ms tick (`plugin::EPOCH_TICK`), not a fresh timer
         // per call: the first tick counted toward this call's deadline can land anywhere up to a
         // full tick after the deadline was set, so a call can finish up to one tick early.
@@ -275,4 +282,130 @@ fn a_plugin_sees_no_environment_but_can_read_the_clock() {
         "the clock is granted to every plugin (architecture §8.2)"
     );
     assert!(host_alive(&host, &wasm));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A decoder that lies. `plugins/hostile` exports `import` the way the real decoder does and returns the lengths and the
+// block its input tells it to: each case is a defence of `WasmDecoder::decode` against a plugin that is not honest,
+// which no honest plugin makes run (Django's review of #92: removing any of them left every test green).
+// ---------------------------------------------------------------------------------------------------------------------
+
+/// A block made by hand: the four required sections for `width` x `height` pixels of one component (a monochrome
+/// sensor) and `count` samples of 16 bits.
+fn block(width: u32, height: u32, layout: &[u8], count: u64) -> Vec<u8> {
+    let section = |t: u16, payload: &[u8]| {
+        let mut out = t.to_le_bytes().to_vec();
+        out.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        out.extend_from_slice(payload);
+        out
+    };
+    let mut geometry = width.to_le_bytes().to_vec();
+    geometry.extend_from_slice(&height.to_le_bytes());
+    let mut samples = vec![0u8];
+    samples.extend_from_slice(&count.to_le_bytes());
+    let mut levels = vec![1, 0, 1, 0, 1];
+    levels.extend_from_slice(&0.0f32.to_le_bytes());
+    levels.push(1);
+    levels.extend_from_slice(&65535.0f32.to_le_bytes());
+    let mut out = MAGIC.to_vec();
+    out.extend_from_slice(&VERSION.to_le_bytes());
+    out.extend_from_slice(&[0, 0]);
+    out.extend(section(tag::GEOMETRY, &geometry));
+    out.extend(section(tag::LAYOUT, layout));
+    out.extend(section(tag::SAMPLES, &samples));
+    out.extend(section(tag::LEVELS, &levels));
+    out
+}
+
+/// What `WasmDecoder::decode` makes of a plugin that says `claimed_block_len` bytes of block and `claimed_samples_len`
+/// bytes of samples, with `block` in its memory.
+fn lying(
+    claimed_block_len: u32,
+    claimed_samples_len: u32,
+    block: &[u8],
+) -> Option<Result<RawImage, DecoderError>> {
+    let wasm = plugin_wasm()?;
+    let decoder = WasmDecoder::new(Arc::new(PluginHost::new().unwrap()), &wasm).unwrap();
+    let mut input = claimed_block_len.to_le_bytes().to_vec();
+    input.extend_from_slice(&claimed_samples_len.to_le_bytes());
+    input.extend_from_slice(block);
+    Some(decoder.decode(&input))
+}
+
+fn failed(result: Option<Result<RawImage, DecoderError>>) -> Option<String> {
+    match result? {
+        Err(DecoderError::Failed(why)) => Some(why),
+        other => panic!("expected the decoder to fail, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_decoder_that_tells_the_truth_is_read_by_the_same_path() {
+    // The control of the cases below: with honest lengths the lying plugin's answer is an image, so that the cases
+    // fail for their own reason and not for the harness's.
+    let block = block(2, 2, &[2], 4);
+    let Some(result) = lying(block.len() as u32, 8, &block) else {
+        return;
+    };
+    let image = result.expect("an honest answer is read");
+    assert_eq!((image.width, image.height, image.samples.len()), (2, 2, 4));
+}
+
+#[test]
+fn a_block_longer_than_the_cap_is_refused_before_anything_is_read_for_it() {
+    let block = block(2, 2, &[2], 4);
+    let claimed = (MAX_BLOCK_LEN + 1) as u32;
+    let Some(why) = failed(lying(claimed, 8, &block)) else {
+        return;
+    };
+    assert!(
+        why.contains(&format!(
+            "block is {claimed} bytes, more than {MAX_BLOCK_LEN}"
+        )),
+        "{why}"
+    );
+    // The largest length a word can say.
+    let Some(why) = failed(lying(u32::MAX, 8, &block)) else {
+        return;
+    };
+    assert!(why.contains("more than"), "{why}");
+}
+
+#[test]
+fn samples_that_are_not_what_the_block_describes_are_refused() {
+    // The block describes 4 samples of 2 bytes; the plugin says it holds 6.
+    let block = block(2, 2, &[2], 4);
+    let Some(why) = failed(lying(block.len() as u32, 6, &block)) else {
+        return;
+    };
+    assert!(
+        why.contains("describes 4 samples of 2 bytes and it holds 6 bytes"),
+        "{why}"
+    );
+}
+
+#[test]
+fn samples_longer_than_the_plugins_memory_are_refused_before_they_are_allocated() {
+    // 2^31 - 1 samples of 2 bytes is what a length of 4 GiB less 2 describes, so the block and the length agree and the
+    // only thing left to say no is the ceiling of the plugin's memory.
+    let count = (1u64 << 31) - 1;
+    let block = block(1 << 16, 1 << 15, &[2], count);
+    let Some(why) = failed(lying(block.len() as u32, (count * 2) as u32, &block)) else {
+        return;
+    };
+    assert!(why.contains("more than its memory"), "{why}");
+}
+
+#[test]
+fn a_geometry_whose_product_wraps_is_refused_end_to_end() {
+    // The block of the defect found in the review of #92: 2^31 x 2^31 pixels of 4 components and no samples, which a
+    // release build once read as an image of that size with nothing in it.
+    let block = block(1 << 31, 1 << 31, &[1, 4], 0);
+    let Some(why) = failed(lying(block.len() as u32, 0, &block)) else {
+        return;
+    };
+    assert!(
+        why.contains("malformed") && why.contains("too large"),
+        "{why}"
+    );
 }

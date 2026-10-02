@@ -1,0 +1,15 @@
+file: Nikon-D850-14bit-compressed.NEF
+readout: 8288 x 5520
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: U16 x 45749760, blake3 ab21daef867e0c598d9112ac2b9011c72214034f7dc6541ed3c326a8b7749dc6
+black: 2 rows x 2 columns x 1 components [400.0, 400.0, 400.0, 400.0]
+white: [15520.0]
+white balance: Some([1.9003906, 1.0, 1.3754883])
+colour matrix: illuminant 17 (3 rows) [1.1284, -0.4911, -0.0608, -0.6062, 1.4228, 0.196, -0.0877, 0.1605, 0.8117]
+colour matrix: illuminant 21 (3 rows) [1.0405, -0.3755, -0.127, -0.5461, 1.3787, 0.1793, -0.104, 0.2015, 0.6785]
+crop: Some(Rect { x: 16, y: 8, width: 8256, height: 5504 })
+active area: Some(Rect { x: 0, y: 0, width: 8288, height: 5520 })
+orientation: Normal
+camera: Nikon D850
+iso: Some(64)
+noise profile: None

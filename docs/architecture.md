@@ -507,6 +507,14 @@ productized): the component model's canonical-ABI copies cost real time on exact
 buffers a decoder or an operation plugin moves every call, for typed interfaces this crate does
 not need yet. It lives behind `plugin-api` and the API stays experimental until M5.
 
+**What crosses it for a decoder (WP13, D-141).** `import(ptr, len, out)` fills four little-endian `u32` words at `out`
+(the address and the length of a **block**, the address and the length in bytes of the **samples**). The samples are
+written into the plugin's memory and read back as before; everything else about the image is the block, a versioned,
+little-endian sequence of tagged sections (tag, length, payload) specified in `auroraw_plugin_api::block`: a reader skips
+a tag it does not know, so that new data (a DNG's forward matrices, a linearisation table) is a new tag and not a new
+ABI, and no float in it may be NaN or infinite. `plugin-api` is the one implementation of the block in Rust (the
+plugin writes it, the host reads it with the same code); a plugin in another language implements it from the table, and
+the fuzz target `raw_block` and the decoder fixtures of `plugin-host` are its conformance tests.
 ### 8.3 The declaration [decided, D-078, D-142]
 
 Identifier, version, API version, family, panel, pipeline stage and ordering constraints,

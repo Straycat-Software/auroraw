@@ -33,7 +33,7 @@ cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cargo xtask check             # SPDX headers and the allowed dependencies between crates
 ```
 
-Sample RAW files for the tests come from `tools/fetch-samples.sh` (CC0 files, about 225 MB, kept
+Sample RAW files for the tests come from `tools/fetch-samples.sh` (seventeen CC0 files, about 490 MB, kept
 out of git in `testdata/samples/`).
 The file of place names (design note 008) is built from public data by `tools/fetch-places.sh` (about 65 MB
 of downloads, a 24 MB file, kept out of git in `testdata/places/`); the tests of `auroraw-places` on the real

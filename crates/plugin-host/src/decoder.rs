@@ -3,27 +3,34 @@
 //! `rawler` decoder (architecture §8.1, "the first real WebAssembly plugin"), and the wire
 //! protocol `plugins/rawler-decoder` implements on the guest side of the same C interface
 //! [`crate::plugin`] speaks on the host side.
+//!
+//! `import` fills a 16-byte buffer with four little-endian `u32` words: the address and the length of
+//! the **block** (the image's metadata, `auroraw_plugin_api::block`), and the address and the length
+//! in bytes of the **samples**, which the block describes (type and count). The host reads the block,
+//! asks it what the samples are, reads them in that type, and builds the image from both.
 
 use crate::grants::Grants;
 use crate::plugin::{CompiledPlugin, PluginHost};
-use auroraw_plugin_api::{Decoder, DecoderError, RawImage};
+use auroraw_plugin_api::block::MAX_BLOCK_LEN;
+use auroraw_plugin_api::{Decoder, DecoderError, RawImage, Samples};
 use std::sync::Arc;
 use std::time::Duration;
 
-/// The `out` buffer's size: seven little-endian `u32` values (width, height, components per
-/// pixel, the samples' address, their count, black level, white level), matching
-/// `plugins/rawler-decoder`'s own doc comment.
-const HEADER_SIZE: usize = 28;
+/// The `out` buffer's size: four little-endian `u32` values (the block's address and length, the
+/// samples' address and length in bytes), matching `plugins/rawler-decoder`'s own doc comment.
+const OUT_SIZE: usize = 16;
 
 /// A memory ceiling generous enough for the largest embedded mosaic seen so far (spike 4: up to
 /// 347 MB of guest memory for a 60 MP file) with real headroom, since a decode that hits the
 /// ceiling fails that file rather than the host.
 const DEFAULT_MEMORY_LIMIT: usize = 512 << 20;
 
-/// How long a single decode may run before the host interrupts it. Generous: a slow decode is
-/// still a real one (spike 4's own slowest sample took over a second natively), and this guards
-/// against a hang, not against a merely slow file.
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+/// How long a single decode may run before the host interrupts it. It guards against a hang, not
+/// against a merely slow file, and a slow file is slower than it looks: the plugin is one thread
+/// (`rayon` has no threads in `wasm32-wasip1`), so the 103 MP GFX100S II takes about 10 s here, and
+/// longer than 30 s on a loaded four-core CI runner (the first value of this constant, which
+/// interrupted it there). Two minutes leaves room for a slower machine and a larger file.
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// [`Decoder`] implemented by `plugins/rawler-decoder` running under [`PluginHost`]. A fresh
 /// instance is started for every call (spike 4's own measurement shape: instantiating from an
@@ -60,7 +67,7 @@ impl Decoder for WasmDecoder {
             .write(at, bytes)
             .map_err(|e| DecoderError::Failed(e.to_string()))?;
         let out_at = instance
-            .alloc(HEADER_SIZE)
+            .alloc(OUT_SIZE)
             .map_err(|e| DecoderError::Failed(e.to_string()))?;
 
         let rc: i32 = instance
@@ -72,38 +79,54 @@ impl Decoder for WasmDecoder {
             )));
         }
 
-        let mut header = [0u8; HEADER_SIZE];
+        let mut out = [0u8; OUT_SIZE];
         instance
-            .read(out_at, &mut header)
+            .read(out_at, &mut out)
             .map_err(|e| DecoderError::Failed(e.to_string()))?;
-        let words: Vec<u32> = header
-            .chunks_exact(4)
-            .map(|c| u32::from_le_bytes(c.try_into().expect("4-byte chunks")))
-            .collect();
-        let (width, height, components_per_pixel, samples_ptr, samples_len, black_bits, white_bits) = (
-            words[0], words[1], words[2], words[3], words[4], words[5], words[6],
-        );
+        let word =
+            |i: usize| u32::from_le_bytes(out[i * 4..i * 4 + 4].try_into().expect("4 bytes"));
+        let (block_ptr, block_len, samples_ptr, samples_len) =
+            (word(0), word(1) as usize, word(2), word(3) as usize);
 
-        let mut raw = vec![0u8; samples_len as usize * 2];
+        // The block is the plugin's word about the image, and the plugin is not trusted: a length past the cap is
+        // refused before anything is allocated for it.
+        if block_len > MAX_BLOCK_LEN {
+            return Err(DecoderError::Failed(format!(
+                "the decoder plugin's block is {block_len} bytes, more than {MAX_BLOCK_LEN}"
+            )));
+        }
+        let mut block = vec![0u8; block_len];
+        instance
+            .read(block_ptr, &mut block)
+            .map_err(|e| DecoderError::Failed(e.to_string()))?;
+        let malformed = |e: auroraw_plugin_api::BlockError| {
+            DecoderError::Failed(format!("the decoder plugin's block is malformed: {e}"))
+        };
+        let (kind, count) = RawImage::block_samples(&block).map_err(malformed)?;
+        // The samples the block describes, and no more: a plugin that says one thing and holds another is refused.
+        if count.checked_mul(kind.size() as u64) != Some(samples_len as u64) {
+            return Err(DecoderError::Failed(format!(
+                "the decoder plugin's block describes {count} samples of {} bytes and it holds {samples_len} bytes",
+                kind.size()
+            )));
+        }
+        // (The plugin's memory is capped, and a length beyond the cap cannot be real: nothing is allocated for it.)
+        if samples_len > DEFAULT_MEMORY_LIMIT {
+            return Err(DecoderError::Failed(format!(
+                "the decoder plugin says it holds {samples_len} bytes of samples, more than its memory"
+            )));
+        }
+        let mut raw = vec![0u8; samples_len];
         instance
             .read(samples_ptr, &mut raw)
             .map_err(|e| DecoderError::Failed(e.to_string()))?;
-        let samples: Vec<u16> = raw
-            .chunks_exact(2)
-            .map(|c| u16::from_le_bytes([c[0], c[1]]))
-            .collect();
+        let samples = Samples::from_le_bytes(kind, &raw).map_err(malformed)?;
+        drop(raw);
 
         // The instance and its memory are dropped here: no explicit `release` call needed, since
         // nothing outlives this function that still points into the plugin's memory (unlike the
         // spike's own long-lived benchmark instances, which called it to reuse one instance for
         // many files).
-        Ok(RawImage {
-            width,
-            height,
-            components_per_pixel,
-            samples,
-            black_level: f32::from_bits(black_bits),
-            white_level: f32::from_bits(white_bits),
-        })
+        RawImage::from_block(&block, samples).map_err(malformed)
     }
 }
