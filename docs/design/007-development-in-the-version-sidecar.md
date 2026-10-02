@@ -1,6 +1,6 @@
 # Design note 007: the development in the version sidecar, the history and the undo
 
-> **Status: proposed.** Note of work package WP17 ([M2 plan](../m2-plan.md) §5, §6 items 4 and 5), the
+> **Status: adopted (D-154).** Note of work package WP17 ([M2 plan](../m2-plan.md) §5, §6 items 4 and 5), the
 > last of the notes that WP17 waits for. It answers questions 4 and 20 of the specification (§10):
 > what a version sidecar holds of the **development** (the operations, the history, the snapshots),
 > in which file, how it survives a crash and a newer program, what "compact" keeps; and it settles
@@ -9,7 +9,8 @@
 > [note 006](006-pipeline-definition.md) §3.6 and §6 (the definition version and the base look) and
 > D-006, D-023, D-038, D-042, D-096, D-142. Items are tagged **[proposed]**; **[estimated]** marks a
 > number from a synthetic file, to be replaced by a measurement with the real writer in WP17's first
-> pull request (§11). Nothing here is decided until Patrick approves it (§12 says what he is asked).
+> pull request (§11). Patrick agreed to all five points of §12 on the pull request (2026-10-02), which D-154 records; the sizes of §4.1 stay
+> to be measured with the real writer before the format is frozen (§11).
 
 ## 1. The question
 
@@ -508,7 +509,7 @@ work package:
 | `plugin-api`, `Declaration` | A **label key** for the operation's display name, as `ParamSpec` has one (§4.1), after this note is accepted | Alice |
 | D-142 | Parameters are stored by key, with their kind | this note's decision |
 
-**Asked of Patrick**, each a yes or a change:
+**Asked of Patrick** (all five agreed, D-154), each a yes or a change:
 
 1. **Two files**: the XMP holds the state and the metadata, a JSON Lines file holds the log and the
    snapshots (§4.1). The plan's proposal was one XMP; I recommend the split for the reasons of §4.1.
