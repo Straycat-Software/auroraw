@@ -220,8 +220,7 @@ AppTestCase {
     }
 
     function test_undo_and_redo_are_named_in_the_language() {
-        app.launcher.chooseLanguage("fr")
-        wait(200)
+        useLanguage("fr")
         clickCell(0)
         rateSelected(2)
         tryVerify(() => app.actions.undo.enabled)
@@ -265,8 +264,7 @@ AppTestCase {
     }
 
     function test_the_sentences_follow_the_language_with_their_plural_forms() {
-        app.launcher.chooseLanguage("fr")
-        wait(200)
+        useLanguage("fr")
         compare(app.library.filterButtons.itemAt(0).text, "Tout")
         compare(app.library.status, "80 photos")
         app.library.filterBy(5)
@@ -277,8 +275,7 @@ AppTestCase {
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 1 étoile")
         rateSelected(2)
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 2 étoiles")
-        app.launcher.chooseLanguage("en")
-        wait(200)
+        useLanguage("en")
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 2 stars")
         grid.forceActiveFocus()
         rateSelected(1)

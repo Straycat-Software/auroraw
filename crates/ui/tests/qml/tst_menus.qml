@@ -156,8 +156,7 @@ AppTestCase {
             launch(freshMachine())
             createWorkspace("Main")
             // The first four in English, the others in French (the window is new every time).
-            app.launcher.chooseLanguage(section === undefined || cutCount++ < 4 ? "en" : "fr")
-            wait(250)
+            useLanguage(section === undefined || cutCount++ < 4 ? "en" : "fr")
             app.menu.openSection(section)
             wait(300)
             const menu = app.menu.itemAt(section).subMenu

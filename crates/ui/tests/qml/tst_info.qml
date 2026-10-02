@@ -89,8 +89,7 @@ AppTestCase {
     }
 
     function test_the_tab_and_the_rows_speak_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         click(0)
         tryVerify(() => app.keywordPanel.infoPanel.rows.length > 0, 5000)
         compare(app.keywordPanel.tabs.itemAt(2).text, "Infos")

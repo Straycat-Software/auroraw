@@ -400,8 +400,7 @@ AppTestCase {
     }
 
     function test_the_series_speak_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.library.seriesName(2), "Séries non résolues")
         click(burstRow)
         keyClick(Qt.Key_X)

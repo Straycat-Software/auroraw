@@ -141,8 +141,7 @@ AppTestCase {
 
     function test_the_flags_are_named_in_the_language() {
         compare(app.library.flagName(0), "Not rejected")
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.library.flagName(0), "Non refusées")
         compare(app.library.flagName(2), "Retenues")
         compare(app.library.flagName(3), "Refusées")

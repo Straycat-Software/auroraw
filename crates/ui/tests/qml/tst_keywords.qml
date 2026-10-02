@@ -353,8 +353,7 @@ AppTestCase {
     function test_the_panel_speaks_french() {
         selectFirst(3)
         typeKeyword("Vue")
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.keywordPanel.explain("taken:Vue"), "Il y a déjà un mot-clé nommé «\u00a0Vue\u00a0» à cet endroit.")
         compare(app.keywordPanel.explain("cycle"), "Un mot-clé ne peut pas être déplacé sous lui-même ni sous l’un de ses propres mots-clés.")
         compare(app.keywordPanel.explain("name"), "Un mot-clé doit avoir un nom, sans |.")

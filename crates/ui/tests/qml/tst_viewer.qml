@@ -364,8 +364,7 @@ AppTestCase {
 
     function test_the_view_speaks_french() {
         openOn(1)
-        app.launcher.chooseLanguage("fr")
-        wait(300)
+        useLanguage("fr")
         keyClick(Qt.Key_8)
         tryVerify(() => app.actions.undo.text === "Annuler l’étiquette", 5000, app.actions.undo.text)
         compare(app.photos.labelAt(1), "green")

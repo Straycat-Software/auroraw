@@ -250,8 +250,7 @@ AppTestCase {
     }
 
     function test_the_dialog_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         click(0)
         typeField("title", "Un héron à l’aube")
         compare(app.actions.undo.text.indexOf("Annuler"), 0, app.actions.undo.text)
