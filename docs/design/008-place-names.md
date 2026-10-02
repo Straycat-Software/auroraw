@@ -197,7 +197,11 @@ only has to write the sidecar, as it does, and the columns follow. What was deci
   (`icu_normalizer`, already in the build through `idna`, so no new package: a full-width `Ａ` is `A`, a ligature `ﬁ` is
   `fi`, `Ĳ` is `IJ`), `ß` as `ss`, `æ`, `œ`, `ø`, `đ`, `ł`, `ħ` as their plain letters, the Greek final `ς` as `σ` (a capital
   `Σ` lower-cases to `σ` in any place of the word), the invisible characters dropped (a soft hyphen, a zero-width space, a
-  direction mark, a byte-order mark: a copy and paste of a web page carries them), hyphens, dashes, apostrophes and white space
+  direction mark or isolate, the Arabic letter mark, a variation selector, a tag character, a byte-order mark: a copy and
+  paste of a web page carries them; they are the "default ignorable" format and selector characters of Unicode, listed
+  as ranges in `place.rs` with a test for every character of every range and its neighbours), the spacing accents
+  dropped like the marks they stand for (a PDF's text writes `ü` as `u` and `¨`, and the compatibility decomposition
+  would make that a space: `Mu¨nchen` is `munchen`; a test finds every such character in Unicode), hyphens, dashes, apostrophes and white space
   made one, so that `Trois-Rivières` and `Trois Rivieres` are one place. (Issue #84, Django's review of #62: these five
   ways of writing a place gave two nodes; `Muenchen`/`München` and `St-Jean`/`Saint-Jean` still do, since they are
   transliteration and abbreviation and not folding. It raised the version of the keys to 2.) **A country's key is

@@ -39,17 +39,51 @@ fn is_combining_mark(c: char) -> bool {
     )
 }
 
-/// Whether `c` is a character that shows nothing and is not white space: a soft hyphen, a zero-width space or joiner,
-/// a direction mark, a word joiner, a byte-order mark. A text copied from a web page or a document carries them, and
-/// `Paris` followed by one is not another place (issue #84).
+/// The characters that show nothing and are not white space, as ranges (the first and the last of each), so that a test
+/// can hold every one of them and the neighbour of each end: a soft hyphen, the Arabic letter mark, the Mongolian free
+/// variation selectors and vowel separator, a zero-width space or joiner, the direction marks, embeddings, overrides
+/// and isolates, a word joiner and the invisible operators (with the deprecated format controls up to U+206F), the
+/// variation selectors, a byte-order mark, the tag characters and the musical formatting characters. They are the "default ignorable" characters of
+/// Unicode that format or select a glyph; the ones that are letters of their script (the Hangul fillers, the Khmer
+/// inherent vowels) are kept. A text copied from a web page or a document carries them, and `Paris` followed by one
+/// is not another place (issue #84).
+const INVISIBLE: &[(char, char)] = &[
+    ('\u{00AD}', '\u{00AD}'),   // soft hyphen
+    ('\u{061C}', '\u{061C}'),   // Arabic letter mark
+    ('\u{180B}', '\u{180F}'),   // Mongolian free variation selectors and vowel separator
+    ('\u{200B}', '\u{200F}'),   // zero-width space and joiners, direction marks
+    ('\u{202A}', '\u{202E}'),   // direction embeddings and overrides
+    ('\u{2060}', '\u{206F}'), // word joiner, invisible operators, direction isolates, deprecated format controls
+    ('\u{FE00}', '\u{FE0F}'), // variation selectors (text and emoji presentation among them)
+    ('\u{FEFF}', '\u{FEFF}'), // byte-order mark
+    ('\u{E0000}', '\u{E007F}'), // tag characters
+    ('\u{E0100}', '\u{E01EF}'), // ideographic variation selectors
+    ('\u{1D173}', '\u{1D17A}'), // musical symbol formatting
+];
+
+/// Whether `c` is one of the [`INVISIBLE`] characters.
 fn is_invisible(c: char) -> bool {
+    INVISIBLE
+        .iter()
+        .any(|&(first, last)| (first..=last).contains(&c))
+}
+
+/// Whether `c` is a spacing accent that Unicode's compatibility decomposition makes a space and a combining mark
+/// (`¨` as ` ̈`), which would put a break in the word: the diaeresis that a PDF's text gives after the `u` of `Mu¨nchen`
+/// is the mark of `ü`, which is dropped. The acute accent U+00B4 is not one of them: it is the apostrophe it was taken
+/// for. A test finds every such character in Unicode and holds them all.
+fn is_spacing_accent(c: char) -> bool {
     matches!(c,
-        '\u{00AD}'                // soft hyphen
-        | '\u{200B}'..='\u{200F}' // zero-width space and joiners, direction marks
-        | '\u{202A}'..='\u{202E}' // direction embeddings and overrides
-        | '\u{2060}'..='\u{2064}' // word joiner and invisible operators
-        | '\u{2066}'..='\u{2069}' // direction isolates
-        | '\u{FEFF}'              // byte-order mark
+        '\u{00A8}' | '\u{00AF}' | '\u{00B8}'   // diaeresis, macron, cedilla
+        | '\u{02D8}'..='\u{02DD}'               // breve, dot above, ring, ogonek, small tilde, double acute
+        | '\u{037A}'                            // Greek ypogegrammeni
+        | '\u{0384}' | '\u{0385}'               // Greek tonos, dialytika tonos
+        | '\u{1FBD}' | '\u{1FBF}'..='\u{1FC1}'  // Greek spacing accents of the polytonic block
+        | '\u{1FCD}'..='\u{1FCF}'
+        | '\u{1FDD}'..='\u{1FDF}'
+        | '\u{1FED}' | '\u{1FEE}'
+        | '\u{1FFD}' | '\u{1FFE}'
+        | '\u{FFE3}'                            // full-width macron
     )
 }
 
@@ -58,13 +92,19 @@ fn is_invisible(c: char) -> bool {
 /// a full-width `Ａ` is `A`, a ligature `ﬁ` is `fi`, `Ĳ` is `IJ`), the marks dropped, lower-cased, the letters that do not
 /// decompose given their plain form (`ß` as `ss`, `æ` as `ae`, `œ` as `oe`, `ø` as `o`, `đ` and `ð` as `d`, `ł` as `l`,
 /// `ħ` as `h`, dotless `ı` as `i`, the Greek final `ς` as `σ`, since a capital `Σ` lower-cases to `σ` whatever its place in
-/// the word), the invisible characters dropped, the typographic apostrophes made one, and hyphens, dashes, underscores and
+/// the word), the invisible characters dropped, the spacing accents dropped like the marks they stand for, the
+/// typographic apostrophes made one, and hyphens, dashes, underscores and
 /// runs of white space made a single space, so that `Trois-Rivières` and `Trois Rivieres` are one place. Empty for a text
 /// with nothing in it.
 pub fn fold_place(text: &str) -> String {
-    // (The acute accent U+00B4 has a compatibility decomposition, a space and a combining mark, which would turn
-    // `L´Assomption` into two words: it is the apostrophe it was taken for before the normalisation.)
-    let text = text.replace('\u{00B4}', "\u{2019}");
+    // Before the normalisation, two characters that its compatibility decomposition would turn into a space and a mark,
+    // i.e. a break in the word: the acute accent U+00B4 is the apostrophe it was taken for (`L´Assomption`), and a
+    // spacing accent is the mark of its letter (`Mu¨nchen`), which is dropped.
+    let text: String = text
+        .chars()
+        .filter(|c| !is_spacing_accent(*c))
+        .map(|c| if c == '\u{00B4}' { '\u{2019}' } else { c })
+        .collect();
     let decomposed = icu_normalizer::DecomposingNormalizer::new_nfkd().normalize(&text);
     let mut out = String::with_capacity(text.len());
     let mut space = false;
@@ -695,10 +735,149 @@ mod tests {
         // not folding.
         assert_eq!(fold_place("L´Assomption"), fold_place("L'Assomption"));
         assert_eq!(fold_place("Montréal"), "montreal");
+        // A spacing accent is the mark of its letter, as a PDF's text writes `ü`; the key is that of the plain form.
+        assert_eq!(fold_place("Mu\u{00A8}nchen"), fold_place("München"));
+        assert_eq!(fold_place("Mo\u{00A8}nchengladbach"), "monchengladbach");
         assert_ne!(fold_place("Muenchen"), fold_place("München"));
         assert_ne!(fold_place("St-Jean"), fold_place("Saint-Jean"));
         // A text of invisible characters alone has nothing in it.
         assert_eq!(fold_place("\u{200B}\u{FEFF}"), "");
+    }
+
+    /// Every character of the list is dropped, wherever it is, and the character next to each end of each range is
+    /// not (so that a range cannot be cut short or widened without a test saying so; Django's review of #89 found
+    /// U+2066 to U+2069 held by none).
+    #[test]
+    fn every_invisible_character_is_dropped_and_no_neighbour_of_the_list_is() {
+        // The two ends of every range, written out here and not read from the list, so that a range cannot be cut
+        // short or dropped from the list without this test saying so.
+        for end in [
+            '\u{00AD}',
+            '\u{061C}',
+            '\u{180B}',
+            '\u{180F}',
+            '\u{200B}',
+            '\u{200F}',
+            '\u{202A}',
+            '\u{202E}',
+            '\u{2060}',
+            '\u{2064}',
+            '\u{2066}',
+            '\u{2069}',
+            '\u{206A}',
+            '\u{206F}',
+            '\u{FE00}',
+            '\u{FE0F}',
+            '\u{FEFF}',
+            '\u{E0000}',
+            '\u{E0067}',
+            '\u{E007F}',
+            '\u{E0100}',
+            '\u{E01EF}',
+            '\u{1D173}',
+            '\u{1D17A}',
+        ] {
+            assert_eq!(
+                fold_place(&format!("Pa{end}ris")),
+                "paris",
+                "U+{:04X}",
+                end as u32
+            );
+        }
+        let listed = |c: char| {
+            INVISIBLE
+                .iter()
+                .any(|&(first, last)| (first..=last).contains(&c))
+        };
+        for &(first, last) in INVISIBLE {
+            for c in first..=last {
+                assert_eq!(
+                    fold_place(&format!("Pa{c}ris")),
+                    "paris",
+                    "U+{:04X}",
+                    c as u32
+                );
+                assert_eq!(
+                    fold_place(&format!("Paris{c}")),
+                    "paris",
+                    "U+{:04X} at the end",
+                    c as u32
+                );
+                assert_eq!(
+                    fold_place(&format!("{c}Paris")),
+                    "paris",
+                    "U+{:04X} at the start",
+                    c as u32
+                );
+            }
+            for n in [
+                char::from_u32(first as u32 - 1),
+                char::from_u32(last as u32 + 1),
+            ]
+            .into_iter()
+            .flatten()
+            .filter(|n| !listed(*n))
+            {
+                assert_ne!(
+                    fold_place(&format!("Pa{n}ris")),
+                    "paris",
+                    "U+{:04X} next to a range of the list is not invisible",
+                    n as u32
+                );
+            }
+        }
+    }
+
+    /// Every character that Unicode's compatibility decomposition turns into a space and combining marks is a spacing
+    /// accent of the list (so none can be missed), except the acute accent, which is an apostrophe, and the lines,
+    /// which are punctuation; and each one leaves the word whole.
+    #[test]
+    fn every_spacing_accent_leaves_the_word_whole() {
+        let nfkd = icu_normalizer::DecomposingNormalizer::new_nfkd();
+        let mut found = Vec::new();
+        for code in 0..=0x10FFFFu32 {
+            let Some(c) = char::from_u32(code) else {
+                continue;
+            };
+            // The acute accent is the apostrophe; the lines (double low line, overline and its dashed and wavy forms in
+            // the compatibility forms) are punctuation that breaks a word like the underscore does, not accents.
+            if c == '\u{00B4}' || matches!(c, '\u{2017}' | '\u{203E}' | '\u{FE49}'..='\u{FE4C}') {
+                continue;
+            }
+            let single = c.to_string();
+            let d = nfkd.normalize(&single);
+            let mut chars = d.chars();
+            if chars.next() == Some(' ')
+                && chars.clone().count() > 0
+                && chars.all(is_combining_mark)
+            {
+                found.push(c);
+            }
+        }
+        assert!(found.len() >= 20, "found only {found:?}");
+        for c in &found {
+            assert!(
+                is_spacing_accent(*c),
+                "U+{:04X} is a spacing accent",
+                *c as u32
+            );
+            assert_eq!(
+                fold_place(&format!("Mu{c}nchen")),
+                "munchen",
+                "U+{:04X}",
+                *c as u32
+            );
+        }
+        for code in 0..=0x10FFFFu32 {
+            if let Some(c) = char::from_u32(code).filter(|c| is_spacing_accent(*c)) {
+                assert!(
+                    found.contains(&c),
+                    "U+{code:04X} is listed and is no spacing accent"
+                );
+            }
+        }
+        // The acute accent is the apostrophe, not a mark.
+        assert_eq!(fold_place("L\u{00B4}Assomption"), "l'assomption");
     }
 
     #[test]
@@ -730,6 +909,11 @@ mod tests {
             ("Ｔｏｋｙｏ", "tokyo"),
             ("ﬁord", "fiord"),
             ("Paris\u{200B}", "paris"),
+            ("Paris\u{FE0F}", "paris"),
+            ("Paris\u{061C}", "paris"),
+            ("Paris\u{180B}", "paris"),
+            ("Paris\u{E0067}", "paris"),
+            ("Mu\u{00A8}nchen", "munchen"),
         ] {
             assert_eq!(fold_place(text), key, "{text:?}");
         }
