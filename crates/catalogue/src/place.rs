@@ -39,18 +39,79 @@ fn is_combining_mark(c: char) -> bool {
     )
 }
 
+/// The characters that show nothing and are not white space, as ranges (the first and the last of each), so that a test
+/// can hold every one of them and the neighbour of each end: a soft hyphen, the Arabic letter mark, the Mongolian free
+/// variation selectors and vowel separator, a zero-width space or joiner, the direction marks, embeddings, overrides
+/// and isolates, a word joiner and the invisible operators (with the deprecated format controls up to U+206F), the
+/// variation selectors, a byte-order mark, the tag characters and the musical formatting characters. They are the "default ignorable" characters of
+/// Unicode that format or select a glyph; the ones that are letters of their script (the Hangul fillers, the Khmer
+/// inherent vowels) are kept. A text copied from a web page or a document carries them, and `Paris` followed by one
+/// is not another place (issue #84).
+const INVISIBLE: &[(char, char)] = &[
+    ('\u{00AD}', '\u{00AD}'),   // soft hyphen
+    ('\u{061C}', '\u{061C}'),   // Arabic letter mark
+    ('\u{180B}', '\u{180F}'),   // Mongolian free variation selectors and vowel separator
+    ('\u{200B}', '\u{200F}'),   // zero-width space and joiners, direction marks
+    ('\u{202A}', '\u{202E}'),   // direction embeddings and overrides
+    ('\u{2060}', '\u{206F}'), // word joiner, invisible operators, direction isolates, deprecated format controls
+    ('\u{FE00}', '\u{FE0F}'), // variation selectors (text and emoji presentation among them)
+    ('\u{FEFF}', '\u{FEFF}'), // byte-order mark
+    ('\u{E0000}', '\u{E007F}'), // tag characters
+    ('\u{E0100}', '\u{E01EF}'), // ideographic variation selectors
+    ('\u{1D173}', '\u{1D17A}'), // musical symbol formatting
+];
+
+/// Whether `c` is one of the [`INVISIBLE`] characters.
+fn is_invisible(c: char) -> bool {
+    // (None of them is ASCII, and most of a place name is.)
+    !c.is_ascii()
+        && INVISIBLE
+            .iter()
+            .any(|&(first, last)| (first..=last).contains(&c))
+}
+
+/// Whether `c` is a spacing accent that Unicode's compatibility decomposition makes a space and a combining mark
+/// (`¨` as ` ̈`), which would put a break in the word: the diaeresis that a PDF's text gives after the `u` of `Mu¨nchen`
+/// is the mark of `ü`, which is dropped. The acute accent U+00B4 is not one of them: it is the apostrophe it was taken
+/// for. A test finds every such character in Unicode and holds them all.
+fn is_spacing_accent(c: char) -> bool {
+    matches!(c,
+        '\u{00A8}' | '\u{00AF}' | '\u{00B8}'   // diaeresis, macron, cedilla
+        | '\u{02D8}'..='\u{02DD}'               // breve, dot above, ring, ogonek, small tilde, double acute
+        | '\u{037A}'                            // Greek ypogegrammeni
+        | '\u{0384}' | '\u{0385}'               // Greek tonos, dialytika tonos
+        | '\u{1FBD}' | '\u{1FBF}'..='\u{1FC1}'  // Greek spacing accents of the polytonic block
+        | '\u{1FCD}'..='\u{1FCF}'
+        | '\u{1FDD}'..='\u{1FDF}'
+        | '\u{1FED}' | '\u{1FEE}'
+        | '\u{1FFD}' | '\u{1FFE}'
+        | '\u{FFE3}'                            // full-width macron
+    )
+}
+
 /// A place name folded for case and diacritics, the form the place filter compares and groups by: `Montréal`,
-/// `Montreal` and `MONTRÉAL` are `montreal`. Decomposed (so that `é` is `e` and a mark), the marks dropped, lower-cased,
-/// the letters that do not decompose given their plain form (`ß` as `ss`, `æ` as `ae`, `œ` as `oe`, `ø` as `o`, `đ` and
-/// `ð` as `d`, `ł` as `l`, `ħ` as `h`, dotless `ı` as `i`), the typographic apostrophes made one, and hyphens, dashes,
-/// underscores and runs of white space made a single space, so that `Trois-Rivières` and `Trois Rivieres` are one
-/// place. Empty for a text with nothing in it.
+/// `Montreal` and `MONTRÉAL` are `montreal`. Decomposed **with the compatibility forms** (so that `é` is `e` and a mark,
+/// a full-width `Ａ` is `A`, a ligature `ﬁ` is `fi`, `Ĳ` is `IJ`), the marks dropped, lower-cased, the letters that do not
+/// decompose given their plain form (`ß` as `ss`, `æ` as `ae`, `œ` as `oe`, `ø` as `o`, `đ` and `ð` as `d`, `ł` as `l`,
+/// `ħ` as `h`, dotless `ı` as `i`, the Greek final `ς` as `σ`, since a capital `Σ` lower-cases to `σ` whatever its place in
+/// the word), the invisible characters dropped, the spacing accents dropped like the marks they stand for, the
+/// typographic apostrophes made one, and hyphens, dashes, underscores and
+/// runs of white space made a single space, so that `Trois-Rivières` and `Trois Rivieres` are one place. Empty for a text
+/// with nothing in it.
 pub fn fold_place(text: &str) -> String {
-    let decomposed = icu_normalizer::DecomposingNormalizer::new_nfd().normalize(text);
+    // Before the normalisation, two characters that its compatibility decomposition would turn into a space and a mark,
+    // i.e. a break in the word: the acute accent U+00B4 is the apostrophe it was taken for (`L´Assomption`), and a
+    // spacing accent is the mark of its letter (`Mu¨nchen`), which is dropped.
+    let text: String = text
+        .chars()
+        .filter(|c| !is_spacing_accent(*c))
+        .map(|c| if c == '\u{00B4}' { '\u{2019}' } else { c })
+        .collect();
+    let decomposed = icu_normalizer::DecomposingNormalizer::new_nfkd().normalize(&text);
     let mut out = String::with_capacity(text.len());
     let mut space = false;
     for c in decomposed.chars() {
-        if is_combining_mark(c) {
+        if is_combining_mark(c) || is_invisible(c) {
             continue;
         }
         let c = match c {
@@ -76,6 +137,7 @@ pub fn fold_place(text: &str) -> String {
                 'ł' => out.push('l'),
                 'ħ' => out.push('h'),
                 'ı' => out.push('i'),
+                'ς' => out.push('σ'),
                 other => out.push(other),
             }
         }
@@ -89,7 +151,7 @@ pub fn fold_place(text: &str) -> String {
 /// (`meta.place_keys`) and, when it is opened by a program with another, asks for them to be filled again from the
 /// sidecars. **Raise it with any change that gives some text another key**; a test that holds a fixed list of keys
 /// fails until it is.
-pub const PLACE_KEYS_VERSION: &str = "1";
+pub const PLACE_KEYS_VERSION: &str = "2";
 
 /// What the photo row keeps of a photo's place: the four fields as the sidecar says them, and the keys the filter
 /// uses (see the module documentation). `None` for a field that is empty.
@@ -369,6 +431,30 @@ fn sort_nodes(nodes: &mut [PlaceNode]) {
     nodes.sort_by_cached_key(|node| (fold_place(&node.label), node.label.clone()));
 }
 
+/// The query that reads the countries of the tree, for the `conditions` of a filter (those of every filter but the
+/// place). The one text the tree runs and the tests read the plan of: a column added to it is a column the covering index
+/// must have, and a test says so.
+pub(crate) fn countries_sql(conditions: &[String]) -> String {
+    let mut conditions = conditions.to_vec();
+    conditions.push("p.place_country IS NOT NULL".into());
+    format!(
+        "SELECT p.place_country, p.place_region, p.place_city, p.country, p.region, p.city, p.country_code, COUNT(*)
+         FROM photo p WHERE {} GROUP BY 1, 2, 3, 4, 5, 6, 7",
+        conditions.join(" AND ")
+    )
+}
+
+/// The query that reads the node of the photos with a region or a city and no country (see [`countries_sql`]).
+pub(crate) fn no_country_sql(conditions: &[String]) -> String {
+    let mut conditions = conditions.to_vec();
+    conditions.push(NO_COUNTRY.into());
+    format!(
+        "SELECT p.place_region, p.place_city, p.region, p.city, COUNT(*)
+         FROM photo p WHERE {} GROUP BY 1, 2, 3, 4",
+        conditions.join(" AND ")
+    )
+}
+
 impl Branch {
     /// Counts `photos` photos at a place under this branch: a region (and the city under it), or a city directly under
     /// it; the empty key is "no region".
@@ -451,13 +537,7 @@ impl Catalogue {
         let mut placed = 0;
 
         // The countries.
-        let mut with_country = conditions.clone();
-        with_country.push("p.place_country IS NOT NULL".into());
-        let sql = format!(
-            "SELECT p.place_country, p.place_region, p.place_city, p.country, p.region, p.city, p.country_code, COUNT(*)
-             FROM photo p WHERE {} GROUP BY 1, 2, 3, 4, 5, 6, 7",
-            with_country.join(" AND ")
-        );
+        let sql = countries_sql(&conditions);
         let mut statement = self.conn.prepare(&sql)?;
         let rows = statement.query_map(rusqlite::params_from_iter(values.clone()), |row| {
             Ok((
@@ -491,13 +571,7 @@ impl Catalogue {
         sort_nodes(&mut tree);
 
         // The photos with a region or a city and no country: one more node, after the countries (issue #60).
-        let mut without_country = conditions;
-        without_country.push(NO_COUNTRY.into());
-        let sql = format!(
-            "SELECT p.place_region, p.place_city, p.region, p.city, COUNT(*)
-             FROM photo p WHERE {} GROUP BY 1, 2, 3, 4",
-            without_country.join(" AND ")
-        );
+        let sql = no_country_sql(&conditions);
         let mut statement = self.conn.prepare(&sql)?;
         let rows = statement.query_map(rusqlite::params_from_iter(values), |row| {
             Ok((
@@ -638,6 +712,177 @@ mod tests {
     }
 
     #[test]
+    fn one_place_written_with_other_forms_of_the_same_letters_is_one_key() {
+        // Issue #84: five ways of writing one place that gave two nodes.
+        for (a, b) in [
+            // A capital sigma lower-cases to `σ` and a typed final `ς` stays `ς`: the same word.
+            ("ΚΟΡΙΝΘΟΣ", "Κόρινθος"),
+            // Full-width letters, as a Japanese input method writes them.
+            ("Ａｒｉｓ", "Aris"),
+            ("Ｔｏｋｙｏ", "tokyo"),
+            // Ligatures.
+            ("ﬁord", "fiord"),
+            ("Ĳmuiden", "IJmuiden"),
+            // Characters that show nothing, from a copy and paste of a web page or a document.
+            ("Paris\u{200B}", "Paris"),
+            ("Pa\u{00AD}ris", "Paris"),
+            ("\u{FEFF}Paris", "Paris"),
+            ("Pa\u{2060}ris\u{200E}", "Paris"),
+            ("Par\u{202B}is\u{202C}", "Paris"),
+        ] {
+            assert_eq!(fold_place(a), fold_place(b), "{a:?} and {b:?}");
+        }
+        assert_eq!(fold_place("Κόρινθος"), "κορινθοσ");
+        // What was already one key still is, and what is two places stays two: transliteration and abbreviation are
+        // not folding.
+        assert_eq!(fold_place("L´Assomption"), fold_place("L'Assomption"));
+        assert_eq!(fold_place("Montréal"), "montreal");
+        // A spacing accent is the mark of its letter, as a PDF's text writes `ü`; the key is that of the plain form.
+        assert_eq!(fold_place("Mu\u{00A8}nchen"), fold_place("München"));
+        assert_eq!(fold_place("Mo\u{00A8}nchengladbach"), "monchengladbach");
+        assert_ne!(fold_place("Muenchen"), fold_place("München"));
+        assert_ne!(fold_place("St-Jean"), fold_place("Saint-Jean"));
+        // A text of invisible characters alone has nothing in it.
+        assert_eq!(fold_place("\u{200B}\u{FEFF}"), "");
+    }
+
+    /// Every character of the list is dropped, wherever it is, and the character next to each end of each range is
+    /// not (so that a range cannot be cut short or widened without a test saying so; Django's review of #89 found
+    /// U+2066 to U+2069 held by none).
+    #[test]
+    fn every_invisible_character_is_dropped_and_no_neighbour_of_the_list_is() {
+        // The two ends of every range, written out here and not read from the list, so that a range cannot be cut
+        // short or dropped from the list without this test saying so.
+        for end in [
+            '\u{00AD}',
+            '\u{061C}',
+            '\u{180B}',
+            '\u{180F}',
+            '\u{200B}',
+            '\u{200F}',
+            '\u{202A}',
+            '\u{202E}',
+            '\u{2060}',
+            '\u{2064}',
+            '\u{2066}',
+            '\u{2069}',
+            '\u{206A}',
+            '\u{206F}',
+            '\u{FE00}',
+            '\u{FE0F}',
+            '\u{FEFF}',
+            '\u{E0000}',
+            '\u{E0067}',
+            '\u{E007F}',
+            '\u{E0100}',
+            '\u{E01EF}',
+            '\u{1D173}',
+            '\u{1D17A}',
+        ] {
+            assert_eq!(
+                fold_place(&format!("Pa{end}ris")),
+                "paris",
+                "U+{:04X}",
+                end as u32
+            );
+        }
+        let listed = |c: char| {
+            INVISIBLE
+                .iter()
+                .any(|&(first, last)| (first..=last).contains(&c))
+        };
+        for &(first, last) in INVISIBLE {
+            for c in first..=last {
+                assert_eq!(
+                    fold_place(&format!("Pa{c}ris")),
+                    "paris",
+                    "U+{:04X}",
+                    c as u32
+                );
+                assert_eq!(
+                    fold_place(&format!("Paris{c}")),
+                    "paris",
+                    "U+{:04X} at the end",
+                    c as u32
+                );
+                assert_eq!(
+                    fold_place(&format!("{c}Paris")),
+                    "paris",
+                    "U+{:04X} at the start",
+                    c as u32
+                );
+            }
+            for n in [
+                char::from_u32(first as u32 - 1),
+                char::from_u32(last as u32 + 1),
+            ]
+            .into_iter()
+            .flatten()
+            .filter(|n| !listed(*n))
+            {
+                assert_ne!(
+                    fold_place(&format!("Pa{n}ris")),
+                    "paris",
+                    "U+{:04X} next to a range of the list is not invisible",
+                    n as u32
+                );
+            }
+        }
+    }
+
+    /// Every character that Unicode's compatibility decomposition turns into a space and combining marks is a spacing
+    /// accent of the list (so none can be missed), except the acute accent, which is an apostrophe, and the lines,
+    /// which are punctuation; and each one leaves the word whole.
+    #[test]
+    fn every_spacing_accent_leaves_the_word_whole() {
+        let nfkd = icu_normalizer::DecomposingNormalizer::new_nfkd();
+        let mut found = Vec::new();
+        for code in 0..=0x10FFFFu32 {
+            let Some(c) = char::from_u32(code) else {
+                continue;
+            };
+            // The acute accent is the apostrophe; the lines (double low line, overline and its dashed and wavy forms in
+            // the compatibility forms) are punctuation that breaks a word like the underscore does, not accents.
+            if c == '\u{00B4}' || matches!(c, '\u{2017}' | '\u{203E}' | '\u{FE49}'..='\u{FE4C}') {
+                continue;
+            }
+            let single = c.to_string();
+            let d = nfkd.normalize(&single);
+            let mut chars = d.chars();
+            if chars.next() == Some(' ')
+                && chars.clone().count() > 0
+                && chars.all(is_combining_mark)
+            {
+                found.push(c);
+            }
+        }
+        assert!(found.len() >= 20, "found only {found:?}");
+        for c in &found {
+            assert!(
+                is_spacing_accent(*c),
+                "U+{:04X} is a spacing accent",
+                *c as u32
+            );
+            assert_eq!(
+                fold_place(&format!("Mu{c}nchen")),
+                "munchen",
+                "U+{:04X}",
+                *c as u32
+            );
+        }
+        for code in 0..=0x10FFFFu32 {
+            if let Some(c) = char::from_u32(code).filter(|c| is_spacing_accent(*c)) {
+                assert!(
+                    found.contains(&c),
+                    "U+{code:04X} is listed and is no spacing accent"
+                );
+            }
+        }
+        // The acute accent is the apostrophe, not a mark.
+        assert_eq!(fold_place("L\u{00B4}Assomption"), "l'assomption");
+    }
+
+    #[test]
     fn the_letters_that_do_not_decompose_get_their_plain_form() {
         assert_eq!(fold_place("Straße"), "strasse");
         assert_eq!(fold_place("STRASSE"), "strasse");
@@ -652,7 +897,7 @@ mod tests {
     fn the_keys_are_the_ones_the_version_says() {
         // The keys are stored: if one of these changes on purpose, raise PLACE_KEYS_VERSION, so that the catalogues
         // made with the old keys are filled again; then change the list.
-        assert_eq!(PLACE_KEYS_VERSION, "1");
+        assert_eq!(PLACE_KEYS_VERSION, "2");
         for (text, key) in [
             ("Montréal", "montreal"),
             ("Trois-Rivières", "trois rivieres"),
@@ -662,6 +907,15 @@ mod tests {
             ("Hà Nội", "ha noi"),
             ("İstanbul", "istanbul"),
             ("Αθήνα", "αθηνα"),
+            ("ΚΟΡΙΝΘΟΣ", "κορινθοσ"),
+            ("Ｔｏｋｙｏ", "tokyo"),
+            ("ﬁord", "fiord"),
+            ("Paris\u{200B}", "paris"),
+            ("Paris\u{FE0F}", "paris"),
+            ("Paris\u{061C}", "paris"),
+            ("Paris\u{180B}", "paris"),
+            ("Paris\u{E0067}", "paris"),
+            ("Mu\u{00A8}nchen", "munchen"),
         ] {
             assert_eq!(fold_place(text), key, "{text:?}");
         }
@@ -745,33 +999,78 @@ mod tests {
         assert_eq!(PlaceColumns::of(&empty), PlaceColumns::default());
     }
 
+    /// The lines of SQLite's plan for `sql` run with `values`.
+    fn plan(cat: &Catalogue, sql: &str, values: Vec<rusqlite::types::Value>) -> Vec<String> {
+        let mut statement = cat
+            .conn
+            .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
+            .unwrap();
+        statement
+            .query_map(rusqlite::params_from_iter(values), |row| {
+                row.get::<_, String>(3)
+            })
+            .unwrap()
+            .map(|line| line.unwrap())
+            .collect()
+    }
+
     #[test]
-    fn the_tree_and_the_filter_of_the_no_country_node_read_their_own_index() {
-        // SQLite uses a partial index when the query states the index's condition; this holds that it does, for the
-        // tree's query and for the filter's (issue #60: the countries' index holds only the photos with a country).
+    fn the_tree_reads_its_covering_indexes_for_the_usual_filters() {
+        // The tree is 20 ms at 100,000 photos because it never touches the table: the countries' query reads
+        // `photo_place` alone, and the node of the photos with no country reads `photo_place_nocountry` alone (SQLite
+        // uses a partial index when the query states the index's condition). The queries are the ones `place_facets`
+        // runs (`countries_sql`, `no_country_sql`), so that a column added to them that the index does not hold fails
+        // here, on any machine, and not in a measurement nobody reads (issue #84).
+        use crate::query::FlagFilter;
         let cat = Catalogue::open_in_memory(auroraw_types::WorkspaceId::random()).unwrap();
-        for sql in [
-            format!(
-                "SELECT p.place_region, p.place_city, p.region, p.city, COUNT(*) FROM photo p WHERE {NO_COUNTRY} \
-                 GROUP BY 1, 2, 3, 4"
+        let filters = [
+            ("no filter", Filter::default()),
+            (
+                "a minimum rating",
+                Filter {
+                    min_rating: 4,
+                    ..Filter::default()
+                },
             ),
-            format!("SELECT p.id FROM photo p WHERE {NO_COUNTRY} AND p.place_region = 'x'"),
-        ] {
-            let mut statement = cat
-                .conn
-                .prepare(&format!("EXPLAIN QUERY PLAN {sql}"))
-                .unwrap();
-            let plan: Vec<String> = statement
-                .query_map([], |row| row.get::<_, String>(3))
-                .unwrap()
-                .map(|line| line.unwrap())
-                .collect();
+            (
+                "the picked photos",
+                Filter {
+                    flags: FlagFilter::Picked,
+                    ..Filter::default()
+                },
+            ),
+        ];
+        for (what, filter) in filters {
+            let mut conditions = Vec::new();
+            let mut values = Vec::new();
+            filter.conditions(false, &mut conditions, &mut values);
+            let countries = plan(&cat, &countries_sql(&conditions), values.clone());
             assert!(
-                plan.iter()
-                    .any(|line| line.contains("photo_place_nocountry")),
-                "{sql}: {plan:?}"
+                countries
+                    .iter()
+                    .any(|line| line.contains("COVERING INDEX photo_place ")
+                        || line.ends_with("COVERING INDEX photo_place")),
+                "{what}, the countries: {countries:?}"
+            );
+            let none = plan(&cat, &no_country_sql(&conditions), values);
+            assert!(
+                none.iter()
+                    .any(|line| line.contains("COVERING INDEX photo_place_nocountry")),
+                "{what}, the node of the photos with no country: {none:?}"
             );
         }
+        // And the filter's own query for that node, which the first photos of a node come from.
+        let selected = plan(
+            &cat,
+            &format!("SELECT p.id FROM photo p WHERE {NO_COUNTRY} AND p.place_region = 'x'"),
+            Vec::new(),
+        );
+        assert!(
+            selected
+                .iter()
+                .any(|line| line.contains("photo_place_nocountry")),
+            "{selected:?}"
+        );
     }
 
     #[test]
