@@ -23,11 +23,18 @@
 | Branch | Role | Rules |
 | --- | --- | --- |
 | `main` | The last release. | Updated only by a merge at release time; every commit on it is a released state; tags `vX.Y.Z` point at it. Protected: no direct push, the release checks must pass. |
-| `dev` | Integration. | The default branch for work. Protected once outside contributors arrive: a pull request, the per-change checks green, one review. Until then, maintainers may push. |
+| `dev` | Integration. | The default branch for work. Protected by the repository's ruleset: a pull request, the per-change checks green, a review, the QA group's approval (D-152), and, once the owner switches the rule on, the merge goes through the **merge queue** (below). |
 | `feature/...`, `fix/...` | One change each, from `dev`. | Short-lived; deleted after the merge. |
 
-A change: branch from `dev`, push, the **per-change workflow** runs, review, merge into `dev` by a
-squash or a merge commit as the reviewer prefers (history stays readable either way).
+A change: branch from `dev`, push, the **per-change workflow** runs, review, and the pull request is put in the
+**merge queue**, once the owner has switched on the ruleset's rule "Require merge queue" (until then the owner merges
+by hand, and the rule "the branch is up to date with `dev`" sends each pull request back through a run after every
+merge, 15 to 45 minutes each, issue #77). The queue merges the pull request with the ones ahead of it, runs the
+per-change workflow again on that result (the `merge_group` event) and keeps the merge only if it is green. A merge then
+costs one run of the workflow for everyone in the queue. The queue merges by **merge commit**: history stays readable,
+and the sign-off check (`dco.yml`) skips merge commits, which a squash would not (the commit GitHub makes carries no
+`Signed-off-by` of its own). A queue entry reads the Rust caches of `dev`, the default branch, and writes none
+(`save-if` in `ci.yml`): its ref is new each time and nothing would read it again.
 A release: `dev` is merged into `main`, tagged, and the **release workflow** builds from the tag.
 A fix for a released version: a branch from the tag, released as a patch, merged back into `dev`
 [open: only needed once there are users to support].
@@ -36,7 +43,8 @@ A fix for a released version: a branch from the tag, released as a patch, merged
 
 ### 3.1 Per change: `ci.yml`
 
-Runs on every push to `dev` and to a pull request. Jobs run in parallel; the slowest sets the time.
+Runs on every push to `dev` and `main`, on every pull request and in the merge queue (`merge_group`). Jobs run in
+parallel; the slowest sets the time.
 
 | Job | What | Platforms |
 | --- | --- | --- |

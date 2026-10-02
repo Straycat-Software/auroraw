@@ -7,6 +7,9 @@ on:
   push:
     branches: [dev, main]
   pull_request:
+  # The merge queue (docs/continuous-integration.md §2): the same jobs run on the merge of a pull request with what is
+  # already in the queue, and the checks the ruleset requires are those of that run.
+  merge_group:
 
 permissions:
   contents: read
@@ -31,6 +34,9 @@ jobs:
           workspaces: |
             .
             plugins
+          # A queue entry has a ref of its own that nothing reads again: saving there would write about 5 GB per entry
+          # into a repository cache of 10 GB, and evict what the pull requests and `dev` need. It reads `dev`'s.
+          save-if: ${{ github.event_name != 'merge_group' }}
       - name: Install Qt (the Qt Quick interface crate, D-094)
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
@@ -70,6 +76,9 @@ jobs:
           workspaces: |
             .
             plugins
+          # A queue entry has a ref of its own that nothing reads again: saving there would write about 5 GB per entry
+          # into a repository cache of 10 GB, and evict what the pull requests and `dev` need. It reads `dev`'s.
+          save-if: ${{ github.event_name != 'merge_group' }}
       - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: nextest
