@@ -174,8 +174,13 @@ pub enum SensorLayout {
         /// no number here and is refused by the block.
         colours: Vec<u8>,
     },
-    /// Pixels that already have their channels (an sRAW, a scan, a PNG or a JPEG): the first stage of the pipeline is
-    /// skipped.
+    /// Pixels that already have their channels (an sRAW, a scan, a PNG or a JPEG): the demosaic is skipped.
+    ///
+    /// With an [`InputProfile::Unspecified`] the channels are the **camera's RGB, not yet white balanced**: after the
+    /// black level, the means of an sRAW of a Canon 5D Mark IV are R/G 0.43 and B/G 0.71, and the as-shot gains
+    /// ([`RawImage::white_balance`]) bring them to 0.86 and 1.04. The input stage applies the gains and the colour
+    /// matrix as it does to a demosaiced mosaic. A named profile or an ICC profile says what the channels are in,
+    /// and nothing is applied to them but that profile.
     LinearRgb {
         /// How many channels a pixel has.
         components: u8,
@@ -211,7 +216,9 @@ impl SampleKind {
 pub enum Samples {
     /// Unsigned 16 bits.
     U16(Vec<u16>),
-    /// 32-bit floating point.
+    /// 32-bit floating point. **On the scale of the levels**, not between 0 and 1: the 32-bit DNG of a Canon 5D Mark III
+    /// runs from 2047.0 to 15487.0 with a black level of 2047 and a white level of 15488, so a stage subtracts the black
+    /// level and divides by the span of the levels, whatever the type of the samples.
     F32(Vec<f32>),
 }
 
@@ -337,7 +344,9 @@ pub struct RawImage {
     pub camera: CameraId,
     /// The ISO speed the file says, when it does.
     pub iso: Option<u32>,
-    /// The noise model, when the file carries one (a DNG).
+    /// The noise model, when the file carries one (a DNG). **`None` for every file today**: `rawler` 0.8.0 does not
+    /// surface a DNG's `NoiseProfile` on a decoded image, so the plugin cannot give it (design note 005 §3.2b); the
+    /// denoiser reads the ISO, and a noise model of its own, until a decoder can.
     pub noise_profile: Option<NoiseProfile>,
 }
 

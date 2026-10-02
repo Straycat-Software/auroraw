@@ -272,7 +272,13 @@ a second green: its `CFAColor` has `3` cyan, which the 'E' of an RGBE pattern ma
 a Fujifilm green, and the block refuses above `3`). None of the seventeen files has a `3`, so no test file shows two
 labelled greens: the fixtures pin the patterns of the seventeen (`0`, `1`, `2` only), and a sample with a fourth colour
 (a Sony DSC-F828, for instance) is the file to add when a four-colour demosaic is planned. A pipeline refuses a
-four-colour sensor with a typed "not supported", not a panic.
+four-colour sensor with a typed "not supported", not a panic. *Two more things the pipeline's author found on the real files
+(review of #92)*: **float samples are on the scale of the levels** (the Canon 5D Mark III float DNG runs from 2047.0 to
+15487.0 with a black level of 2047 and a white level of 15488, not from 0 to 1), and **a `LinearRgb` image with an
+unspecified profile is camera RGB that is not yet white balanced** (after the black level, the 5D Mark IV's sRAW has means
+R/G 0.432 and B/G 0.708, and the as-shot gains give 0.859 and 1.044), so the input stage applies the gains and the matrix
+to it as to a demosaiced mosaic. The doc comments of `RawImage` say both, and that `noise_profile` is `None` for every file
+(`rawler` 0.8.0, above).
 
 **Findings from the seventeen files.** All fourteen files `rawler` decodes pass through the sandbox bit for bit, the float
 DNG included (a float *mosaic* with a black pattern of 2047, 2047, 2048, 2047). `rawler` 0.8.0 does **not** surface a DNG's
