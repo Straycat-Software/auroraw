@@ -78,8 +78,8 @@ pub enum ParseDigestError {
     /// There is no `:` between a tag and the hash.
     #[error("a digest is `<tag>:<64 hex digits>`, and this has no `:`")]
     NoTag,
-    /// The tag is not a whole number.
-    #[error("the tag of a digest is a whole number")]
+    /// The tag is not a whole number written in digits without a leading zero.
+    #[error("the tag of a digest is a whole number, written in digits without a leading zero")]
     BadTag,
     /// The hash is not 64 lowercase hexadecimal digits.
     #[error("the hash of a digest is 64 lowercase hexadecimal digits")]
@@ -103,11 +103,15 @@ impl StateDigest {
         &self.hash
     }
 
-    /// Reads the text form. Any tag is accepted (see [`StateDigest::is_current`]); the hash is exactly 64 lowercase
-    /// hexadecimal digits, so that two texts of one digest cannot differ.
+    /// Reads the text form. Any tag is accepted (see [`StateDigest::is_current`]); it is written in digits without a
+    /// leading zero, and the hash is exactly 64 lowercase hexadecimal digits, so that **one digest has one text**.
     pub fn parse(text: &str) -> Result<StateDigest, ParseDigestError> {
         let (tag, hex) = text.split_once(':').ok_or(ParseDigestError::NoTag)?;
-        if tag.is_empty() || !tag.bytes().all(|b| b.is_ascii_digit()) {
+        // Digits only, and no leading zero (`01` and `1` would be two texts of one digest).
+        if tag.is_empty()
+            || !tag.bytes().all(|b| b.is_ascii_digit())
+            || (tag.len() > 1 && tag.starts_with('0'))
+        {
             return Err(ParseDigestError::BadTag);
         }
         let tag: u32 = tag.parse().map_err(|_| ParseDigestError::BadTag)?;
@@ -274,6 +278,33 @@ mod tests {
         assert_ne!(digest(&state()), digest(&swapped));
     }
 
+    /// The keys are sorted by their **bytes**: `B` (0x42) comes before `a` (0x61), where a sort that ignores the case
+    /// would put `a` first. The stream is written by hand, in the order the bytes give.
+    #[test]
+    fn the_keys_are_sorted_by_their_bytes_and_not_by_their_letters() {
+        let mut s: Vec<u8> = Vec::new();
+        s.extend_from_slice(b"auroraw-state-digest\0");
+        s.extend_from_slice(&1u32.to_le_bytes()); // the tag
+        s.extend_from_slice(&1u32.to_le_bytes()); // the definition
+        s.extend_from_slice(&1u32.to_le_bytes()); // one instance
+        s.extend_from_slice(&3u32.to_le_bytes());
+        s.extend_from_slice(b"a.b");
+        s.extend_from_slice(&1u32.to_le_bytes());
+        s.push(1);
+        s.extend_from_slice(&3u32.to_le_bytes());
+        for (key, n) in [("B", 1i64), ("a", 2), ("c", 3)] {
+            s.extend_from_slice(&1u32.to_le_bytes());
+            s.extend_from_slice(key.as_bytes());
+            s.push(1); // an int
+            s.extend_from_slice(&n.to_le_bytes());
+        }
+        let given = [("a", 2), ("c", 3), ("B", 1)].map(|(key, n)| (key, ParamValue::Int(n)));
+        assert_eq!(
+            digest(&[instance("a.b", true, &given)]).hash(),
+            blake3::hash(&s).as_bytes()
+        );
+    }
+
     #[test]
     fn everything_the_state_says_moves_the_digest() {
         let base = digest(&state());
@@ -334,18 +365,32 @@ mod tests {
     }
 
     #[test]
-    fn a_key_stored_twice_is_refused_whatever_its_values() {
-        let twice = [instance(
-            "a.b",
-            true,
-            &[("x", ParamValue::Int(1)), ("x", ParamValue::Int(1))],
-        )];
-        assert_eq!(
-            state_digest(1, &twice),
+    fn a_key_stored_twice_is_refused_whatever_its_values_and_wherever_it_is() {
+        let refused =
+            |params: &[(&str, ParamValue)]| state_digest(1, &[instance("a.b", true, params)]);
+        let twice = |key: &str| {
             Err(DigestError::DuplicateKey {
                 operation: OperationId::from("a.b"),
-                key: "x".to_string()
+                key: key.to_string(),
             })
+        };
+        // The same value twice, and two values: neither order of them is the right one.
+        assert_eq!(
+            refused(&[("x", ParamValue::Int(1)), ("x", ParamValue::Int(1))]),
+            twice("x")
+        );
+        assert_eq!(
+            refused(&[("x", ParamValue::Int(1)), ("x", ParamValue::Int(2))]),
+            twice("x")
+        );
+        // Not next to each other as given: sorting brings them together.
+        assert_eq!(
+            refused(&[
+                ("x", ParamValue::Int(1)),
+                ("y", ParamValue::Int(1)),
+                ("x", ParamValue::Int(2))
+            ]),
+            twice("x")
         );
     }
 
@@ -355,15 +400,15 @@ mod tests {
         let text = d.to_string();
         assert_eq!(StateDigest::parse(&text), Ok(d));
         assert!(d.is_current());
-        let future = format!(
-            "{}:{}",
-            DIGEST_TAG + 1,
-            &text[text.find(':').unwrap() + 1..]
-        );
-        let parsed = StateDigest::parse(&future).expect("any tag reads");
-        assert_eq!(parsed.tag(), DIGEST_TAG + 1);
-        assert!(!parsed.is_current());
-        assert_eq!(parsed.hash(), d.hash());
+        let hex = &text[text.find(':').unwrap() + 1..];
+        // A tag below the current one (0 is a tag) is as unknown as a tag above it.
+        for tag in [0, DIGEST_TAG + 1, u32::MAX] {
+            let parsed = StateDigest::parse(&format!("{tag}:{hex}")).expect("any tag reads");
+            assert_eq!(parsed.tag(), tag);
+            assert!(!parsed.is_current(), "tag {tag}");
+            assert_eq!(parsed.hash(), d.hash());
+            assert_eq!(parsed.to_string(), format!("{tag}:{hex}"), "one text");
+        }
     }
 
     #[test]
@@ -371,31 +416,44 @@ mod tests {
         let good = digest(&state()).to_string();
         let hex = &good[2..];
         assert_eq!(StateDigest::parse(hex), Err(ParseDigestError::NoTag));
-        assert_eq!(
-            StateDigest::parse(&format!(":{hex}")),
-            Err(ParseDigestError::BadTag)
+        // The tag: digits, a whole number that fits, and no other text for the same number.
+        for tag in [
+            "",
+            "v1",
+            "+1",
+            "-1",
+            " 1",
+            "1 ",
+            "99999999999",
+            "01",
+            "00",
+            "001",
+        ] {
+            assert_eq!(
+                StateDigest::parse(&format!("{tag}:{hex}")),
+                Err(ParseDigestError::BadTag),
+                "tag {tag:?}"
+            );
+        }
+        assert!(
+            StateDigest::parse(&format!("0:{hex}")).is_ok(),
+            "0 is a tag"
         );
-        assert_eq!(
-            StateDigest::parse(&format!("v1:{hex}")),
-            Err(ParseDigestError::BadTag)
-        );
-        assert_eq!(
-            StateDigest::parse(&format!("99999999999:{hex}")),
-            Err(ParseDigestError::BadTag)
-        );
-        assert_eq!(
-            StateDigest::parse(&format!("1:{}", &hex[1..])),
-            Err(ParseDigestError::BadHash)
-        );
-        assert_eq!(
-            StateDigest::parse(&format!("1:{}", hex.to_uppercase())),
-            Err(ParseDigestError::BadHash),
-            "uppercase is another text for one digest"
-        );
-        assert_eq!(
-            StateDigest::parse(&format!("1:{}g", &hex[..63])),
-            Err(ParseDigestError::BadHash)
-        );
+        // The hash: exactly 64 digits, lowercase, hexadecimal.
+        for bad in [
+            hex[1..].to_string(),
+            format!("{hex}0"),
+            format!("{hex}00"),
+            hex.to_uppercase(),
+            format!("{}g", &hex[..63]),
+            String::new(),
+        ] {
+            assert_eq!(
+                StateDigest::parse(&format!("1:{bad}")),
+                Err(ParseDigestError::BadHash),
+                "hash {bad:?}"
+            );
+        }
     }
 
     proptest! {
