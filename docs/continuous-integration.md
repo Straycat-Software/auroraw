@@ -83,10 +83,9 @@ part of this plan (the repository is public).
 
 Runs once a night on `dev`, on demand (`workflow_dispatch`, from any branch: that is how a change of the workflow or of a
 measurement is tried before it is merged), and on a push to `dev` that changes the workflow or a measurement. Failures open
-an issue automatically. It does **not** run on the push of any other branch: the `paths` filter alone did not keep it
-from starting on the first push of a branch (the merge-queue entries of #78 and #79 changed none of the listed files, and
-each started a run), so every pull request's branch and every queue entry made a full run, eight jobs with four of them
-on Windows and macOS: 11 of the 12 push runs between 2026-09-30 and 2026-10-02.
+an issue automatically. It does **not** run on the push of any other branch: the `paths` filter alone does not keep a `push`
+trigger from starting on the first push of a branch, so without `branches: [dev]` every pull request's branch and every
+merge-queue entry made a full run and saved its own caches.
 
 | Job | What |
 | --- | --- |
