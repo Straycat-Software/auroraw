@@ -153,7 +153,7 @@ The state in the XMP is **typed in its structure and compact in its values** (th
 <aur:PipelineSchema>1</aur:PipelineSchema>
 <aur:DefinitionVersion>1</aur:DefinitionVersion>
 <aur:BaseLook>neutral</aur:BaseLook>
-<aur:StateDigest>9f2c…(64 hex)</aur:StateDigest>     <!-- the digest of the keyed state, §4.4 -->
+<aur:StateDigest>1:9f2c…(64 hex)</aur:StateDigest>   <!-- the digest of the keyed state, §4.4: tag, colon, hex -->
 <aur:HistoryCount>14</aur:HistoryCount>              <!-- lines of the history file that are real -->
 <aur:HistoryCursor>12</aur:HistoryCursor>            <!-- steps applied; the others can be redone -->
 <aur:Operations><rdf:Seq>
@@ -195,7 +195,7 @@ an ordinary edit.
 
 ```json
 {"schema":1,"photo":"…","version":"…","snapshots":[{"name":"Before the crop","at":"2026-10-02T14:03:11Z","definition":1,"operations":[{"id":"auroraw.exposure","v":1,"on":true,"params":{"ev":{"float":0.0}}}]}]}
-{"n":1,"t":"2026-10-02T14:03:40Z","kind":"set","changes":[{"op":"auroraw.exposure","before":{"params":{"ev":{"float":0.0}}},"after":{"params":{"ev":{"float":0.7}}}}],"digest":"3f9a…"}
+{"n":1,"t":"2026-10-02T14:03:40Z","kind":"set","changes":[{"op":"auroraw.exposure","before":{"params":{"ev":{"float":0.0}}},"after":{"params":{"ev":{"float":0.7}}}}],"digest":"1:3f9a…"}
 ```
 
 - **Line 1 is the header**: identity and the **snapshots** (§6). It is rewritten, with the rest of
@@ -263,7 +263,9 @@ out (right for a cache, wrong for "did the state change"). The pipeline exposes 
 small keyed struct, with no registry; its bytes are a **persisted contract** (like the stage keys'
 proof of determinism, D-140): a golden test holds them, and changing what it covers is a new tag. A
 digest with a tag this build does not know is not checked, the history is kept, and the next write
-recomputes it. The thumbnail's key is the digest **and the source image's identity**, which is the
+recomputes it. **The text form is `<tag>:<64 lowercase hex>`** (`1:7006…`), so that the tag can be read from what is
+stored before the digest is compared (`pipeline::digest::StateDigest::parse` reads any tag, `is_current()` is what
+`develop` asks first); the XMP, every step and the catalogue column hold that form. The thumbnail's key is the digest **and the source image's identity**, which is the
 catalogue's.
 
 If the pipeline's recipe later becomes keyed itself (resolved against the declarations by the pipeline,
