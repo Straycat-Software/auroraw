@@ -143,6 +143,50 @@ mod tests {
         Ok(out)
     }
 
+    /// The bytes themselves, one value of each of the eight kinds, as hex: the contract the cache keys and the proof of
+    /// determinism are hashes of. A tag, a width or a length prefix that changes (a list's count as `u16`, say) moves
+    /// every key of every saved recipe, so it is a decision that edits this test, and after the definition's release a
+    /// new definition version.
+    #[test]
+    fn the_canonical_bytes_of_each_kind_are_these() {
+        let hex = |v: &ParamValue| {
+            encoded(v)
+                .expect("encodes")
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        };
+        let one = "000000000000f03f";
+        let half = "000000000000e03f";
+        let zero = "0000000000000000";
+        let two = "0000000000000040";
+        let minus_one = "000000000000f0bf";
+        for (value, expected) in [
+            (ParamValue::Bool(true), "0001".to_string()),
+            (ParamValue::Int(-2), "01feffffffffffffff".to_string()),
+            (ParamValue::Float(1.0), format!("02{one}")),
+            (ParamValue::Enum(3), "0303000000".to_string()),
+            (
+                ParamValue::Colour([1.0, 0.5, 0.0]),
+                format!("04{one}{half}{zero}"),
+            ),
+            (
+                ParamValue::Point([2.0, -1.0]),
+                format!("05{two}{minus_one}"),
+            ),
+            (
+                ParamValue::List(vec![ParamValue::Bool(true), ParamValue::Int(1)]),
+                "06020000000001010100000000000000".to_string(),
+            ),
+            (
+                ParamValue::Curve(vec![[0.0, 0.0], [1.0, 1.0]]),
+                format!("0702000000{zero}{zero}{one}{one}"),
+            ),
+        ] {
+            assert_eq!(hex(&value), expected, "{value:?}");
+        }
+    }
+
     #[test]
     fn negative_zero_and_zero_encode_alike() {
         assert_eq!(

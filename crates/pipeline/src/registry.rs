@@ -74,16 +74,24 @@ impl OperationInfo {
         if declaration.family != Family::Operation {
             return Err(RegistryError::NotAnOperation { operation: id });
         }
-        // `validate` has checked that an operation has its placement and both spaces, and that the spaces are the API's.
-        let (Some(placement), Some(reads), Some(writes)) = (
-            &declaration.placement,
-            &declaration.input_space,
-            &declaration.output_space,
-        ) else {
-            unreachable!(
-                "Declaration::validate accepts an operation only with a placement and two spaces"
-            )
+        // `validate` has checked that an operation has its placement and both spaces; the two checks are in two crates,
+        // so what it would have said is asked for again here, and a gap between them is an error, not a panic.
+        let missing = |error| RegistryError::BadDeclaration {
+            operation: id.clone(),
+            error,
         };
+        let placement = declaration
+            .placement
+            .as_ref()
+            .ok_or_else(|| missing(DeclarationError::OperationWithoutPlacement))?;
+        let reads = declaration
+            .input_space
+            .as_ref()
+            .ok_or_else(|| missing(DeclarationError::MissingSpace { side: "reads" }))?;
+        let writes = declaration
+            .output_space
+            .as_ref()
+            .ok_or_else(|| missing(DeclarationError::MissingSpace { side: "writes" }))?;
         if reads != writes {
             return Err(RegistryError::ChangesSpace {
                 operation: id,
