@@ -1,0 +1,15 @@
+file: Sony_-_SLT-A58_-_12bit_12bit_compressed_(3x2).ARW
+readout: 5504 x 3656
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: U16 x 20122624, blake3 10209cab2b031ae1d1b9ac6cca44392254465458425df6522dacf801a92d7d47
+black: 2 rows x 2 columns x 1 components [512.0, 512.0, 512.0, 512.0]
+white: [15360.0]
+white balance: Some([2.7304688, 1.0, 1.5507813])
+colour matrix: illuminant 17 (3 rows) [0.6123, -0.1803, -0.0213, -0.4145, 1.1075, 0.3541, -0.041, 0.0927, 0.7033]
+colour matrix: illuminant 21 (3 rows) [0.5991, -0.1456, -0.0455, -0.4764, 1.2135, 0.298, -0.0707, 0.1425, 0.6701]
+crop: Some(Rect { x: 6, y: 12, width: 5456, height: 3632 })
+active area: Some(Rect { x: 0, y: 0, width: 5468, height: 3656 })
+orientation: Normal
+camera: Sony SLT-A58
+iso: Some(100)
+noise profile: None

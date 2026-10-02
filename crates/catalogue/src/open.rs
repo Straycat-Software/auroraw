@@ -10,6 +10,24 @@ use crate::place::PLACE_KEYS_VERSION;
 const SCHEMA: &str = include_str!("schema.sql");
 const INDEXES: &str = include_str!("indexes.sql");
 
+/// The indexes of the place filter, `IF NOT EXISTS` so that one text serves a new catalogue, the migration to schema 6
+/// and the refill when the keys change.
+///
+/// `photo_place` serves the tree of countries, read from the index alone (the four texts the labels come from, and the
+/// flag and the rating the two usual filters ask for, are in it): only the photos that have a country are in it.
+/// `photo_place_nocountry` is the same for the photos that have a region or a city and no country, which the tree gathers
+/// under its last node (issue #60). **It holds `place_country` too**, last, though it is always NULL there: the query
+/// states the index's condition, so the column is read, and an index without it is not covering (SQLite then reads the
+/// table for each photo); `the_tree_reads_its_covering_indexes_for_the_usual_filters` holds it (issue #84).
+pub(crate) const PLACE_INDEXES: &str = "
+CREATE INDEX IF NOT EXISTS photo_place
+  ON photo(place_country, place_region, place_city, country, region, city, country_code, effective_flag, effective_rating)
+  WHERE place_country IS NOT NULL;
+CREATE INDEX IF NOT EXISTS photo_place_nocountry
+  ON photo(place_region, place_city, region, city, effective_flag, effective_rating, place_country)
+  WHERE place_country IS NULL AND (place_region IS NOT NULL OR place_city IS NOT NULL);
+";
+
 /// The schema version this crate reads and writes, written to `PRAGMA user_version`.
 pub const CURRENT_SCHEMA: u32 = 6;
 
@@ -104,6 +122,11 @@ impl Catalogue {
     /// is taken to have another.
     fn check_place_keys(&self) -> Result<()> {
         if self.meta("place_keys")?.as_deref() != Some(PLACE_KEYS_VERSION) {
+            // A catalogue of an earlier build may hold the node's index as it was before it covered the query
+            // (issue #84): it is made again with the same text as a new one.
+            self.conn
+                .execute_batch("DROP INDEX IF EXISTS photo_place_nocountry")?;
+            self.conn.execute_batch(PLACE_INDEXES)?;
             self.conn.execute(
                 "INSERT OR REPLACE INTO meta(key, value) VALUES ('place_columns', 'stale')",
                 [],
@@ -120,6 +143,7 @@ impl Catalogue {
         let tx = self.conn.transaction()?;
         tx.execute_batch(SCHEMA)?;
         tx.execute_batch(INDEXES)?;
+        tx.execute_batch(PLACE_INDEXES)?;
         tx.execute(
             "INSERT INTO meta(key, value) VALUES ('workspace_id', ?1)",
             [workspace_id.to_string()],
@@ -291,15 +315,9 @@ impl Catalogue {
                         ))?;
                     }
                 }
+                self.conn.execute_batch(PLACE_INDEXES)?;
                 self.conn.execute_batch(
-                    "CREATE INDEX IF NOT EXISTS photo_place
-                       ON photo(place_country, place_region, place_city, country, region, city, country_code,
-                                effective_flag, effective_rating)
-                       WHERE place_country IS NOT NULL;
-                     CREATE INDEX IF NOT EXISTS photo_place_nocountry
-                       ON photo(place_region, place_city, region, city, effective_flag, effective_rating)
-                       WHERE place_country IS NULL AND (place_region IS NOT NULL OR place_city IS NOT NULL);
-                     INSERT OR REPLACE INTO meta(key, value) VALUES ('place_columns', 'stale');",
+                    "INSERT OR REPLACE INTO meta(key, value) VALUES ('place_columns', 'stale');",
                 )?;
                 self.conn.pragma_update(None, "user_version", 6)?;
             }
@@ -463,6 +481,54 @@ mod tests {
         drop(cat);
         let cat = Catalogue::open(&path).unwrap();
         assert!(cat.place_columns_stale().unwrap());
+    }
+
+    #[test]
+    fn the_index_of_the_no_country_node_as_an_earlier_build_made_it_is_made_again_with_the_keys() {
+        // Issue #84: the first form of the index did not hold `place_country`, so the tree read the table for each of
+        // its photos. A catalogue made with it has the keys of version 1, which asks for the refill, and the index is
+        // made again on that occasion.
+        let dir = auroraw_testkit::temp_dir();
+        let path = dir.path().join("c.db");
+        let columns = |cat: &Catalogue| -> Vec<String> {
+            let mut statement = cat
+                .conn
+                .prepare(
+                    "SELECT name FROM pragma_index_info('photo_place_nocountry') ORDER BY seqno",
+                )
+                .unwrap();
+            statement
+                .query_map([], |r| r.get::<_, String>(0))
+                .unwrap()
+                .map(|c| c.unwrap())
+                .collect()
+        };
+        {
+            let cat = Catalogue::create(&path, WorkspaceId::random()).unwrap();
+            assert_eq!(
+                columns(&cat).last().map(String::as_str),
+                Some("place_country")
+            );
+            cat.conn
+                .execute_batch(
+                    "DROP INDEX photo_place_nocountry;
+                     CREATE INDEX photo_place_nocountry
+                       ON photo(place_region, place_city, region, city, effective_flag, effective_rating)
+                       WHERE place_country IS NULL AND (place_region IS NOT NULL OR place_city IS NOT NULL);
+                     UPDATE meta SET value = '1' WHERE key = 'place_keys';",
+                )
+                .unwrap();
+            assert_eq!(columns(&cat).len(), 6, "the earlier form");
+        }
+        let cat = Catalogue::open(&path).unwrap();
+        assert_eq!(
+            columns(&cat).last().map(String::as_str),
+            Some("place_country")
+        );
+        assert!(
+            cat.place_columns_stale().unwrap(),
+            "and the columns are to be filled again"
+        );
     }
 
     #[test]

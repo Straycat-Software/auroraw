@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! An in-memory [`Source`], for tests that need one without touching a real disk (testing
 //! strategy §3: "a fake source that can go offline... or lie about sizes"). Not test-gated: other
-//! crates use it as a dev-dependency the way [`auroraw_catalogue::dataset`] is used.
+//! crates use it as a dev-dependency the way `auroraw_catalogue::dataset` is used.
 
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;

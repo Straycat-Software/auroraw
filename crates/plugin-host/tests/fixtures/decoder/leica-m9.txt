@@ -1,0 +1,15 @@
+file: L1049390.DNG
+readout: 5216 x 3472
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: U16 x 18109952, blake3 ff9f1299da5bf09c808b1e11cdfae8e501b248e993181ecb2890d77dd12f6835
+black: 1 rows x 1 columns x 1 components [165.0]
+white: [16383.0]
+white balance: Some([1.3800049, 1.0, 2.0039063])
+colour matrix: illuminant 17 (3 rows) [0.856, -0.2034, -0.0066, -0.424, 1.36, 0.292, -0.074, 0.247, 0.898]
+colour matrix: illuminant 21 (3 rows) [0.626, -0.1019, -0.047, -0.373, 1.145, 0.193, -0.1409, 0.295, 0.621]
+crop: Some(Rect { x: 2, y: 2, width: 5212, height: 3468 })
+active area: None
+orientation: Normal
+camera: Leica M9
+iso: Some(640)
+noise profile: None

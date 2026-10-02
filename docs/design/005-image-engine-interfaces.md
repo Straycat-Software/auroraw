@@ -243,6 +243,61 @@ Reasons and choices, with what Alice's review changed:
 7. `plugin-api` changes are decisions (D-080: experimental until M5, MIT OR Apache-2.0): this is
    **D-141**, reserved by Alice, and no code changes `RawImage` before it is written.
 
+### 3.2b As built (WP13, first pull request) [built]
+
+The proposal of §3.2 is built as written, with these choices that the code made. **The block** is `auroraw_plugin_api::block`
+(its module documentation is the specification): magic `ARIB`, version 1, then sections of `tag u16, length u32, payload`; the
+required ones are the geometry, the layout, the samples' type and count, and the levels, and the others are the white balance,
+the colour matrices (repeatable), the crop and the active area, the orientation, the camera, the input profile, the ISO and the
+noise profile. A reader skips a tag it does not know; no float may be NaN or infinite, on either side; the block is capped at
+16 MiB (an ICC profile). **The samples** keep their own path: the plugin holds them in its memory, `import` gives their
+address and length in bytes next to the block's, and the host reads them in the type the block says (`u16` or `f32`) and
+refuses a plugin whose block and samples disagree. **Choices**: an illuminant is the EXIF `LightSource` code (any decoder can
+write it without our table); a colour matrix has 3 or 4 rows of 3 (four-colour sensors); a CFA colour is `0` red, `1`
+green, `2` blue, `3` a fourth colour, and a pattern with another colour (a CMY sensor) is refused for now; the orientation
+has an `Unknown` of its own, which is not `Normal`; the white balance is three values or nothing.
+
+**What the pipeline may rely on, settled with the pipeline's author (WP15a; the doc comments of `RawImage` say the same).**
+*The white balance is gains*, the factors that multiply the camera's red, green and blue so that the as-shot light comes
+out neutral, **with green 1**: `rawler` gives gains in RGBE order (a DNG's `AsShotNeutral`, the camera's response to a
+neutral, it has already inverted), green is exactly 1.0 on all thirteen sample files that have a balance, and the plugin
+now divides by green so that the block's promise does not rest on that observation. A file without a balance (the Leica
+monochrome) has none, and the pipeline then derives gains from the chosen colour matrix for a D65 white. *Which matrix*:
+the D65 one, else the nearest to D65 in colour temperature (D75, D55, D50, then A), the first when the light is not
+said; no interpolation in v1 (it would change the image, so it is a new definition version if it arrives after the
+freeze); a matrix whose light the file does not say is labelled `Unknown`, never a guess; no matrix means a camera that
+sees what the working space sees. *The colour `3`* is a true fourth colour (an RGBE sensor's emerald) and goes with
+four-row matrices; **both greens of a three-colour sensor are `1`**, as `rawler` already gives them (it has no value for
+a second green: its `CFAColor` has `3` cyan, which the 'E' of an RGBE pattern maps to, then magenta, yellow, white and
+a Fujifilm green, and the block refuses above `3`). None of the seventeen files has a `3`, so no test file shows two
+labelled greens: the fixtures pin the patterns of the seventeen (`0`, `1`, `2` only), and a sample with a fourth colour
+(a Sony DSC-F828, for instance) is the file to add when a four-colour demosaic is planned. A pipeline refuses a
+four-colour sensor with a typed "not supported", not a panic. *Two more things the pipeline's author found on the real files
+(review of #92)*: **float samples are on the scale of the levels** (the Canon 5D Mark III float DNG runs from 2047.0 to
+15487.0 with a black level of 2047 and a white level of 15488, not from 0 to 1), and **a `LinearRgb` image with an
+unspecified profile is camera RGB that is not yet white balanced** (after the black level, the 5D Mark IV's sRAW has means
+R/G 0.432 and B/G 0.708, and the as-shot gains give 0.859 and 1.044), so the input stage applies the gains and the matrix
+to it as to a demosaiced mosaic. The doc comments of `RawImage` say both, and that `noise_profile` is `None` for every file
+(`rawler` 0.8.0, above).
+
+**Findings from the seventeen files.** All fourteen files `rawler` decodes pass through the sandbox bit for bit, the float
+DNG included (a float *mosaic* with a black pattern of 2047, 2047, 2048, 2047). `rawler` 0.8.0 does **not** surface a DNG's
+`NoiseProfile` on a decoded image (its `dng_tags` are for its own DNG writer), so the tag is defined and tested in the
+block and the plugin does not emit it; the ISO is available through the EXIF in a second pass over the metadata. The
+Parrot Bebop DNG, which `rawler` refuses natively ("Unsupported DNG compression"), is not refused inside the sandbox but
+**stopped by its memory ceiling**: `rawler` allocates a size it read from the file's TIFF structure before checking it, which
+natively costs nothing (the pages are never touched) and in the sandbox reaches the 512 MiB ceiling and traps, so the caller
+sees `DecoderError::Failed` and not `Invalid`. Both mean "cannot decode this file", and the fixture records which it is, so
+that a `rawler` that refuses it cleanly shows as a change. The two Sony files whose EXIF says a rotation that `rawler`'s decode
+does not report are a test in `imaging`, as §3.3b asked. The decoder tests run one for each file, and the 103 MP file fits
+the ceiling. **It does not fit the time budget of 30 s that the host first gave a decode**: the plugin is one thread
+(`rayon` has none in `wasm32-wasip1`), the file takes about 10 s on a fast desktop core and more than 30 s on a loaded
+four-core CI runner, where the host interrupted it; the budget is now 120 s (it guards against a hang, not a slow file).
+Two consequences for the engine (WP14, WP18): a full decode of a very large mosaic through the sandbox is a matter of
+seconds, so it is done once per photo and its result is cached, not repeated per render; and the host's error for a
+trap now carries the trap's reason (`wasm trap: interrupt`), which the plain message hid. The sample names are the
+site's with `(4:3)` written `(4x3)`, because a colon is not part of a Windows file name.
+
 ### 3.3 What `rawler` gives on the eight sample files [measured, 2026-09-30]
 
 Run on the CC0 samples of `tools/fetch-samples.sh` (Patrick approved the download; every file
@@ -404,6 +459,43 @@ real implementations. What it holds, from what spike 1 measured:
 
 Mapping of the eight items of my first list: 1, 5 and 6 belong to the declaration; 2, 3, 4, 7 and 8 to
 the descriptor (a trait now, data later).
+
+### 5.3 As built (WP13, second pull request)
+
+Layer 1 is in `plugin-api` as D-142 and D-146 decided it. What the decisions left open, and what was chosen:
+
+- **A parameter's spec is its kind plus its limits** (`ParamKind`, one variant per `ParamValue` variant), so a
+  limit that makes no sense for a type cannot be written: a bool and a colour have a default only, an int and a
+  float have `min`, `max` and a default, an enum has its choices (label keys) and a default index, a point has
+  a range per axis and a default, a list has an item kind, a length range and a default, a curve has a
+  point-count range and a default. `ParamSpec::default_value()` gives the value an operation starts with, and `ParamSpec::check`
+  accepts exactly the values that fit the spec.
+- **A declaration is checked in two places.** `Declaration::validate` (this crate) checks what needs only the
+  declaration: the fields of an operation are there and consistent, the space names are the API's, parameter
+  keys are distinct, defaults satisfy their own limits, and the placement does not name the operation itself.
+  What needs the pipeline definition (the stage exists; `after` and `before` name operations **of the same
+  stage**, note 006 §3.4) is checked by `develop` at load time, because this crate cannot know the definition
+  and must not (it has no dependency on the application).
+- **`after` and `before` name operations**, as note 006 §7 asks; the doc comment of `Placement` says so, and
+  the validation compares them with the operation's own identifier, where it compared them with the stage
+  before.
+- **Old declarations still read.** The new fields are optional in the serialised form and absent when empty,
+  so a source or an import plugin's declaration is unchanged, and one that gives an operation's field is
+  refused (`NotAnOperation`) instead of ignored.
+- **Decided in the review of the pull request (Django's questions).** *A parameter's key* starts with a lowercase ASCII
+  letter and holds lowercase ASCII letters, digits and `_`, in at most 64 characters: it is the name a value is stored
+  under in the sidecar, in an XMP property and in a cache key, so `ev`, `ev ` and `EV` cannot be three parameters, and
+  it is the narrowest rule, since loosening it later breaks no plugin and tightening it would (the label key only has to
+  say something). *The same operation in `after` and in `before`* is refused by the declaration (`ContradictoryPlacement`):
+  it can never be ordered and it needs no definition to see it. *`-0.0`*: `check` allows it wherever zero is, and the
+  canonical encoding writes it as `+0.0` (the pipeline's `put_float`, held by a test there), so two equal values make one
+  cache key; this crate does not normalise a value. *Unknown fields* in a declaration are ignored, not refused: a newer
+  API's fields arrive with its `api_version`, which the host checks, and the required fields fail loudly; refusing the
+  rest is for the stable API (M5), and `serde` cannot do it through the flattened parameter specs anyway.
+- **The stand-ins in `pipeline`** (`OperationId`, `ParamValue`, the names in `definition::names`) remain until
+  Charlie's follow-up (WP14) replaces them with these types. `ParamValue::encode` cannot become a method of
+  the `plugin-api` type (the canonical encoding is the pipeline's contract and the type is not in its crate),
+  so it becomes a function of `pipeline` that takes the shared type.
 
 ## 6. The CPU fallback (item 4) [agreed for M2]
 

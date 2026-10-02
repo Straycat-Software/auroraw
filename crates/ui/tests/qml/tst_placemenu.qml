@@ -135,6 +135,95 @@ TestCase {
         verify(menu.button.enabled)
     }
 
+    // The photos with a city or a region and no country, as the engine counts them (#60): Berlin written as a region by some
+    // photos and as a city, with no region, by others (two nodes of one label), and a city in the region.
+    readonly property var noCountry: ({
+        label: "", count: 5, filter: { country: "" }, children: [
+            { label: "Berlin", count: 2, filter: { country: "", region: "berlin" }, children: [
+                { label: "Mitte", count: 2, filter: { country: "", region: "berlin", city: "mitte" }, children: [] } ] },
+            { label: "Berlin", count: 3, filter: { country: "", region: "", city: "berlin" }, children: [] } ]
+    })
+
+    function withNoCountry(placed) {
+        return { placed: placed, pending: false, countries: tc.tree.countries, noCountry: tc.noCountry }
+    }
+
+    function test_the_no_country_node_comes_after_the_countries_and_is_said_in_the_interfaces_language() {
+        const grid = make(gridComponent)
+        grid.answer = withNoCountry(135)
+        const menu = menuOn(grid)
+        open(menu)
+        // ("(" sorts before every letter: it is after the countries because the menu puts it there, not because of its label.)
+        compare(texts(menu), ["Any place", "Canada 100", "France 30", "(no country) 5"])
+        compare(menu.rows[3].label, "(no country)", "the engine's label is empty and ignored")
+        // (No translation is installed in this suite: the source text, "%n photo(s)", is what it says.)
+        compare(rowItem(menu, 3).Accessible.name.indexOf("(no country), 5 photo"), 0)
+        menu.popup.close()
+    }
+
+    function test_choosing_the_no_country_node_and_what_is_under_it_gives_the_engines_filters_back_untouched() {
+        const grid = make(gridComponent)
+        grid.answer = withNoCountry(135)
+        const menu = menuOn(grid)
+        open(menu)
+        const node = rowItem(menu, 3)
+        mouseClick(node, 8 + 7, node.height / 2)
+        tryVerify(() => menu.rows.length === 6)
+        // Two rows of one label: a row is its filter, never its label.
+        compare(texts(menu), ["Any place", "Canada 100", "France 30", "(no country) 5", " Berlin 2", " Berlin 3"])
+        compare(menu.rows[4].key !== menu.rows[5].key, true)
+        mouseClick(rowItem(menu, 5), 60, 12)
+        tryVerify(() => !menu.popup.opened)
+        compare(JSON.parse(grid.placeFilter), { country: "", region: "", city: "berlin" })
+        compare(menu.choiceText, "Berlin")
+        compare(menu.choicePath, "(no country), Berlin")
+        // Opened again, the path is open and only the city with no region is the choice, not the region of the same name.
+        open(menu)
+        compare(texts(menu), ["Any place", "Canada 100", "France 30", "(no country) 5", " Berlin 2", " Berlin 3"])
+        compare(menu.rows.filter(row => !row.any && menu.selected(row)).map(row => row.count), [3])
+        menu.popup.close()
+        tryVerify(() => !menu.popup.opened)
+        // The node itself: everything with a city or a region and no country.
+        grid.placeFilter = ""
+        open(menu)
+        mouseClick(rowItem(menu, 3), 60, 12)
+        tryVerify(() => !menu.popup.opened)
+        compare(JSON.parse(grid.placeFilter), { country: "" })
+        compare(menu.choiceText, "(no country)")
+        verify(menu.button.highlighted)
+        // And the region, with its city: the path to a city under a region of the node.
+        grid.placeFilter = JSON.stringify({ country: "", region: "berlin", city: "mitte" })
+        compare(menu.choicePath, "(no country), Berlin, Mitte")
+        open(menu)
+        compare(texts(menu), ["Any place", "Canada 100", "France 30", "(no country) 5", " Berlin 2", "  Mitte 2", " Berlin 3"])
+        compare(menu.rows.filter(row => !row.any && menu.selected(row)).map(row => row.count), [2])
+        menu.popup.close()
+    }
+
+    function test_photos_with_no_country_alone_enable_the_button() {
+        const grid = make(gridComponent)
+        grid.answer = { placed: 5, pending: false, countries: [], noCountry: tc.noCountry }
+        const menu = menuOn(grid)
+        verify(menu.button.enabled, "they are placed: the button is not disabled for lack of places")
+        open(menu)
+        compare(texts(menu), ["Any place", "(no country) 5"])
+        menu.popup.close()
+    }
+
+    function test_without_the_node_the_tree_is_what_it_was_and_a_filter_on_it_is_still_said() {
+        const grid = make(gridComponent)
+        grid.answer = { placed: 130, pending: false, countries: tc.tree.countries, noCountry: null }
+        const menu = menuOn(grid)
+        open(menu)
+        compare(texts(menu), ["Any place", "Canada 100", "France 30"])
+        menu.popup.close()
+        tryVerify(() => !menu.popup.opened)
+        // The photos in view changed under a filter on the node: the button still says what it filters.
+        grid.placeFilter = JSON.stringify({ country: "" })
+        compare(menu.choiceText, "(no country)")
+        verify(menu.button.enabled, "a filter in force can always be lifted")
+    }
+
     function test_open_it_lists_the_countries_in_order_with_their_counts_and_nothing_below_them_yet() {
         const menu = menuOn(make(gridComponent))
         open(menu)

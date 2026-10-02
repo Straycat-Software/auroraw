@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! What one file on a card or in a folder looks like before it is copied: a plain, already
-//! collected fact, not something [`crate::pair`] or [`crate::plan`] read from disk themselves
+//! collected fact, not something [`crate::pair`] or [`plan`](fn@crate::plan) read from disk themselves
 //! (both are pure functions over a `Vec` of these, easy to test without a real source). The
 //! caller (`engine`, which already reads a file's metadata for other reasons, `imaging::process`)
 //! fills `capture_time` and `camera` in; this crate has no decoder of its own to read them with.

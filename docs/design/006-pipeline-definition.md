@@ -504,8 +504,8 @@ they need the first stages and a look at real images. The criteria, to write dow
 
 | Where | What | Who |
 | --- | --- | --- |
-| `plugin-api`, `Placement` | `after` and `before` name **operations**, and apply within the stage (§3.4); the doc comment says they name stages today. The field types do not change, the meaning does. A constraint naming an operation of another stage is an error at load time | Alice, in D-142's layer 1 (WP13) |
-| `plugin-api`, constants | The **eight stage identifiers** and the **five data-space names**, documented with their meaning (§3.2); a test checks that `pipeline`'s definition equals them | Alice (WP13), Charlie (the test) |
+| `plugin-api`, `Placement` | `after` and `before` name **operations**, and apply within the stage (§3.4); the doc comment says they name stages today. The field types do not change, the meaning does. A constraint naming an operation of another stage is an error at load time | Alice, in D-142's layer 1 (WP13): done, the validation of the cross-stage case waits for `develop` (note 005 §5.3) |
+| `plugin-api`, constants | The **eight stage identifiers** and the **five data-space names**, documented with their meaning (§3.2); a test checks that `pipeline`'s definition equals them | Alice (WP13), Charlie (the test): done, `definition::tests::the_stage_and_space_names_are_the_ones_plugin_api_publishes` |
 | D-142's data spaces | Three become five (§3.2), each a refinement of one of D-142's, with the three as their families (Alice's D-146 amends D-142) | Alice |
 | `RawImage`'s tagged block (D-141) | Carries **`iso` and the DNG `NoiseProfile` when the file has them** (D-146 amends D-141), for the denoiser's noise model (§4.5, item 4) | Alice, in WP13 |
 | The denoiser's declaration (layer 1) | Strength **in noise units** and a **noise model** `(a, b)` per channel as an input that is not a slider; settled with the denoiser's choice (plan §6, item 8) | Alice and Charlie, at that choice |
