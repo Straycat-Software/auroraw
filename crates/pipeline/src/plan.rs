@@ -123,10 +123,11 @@ impl CacheModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::definition::{V1, names};
+    use crate::definition::V1;
     use crate::recipe::{OperationInstance, ParamValue, Recipe};
     use crate::registry::OperationRegistry;
     use crate::validate::validate;
+    use auroraw_plugin_api::stages;
     use proptest::prelude::*;
 
     fn registry() -> OperationRegistry {
@@ -177,14 +178,14 @@ mod tests {
         let k = keys(&full(&[0.0; 14]));
         let mut cache = CacheModel::new(&V1);
         let first = cache.plan(&k);
-        assert_eq!(first.rerun, names::STAGES);
+        assert_eq!(first.rerun, stages::ALL);
         assert!(first.reused.is_empty());
         let again = cache.plan(&k);
         assert!(
             again.rerun.is_empty(),
             "nothing changed, nothing reruns: {again:?}"
         );
-        assert_eq!(again.reused, names::STAGES);
+        assert_eq!(again.reused, stages::ALL);
     }
 
     #[test]
@@ -198,19 +199,19 @@ mod tests {
         assert_eq!(
             plan.rerun,
             [
-                names::INPUT_COLOUR,
-                names::SCENE_LINEAR,
-                names::GEOMETRY,
-                names::DETAIL,
-                names::DISPLAY
+                stages::INPUT_COLOUR,
+                stages::SCENE_LINEAR,
+                stages::GEOMETRY,
+                stages::DETAIL,
+                stages::DISPLAY
             ]
         );
         assert_eq!(
             plan.reused,
-            [names::RAW_LINEAR, names::DEMOSAIC, names::CAMERA_RGB]
+            [stages::RAW_LINEAR, stages::DEMOSAIC, stages::CAMERA_RGB]
         );
         assert!(
-            !plan.reran(names::CAMERA_RGB),
+            !plan.reran(stages::CAMERA_RGB),
             "the denoiser is not rerun by a balance drag"
         );
     }
@@ -224,11 +225,11 @@ mod tests {
         values[3] = 1.0; // auroraw.highlight-reconstruction
         let plan = cache.plan(&keys(&full(&values)));
         assert!(
-            !plan.reran(names::CAMERA_RGB)
-                && !plan.reran(names::DEMOSAIC)
-                && !plan.reran(names::RAW_LINEAR)
+            !plan.reran(stages::CAMERA_RGB)
+                && !plan.reran(stages::DEMOSAIC)
+                && !plan.reran(stages::RAW_LINEAR)
         );
-        assert!(plan.reran(names::INPUT_COLOUR));
+        assert!(plan.reran(stages::INPUT_COLOUR));
     }
 
     #[test]
@@ -238,7 +239,7 @@ mod tests {
         cache.plan(&keys(&full(&values)));
         values[1] = 0.3; // auroraw.noise-reduction
         let plan = cache.plan(&keys(&full(&values)));
-        assert_eq!(plan.reused, [names::RAW_LINEAR, names::DEMOSAIC]);
+        assert_eq!(plan.reused, [stages::RAW_LINEAR, stages::DEMOSAIC]);
         assert_eq!(plan.rerun.len(), 6);
     }
 
@@ -250,7 +251,7 @@ mod tests {
         cache.plan(&keys(&full(&values)));
         values[12] = 0.5; // auroraw.sharpening
         let plan = cache.plan(&keys(&full(&values)));
-        assert_eq!(plan.rerun, [names::DETAIL, names::DISPLAY]);
+        assert_eq!(plan.rerun, [stages::DETAIL, stages::DISPLAY]);
     }
 
     #[test]
@@ -259,7 +260,7 @@ mod tests {
         let mut cache = CacheModel::new(&V1);
         cache.plan(&k);
         cache.invalidate();
-        assert_eq!(cache.plan(&k).rerun, names::STAGES);
+        assert_eq!(cache.plan(&k).rerun, stages::ALL);
     }
 
     // ---- the keys themselves ----
@@ -287,7 +288,7 @@ mod tests {
         cache.plan(&keys(&off));
         let back = cache.plan(&keys(&with));
         assert!(
-            back.reran(names::SCENE_LINEAR),
+            back.reran(stages::SCENE_LINEAR),
             "the stage that holds it must rerun"
         );
     }
@@ -311,7 +312,7 @@ mod tests {
             let placed = PlacedOperation {
                 instance: OperationInstance::new("auroraw.exposure", vec![ParamValue::Float(0.5)]),
                 stage: definition
-                    .stage_index(names::SCENE_LINEAR)
+                    .stage_index(stages::SCENE_LINEAR)
                     .expect("a stage"),
             };
             stage_keys(&crate::validate::ValidRecipe::assume(
@@ -361,12 +362,12 @@ mod tests {
             stage_keys(&validate(registry, &r).expect("valid")).expect("encodes")
         };
         let (early, late) = (
-            key_of(&declared_in(names::CAMERA_RGB)),
-            key_of(&declared_in(names::INPUT_COLOUR)),
+            key_of(&declared_in(stages::CAMERA_RGB)),
+            key_of(&declared_in(stages::INPUT_COLOUR)),
         );
         for (a, b) in early.iter().zip(&late) {
             match a.stage {
-                names::RAW_LINEAR | names::DEMOSAIC => {
+                stages::RAW_LINEAR | stages::DEMOSAIC => {
                     assert_eq!(a.hash, b.hash, "{} is before the operation", a.stage)
                 }
                 stage => assert_ne!(
@@ -398,7 +399,7 @@ mod tests {
         use crate::registry::OperationInfo;
         let free = |id: &str| OperationInfo {
             id: id.into(),
-            stage: names::DETAIL.to_string(),
+            stage: stages::DETAIL.to_string(),
             after: vec![],
             before: vec![],
             input_space: DataSpace::WorkingLinear,

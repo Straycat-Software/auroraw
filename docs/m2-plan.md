@@ -178,9 +178,10 @@ pull request (they cannot be green apart), and the decoder tests run in a dev pr
 **Status: the declaration layer is built (second pull request, 2026-10-01).** In `plugin-api`: `Family::Operation`,
 `OperationId`, `ParamSpec`/`ParamKind`, `ParamValue`, `CostClass`, the declaration's new fields and their
 validation, and the stage and space constants; `pipeline` depends on `plugin-api` (and `xtask`'s table says so),
-with the equality test of D-146. Left to WP14 (Charlie): replacing `pipeline`'s stand-ins (`OperationId`,
-`ParamValue`, `definition::names`) with the shared types, and the load-time checks that need the definition (the
-stage exists, `after` and `before` name operations of the same stage; note 005 §5.3).
+with the equality test of D-146. **WP14, first pull request (Charlie): `pipeline`'s stand-ins (`OperationId`,
+`ParamValue`, `definition::names`) are replaced by the shared types, and `OperationInfo::from_declaration` reads a
+declaration into the registry, whose load-time checks (the stage exists, `after` and `before` name operations of the same
+stage) were already there (note 005 §5.3).** The render API, the stage caches and the rest of WP14 follow.
 
 ### WP14 The pipeline crate: the render API and the engine around it (L). Needs #37, WP13. Lead: Charlie
 
