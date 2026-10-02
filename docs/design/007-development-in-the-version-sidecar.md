@@ -257,6 +257,9 @@ parameters would change every recomputed digest, and §4.3 would set every user'
   and the stored `(key, value)` pairs **sorted by key**, each value through the pipeline's canonical
   encoding (`recipe::encode_param`: the bit pattern, `-0.0` as `+0.0`, NaN refused).
 
+The stream also writes the **number** of instances, of parameters, and the length of every text, so that no two
+different states can share one stream.
+
 It does **not** cover the plugin's release (`PluginVersion` is provenance), the declarations, or the
 positional list. `enabled` **is** in it, though the pipeline's stage keys leave a disabled instance
 out (right for a cache, wrong for "did the state change"). The pipeline exposes it as a function of a
