@@ -62,6 +62,16 @@ jobs:
         run: |
           cargo fmt --manifest-path plugins/Cargo.toml --all --check
           cargo clippy --manifest-path plugins/Cargo.toml --workspace --all-targets --locked -- -D warnings
+      # A link in a doc comment to an item that is private or does not exist is a rustdoc warning (issue #75: four
+      # crates had them, #66 and #82 fixed them): the public documentation of the workspace, then with the private
+      # items, and the plugins' workspace.
+      - name: The documentation builds with no warning
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          cargo doc --workspace --no-deps --locked
+          cargo doc --workspace --no-deps --locked --document-private-items
+          cargo doc --manifest-path plugins/Cargo.toml --workspace --no-deps --locked
       - name: Licence headers and dependency rules between crates
         run: cargo xtask check
 
