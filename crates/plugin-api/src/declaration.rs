@@ -6,7 +6,8 @@
 //! those describe an **operation** plugin's place in the develop pipeline, and D-142 gives them their shape. A
 //! declaration is the first of two layers: the small, stable one that `develop`, the version sidecar and the panels
 //! read (identifier, version, API version, family, stage and placement, panel, typed [parameters](crate::ParamSpec),
-//! the data space it reads and the one it writes, its [cost class](crate::CostClass), permissions). The second layer,
+//! the data space it reads and the one it writes, its [cost class](crate::CostClass), the version of the operation and
+//! whether it may be used twice in one edit, permissions). The second layer,
 //! the implementation descriptor the pipeline alone reads (halo, passes, shaders, the CPU twin), is not here: its data
 //! form is defined when the first external GPU operation arrives (M3), and for the built-in operations it is a Rust
 //! trait.
@@ -87,11 +88,32 @@ pub struct Declaration {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input_space: Option<String>,
     /// The data space the operation writes, one of [`crate::spaces`] (operations only).
+    ///
+    /// The declaration has both because D-142 does not decide that an operation may not change the space; **the pipeline
+    /// does** (only the definition's spine changes it, note 006 §3.2) and refuses an operation whose two differ when it
+    /// reads the declaration, so a plugin that declares two different spaces is not loaded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output_space: Option<String>,
     /// What the operation costs (operations only).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost: Option<CostClass>,
+    /// The version of the **operation**, which a new edit is written with and the version sidecar stores with the values
+    /// (D-142): a whole number from 1, absent for 1 (operations only; see [`Declaration::operation_version`]).
+    ///
+    /// It is **not** the plugin's [`version`](Declaration::version), which is its release. The number moves when a value
+    /// an older edit stored would render differently under the new code (a parameter's meaning or scale changed, one was
+    /// removed), and not for a fix, a speed-up or a new optional parameter. The author bumps it; nothing derives it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation_version: Option<u32>,
+    /// The **older** operation versions the plugin still renders, besides its own (operations only). An edit written with
+    /// a version that is neither this one nor one of these is not rendered: the operation is skipped, disabled and
+    /// marked (architecture §7.2). Each is below [`operation_version`](Declaration::operation_version), once.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub also_reads: Vec<u32>,
+    /// Whether one edit may hold the operation more than once (a graduated filter, a local adjustment), so that a panel
+    /// offers to add another (operations only). False when absent: most operations are used once.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allows_several: bool,
     /// What the plugin asks the host to grant it.
     #[serde(default)]
     pub permissions: Permissions,
@@ -147,6 +169,22 @@ pub enum DeclarationError {
     /// An operation does not declare its cost class.
     #[error("an operation must declare its cost class")]
     MissingCost,
+    /// An operation version is 0 (its own, or one of `also_reads`): they start at 1.
+    #[error("the version of an operation starts at 1, and 0 is not one")]
+    ZeroOperationVersion,
+    /// The versions an operation still renders besides its own include one that is not older than it.
+    #[error(
+        "`also_reads` lists version {version}, which is not older than the operation's own version {current}"
+    )]
+    AlsoReadsNotOlder {
+        /// The version listed.
+        version: u32,
+        /// The operation's own version.
+        current: u32,
+    },
+    /// The same older version is listed twice.
+    #[error("`also_reads` lists version {0} twice")]
+    DuplicateAlsoReads(u32),
     /// Two parameters have one key.
     #[error("two parameters have the key {0:?}")]
     DuplicateParameter(String),
@@ -221,8 +259,24 @@ impl Declaration {
         }
     }
 
-    /// The checks of the operation family: a placement, the two spaces, a cost class, and parameters that hold together
-    /// with distinct keys.
+    /// The version of the operation a new edit is written with: its [`operation_version`](Declaration::operation_version),
+    /// or 1 when it gives none. Meaningful for an operation only.
+    pub fn operation_version(&self) -> u32 {
+        self.operation_version.unwrap_or(1)
+    }
+
+    /// Every version of the operation the plugin renders, in increasing order: the older ones it still reads
+    /// ([`also_reads`](Declaration::also_reads)) and its own. What the pipeline checks an edit's version against.
+    pub fn operation_versions(&self) -> Vec<u32> {
+        let mut all = self.also_reads.clone();
+        all.push(self.operation_version());
+        all.sort_unstable();
+        all.dedup();
+        all
+    }
+
+    /// The checks of the operation family: a placement, the two spaces, a cost class, the version numbers, and
+    /// parameters that hold together with distinct keys.
     fn validate_operation(&self) -> Result<(), DeclarationError> {
         if self.placement.is_none() {
             return Err(DeclarationError::OperationWithoutPlacement);
@@ -238,6 +292,22 @@ impl Declaration {
         }
         if self.cost.is_none() {
             return Err(DeclarationError::MissingCost);
+        }
+        if self.operation_version == Some(0) {
+            return Err(DeclarationError::ZeroOperationVersion);
+        }
+        let current = self.operation_version();
+        let mut seen = std::collections::HashSet::new();
+        for &version in &self.also_reads {
+            if version == 0 {
+                return Err(DeclarationError::ZeroOperationVersion);
+            }
+            if version >= current {
+                return Err(DeclarationError::AlsoReadsNotOlder { version, current });
+            }
+            if !seen.insert(version) {
+                return Err(DeclarationError::DuplicateAlsoReads(version));
+            }
         }
         let mut keys = std::collections::HashSet::new();
         for parameter in &self.parameters {
@@ -265,6 +335,12 @@ impl Declaration {
             "output_space"
         } else if self.cost.is_some() {
             "cost"
+        } else if self.operation_version.is_some() {
+            "operation_version"
+        } else if !self.also_reads.is_empty() {
+            "also_reads"
+        } else if self.allows_several {
+            "allows_several"
         } else {
             return Ok(());
         };
@@ -288,6 +364,9 @@ mod tests {
             input_space: None,
             output_space: None,
             cost: None,
+            operation_version: None,
+            also_reads: Vec::new(),
+            allows_several: false,
             permissions: Permissions::default(),
         }
     }
@@ -375,6 +454,9 @@ mod tests {
             input_space: Some(spaces::WORKING_LINEAR.into()),
             output_space: Some(spaces::WORKING_LINEAR.into()),
             cost: Some(CostClass::Interactive),
+            operation_version: None,
+            also_reads: Vec::new(),
+            allows_several: false,
             permissions: Permissions::default(),
         }
     }
@@ -482,6 +564,59 @@ mod tests {
     }
 
     #[test]
+    fn an_operation_without_a_version_is_version_1_and_reads_only_that() {
+        let d = exposure();
+        assert_eq!(d.operation_version(), 1);
+        assert_eq!(d.operation_versions(), vec![1]);
+        assert!(!d.allows_several);
+    }
+
+    #[test]
+    fn the_versions_of_an_operation_are_its_own_and_the_older_ones_it_still_reads() {
+        let mut d = exposure();
+        d.operation_version = Some(4);
+        d.also_reads = vec![3, 1];
+        assert_eq!(d.validate(), Ok(()));
+        assert_eq!(d.operation_version(), 4);
+        assert_eq!(d.operation_versions(), vec![1, 3, 4]);
+        // The plugin's release is not the operation's version: no relation is read from the string.
+        d.version = "9.9.9".into();
+        assert_eq!(d.operation_versions(), vec![1, 3, 4]);
+    }
+
+    #[test]
+    fn a_version_of_an_operation_starts_at_1_and_the_older_ones_are_older_and_distinct() {
+        let mut d = exposure();
+        d.operation_version = Some(0);
+        assert_eq!(d.validate(), Err(DeclarationError::ZeroOperationVersion));
+        let mut d = exposure();
+        d.operation_version = Some(2);
+        d.also_reads = vec![2];
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::AlsoReadsNotOlder {
+                version: 2,
+                current: 2
+            })
+        );
+        d.also_reads = vec![3];
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::AlsoReadsNotOlder {
+                version: 3,
+                current: 2
+            })
+        );
+        let mut d = exposure();
+        d.operation_version = Some(3);
+        d.also_reads = vec![1, 2, 1];
+        assert_eq!(d.validate(), Err(DeclarationError::DuplicateAlsoReads(1)));
+        // Nothing is older than version 1, and 0 is not a version.
+        d.also_reads = vec![0];
+        assert_eq!(d.validate(), Err(DeclarationError::ZeroOperationVersion));
+    }
+
+    #[test]
     fn the_fields_of_an_operation_are_refused_on_another_family() {
         let mut d = minimal();
         d.parameters = exposure().parameters;
@@ -513,6 +648,30 @@ mod tests {
             d.validate(),
             Err(DeclarationError::NotAnOperation { field: "cost" })
         );
+        let mut d = minimal();
+        d.operation_version = Some(1);
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation {
+                field: "operation_version"
+            })
+        );
+        let mut d = minimal();
+        d.also_reads = vec![1];
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation {
+                field: "also_reads"
+            })
+        );
+        let mut d = minimal();
+        d.allows_several = true;
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::NotAnOperation {
+                field: "allows_several"
+            })
+        );
     }
 
     #[test]
@@ -523,6 +682,20 @@ mod tests {
         assert_eq!(back, d);
         assert!(text.contains(r#""family":"operation""#), "{text}");
         assert!(text.contains(r#""cost":"interactive""#), "{text}");
+        // The new fields are left out when they say nothing, so an operation written before them is the same text...
+        assert!(!text.contains("operation_version"), "{text}");
+        assert!(!text.contains("also_reads"), "{text}");
+        assert!(!text.contains("allows_several"), "{text}");
+        // ... and are written when they do, and read back.
+        let mut several = exposure();
+        several.operation_version = Some(2);
+        several.also_reads = vec![1];
+        several.allows_several = true;
+        let text = serde_json::to_string(&several).unwrap();
+        assert!(text.contains(r#""operation_version":2"#), "{text}");
+        assert!(text.contains(r#""also_reads":[1]"#), "{text}");
+        assert!(text.contains(r#""allows_several":true"#), "{text}");
+        assert_eq!(serde_json::from_str::<Declaration>(&text).unwrap(), several);
         // A declaration written before the operation family: the new fields are absent, and that is fine.
         let old = r#"{ "identifier": "org.auroraw.rawler", "version": "0.1.0", "api_version": 0, "family": "import" }"#;
         let read: Declaration = serde_json::from_str(old).unwrap();

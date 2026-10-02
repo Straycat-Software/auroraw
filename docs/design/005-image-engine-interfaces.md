@@ -497,10 +497,12 @@ Layer 1 is in `plugin-api` as D-142 and D-146 decided it. What the decisions lef
   is made of (there is no second table, so what a test still holds is that the definition covers them, in order, and the
   fingerprint's strings did not move). The canonical encoding, which cannot be a method of a type the crate does not own,
   is the function `recipe::encode_param`. `OperationInfo::from_declaration` builds what the pipeline reads from a
-  `Declaration`, and the checks that need the definition are `OperationRegistry::load`'s, as above. **Two things the
-  declaration does not say**, so the caller of `from_declaration` does: *which versions of the operation the engine can
-  run* (the declaration's `version` is the plugin's, and the recipe's `op_version` is a number) and *whether a recipe may
-  hold the operation twice*. And **one rule that is the pipeline's and not the declaration's**: an operation reads and
+  `Declaration`, and the checks that need the definition are `OperationRegistry::load`'s, as above. **The versions and
+  the number of instances are the declaration's** (added after the review of the first pull request, D-142 amended):
+  `operation_version` is the recipe's `op_version` that a new edit is written with (1 when absent), `also_reads` the older
+  ones the plugin still renders, and `allows_several` whether a recipe may hold the operation twice; the plugin's own
+  `version` is its release, a string, and nothing is derived from it. `from_declaration` takes the declaration and
+  nothing else. And **one rule that is the pipeline's and not the declaration's**: an operation reads and
   writes one space (only the spine changes it), so a declaration whose `input_space` and `output_space` differ is refused
   by `from_declaration` (`ChangesSpace`).
 

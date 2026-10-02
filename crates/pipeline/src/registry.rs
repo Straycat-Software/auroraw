@@ -54,16 +54,13 @@ pub struct OperationInfo {
 impl OperationInfo {
     /// What the pipeline reads of the declaration of an operation plugin.
     ///
-    /// The declaration does not say **which versions of the operation the engine can run** (its own `version` is the
-    /// plugin's) **nor whether a recipe may hold it twice**, so the caller, which knows the implementation, does.
+    /// The versions the engine can run are the declaration's own: its [`operation_version`](Declaration::operation_version)
+    /// and the older ones it [still reads](Declaration::also_reads), not the plugin's release (`version`, a string).
+    /// Whether a recipe may hold the operation twice is its [`allows_several`](Declaration::allows_several).
     ///
     /// Refused, with the reason: a declaration that [`Declaration::validate`] refuses; one of another family than
     /// [`Family::Operation`]; one that reads a space and writes another.
-    pub fn from_declaration(
-        declaration: &Declaration,
-        versions: Vec<u32>,
-        allows_several: bool,
-    ) -> Result<OperationInfo, RegistryError> {
+    pub fn from_declaration(declaration: &Declaration) -> Result<OperationInfo, RegistryError> {
         let id = OperationId::from(declaration.identifier.as_str());
         declaration
             .validate()
@@ -118,8 +115,8 @@ impl OperationInfo {
                 .iter()
                 .map(|name| OperationId::from(name.as_str()))
                 .collect(),
-            allows_several,
-            versions,
+            allows_several: declaration.allows_several,
+            versions: declaration.operation_versions(),
             id,
         })
     }
@@ -551,6 +548,9 @@ mod tests {
             input_space: Some(space.to_string()),
             output_space: Some(space.to_string()),
             cost: Some(CostClass::Interactive),
+            operation_version: None,
+            also_reads: vec![],
+            allows_several: false,
             permissions: Permissions::default(),
         }
     }
@@ -561,7 +561,10 @@ mod tests {
         let placement = d.placement.as_mut().expect("placement");
         placement.after = vec!["auroraw.exposure".to_string()];
         placement.before = vec!["auroraw.saturation".to_string()];
-        let info = OperationInfo::from_declaration(&d, vec![1, 2], true).expect("valid");
+        d.operation_version = Some(2);
+        d.also_reads = vec![1];
+        d.allows_several = true;
+        let info = OperationInfo::from_declaration(&d).expect("valid");
         assert_eq!(info.id, OperationId::from("acme.dehaze"));
         assert_eq!(info.stage, stages::SCENE_LINEAR);
         assert_eq!(info.input_space, DataSpace::WorkingLinear);
@@ -574,11 +577,36 @@ mod tests {
     }
 
     #[test]
+    fn a_declaration_that_says_nothing_of_versions_is_version_1_and_used_once() {
+        let d = declared("acme.dehaze", stages::SCENE_LINEAR, spaces::WORKING_LINEAR);
+        let info = OperationInfo::from_declaration(&d).expect("valid");
+        assert_eq!(info.versions, vec![1]);
+        assert!(!info.allows_several);
+    }
+
+    #[test]
+    fn versions_that_do_not_hold_together_are_refused_with_the_declarations_own_reason() {
+        let mut d = declared("acme.dehaze", stages::SCENE_LINEAR, spaces::WORKING_LINEAR);
+        d.operation_version = Some(2);
+        d.also_reads = vec![2];
+        assert_eq!(
+            OperationInfo::from_declaration(&d),
+            Err(RegistryError::BadDeclaration {
+                operation: OperationId::from("acme.dehaze"),
+                error: DeclarationError::AlsoReadsNotOlder {
+                    version: 2,
+                    current: 2
+                },
+            })
+        );
+    }
+
+    #[test]
     fn a_declaration_that_is_not_valid_alone_is_refused_with_its_own_reason() {
         let mut d = declared("acme.dehaze", stages::SCENE_LINEAR, spaces::WORKING_LINEAR);
         d.cost = None;
         assert_eq!(
-            OperationInfo::from_declaration(&d, vec![1], false),
+            OperationInfo::from_declaration(&d),
             Err(RegistryError::BadDeclaration {
                 operation: OperationId::from("acme.dehaze"),
                 error: DeclarationError::MissingCost,
@@ -596,7 +624,7 @@ mod tests {
         d.cost = None;
         d.placement = None;
         assert_eq!(
-            OperationInfo::from_declaration(&d, vec![1], false),
+            OperationInfo::from_declaration(&d),
             Err(RegistryError::NotAnOperation {
                 operation: OperationId::from("acme.import")
             })
@@ -608,7 +636,7 @@ mod tests {
         let mut d = declared("acme.demosaic", stages::DEMOSAIC, spaces::MOSAIC_LINEAR);
         d.output_space = Some(spaces::CAMERA_LINEAR.to_string());
         assert_eq!(
-            OperationInfo::from_declaration(&d, vec![1], false),
+            OperationInfo::from_declaration(&d),
             Err(RegistryError::ChangesSpace {
                 operation: OperationId::from("acme.demosaic"),
                 reads: spaces::MOSAIC_LINEAR.to_string(),
@@ -629,7 +657,7 @@ mod tests {
         let fine = declared("acme.d", stages::DETAIL, spaces::WORKING_LINEAR);
         let infos = [typo, wrong_space, across, fine]
             .iter()
-            .map(|d| OperationInfo::from_declaration(d, vec![1], false).expect("valid alone"))
+            .map(|d| OperationInfo::from_declaration(d).expect("valid alone"))
             .collect();
         let loaded = OperationRegistry::load(&V1, infos);
         assert!(loaded.registry.contains(&OperationId::from("acme.d")));

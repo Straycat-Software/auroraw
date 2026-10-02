@@ -534,7 +534,9 @@ operation arrives (M3, with the safety check of §8.4).
 
 **As built (WP13, second pull request).** Layer 1 is `auroraw_plugin_api::Declaration`: `Family::Operation`;
 `parameters: Vec<ParamSpec>` (key, label key, and a `ParamKind` that carries the limits and the default);
-`input_space` and `output_space` (names from `plugin_api::spaces`); `cost: Option<CostClass>`. Every new
+`input_space` and `output_space` (names from `plugin_api::spaces`); `cost: Option<CostClass>`;
+`operation_version` (from 1, absent for 1), `also_reads` (older versions it still renders) and `allows_several`
+(D-142, amended 2026-10-02). Every new
 field is `#[serde(default)]`, so a declaration written before them still reads. `validate()` knows the
 operation family: an operation must have a placement with a stage, both spaces (known names), a cost class,
 parameters with distinct keys whose limits and defaults hold together (`ParamSpec::validate`), and `after`
@@ -545,8 +547,8 @@ operation of **the same stage**, depend on the pipeline definition, so `develop`
 a value fits its spec (type, limits, enum range, list length, curve points strictly increasing in x), and
 no declaration admits a NaN. The canonical binary encoding that the cache keys are hashes of stays in
 `pipeline` (it is the pipeline's contract, not the plugin's). The eight stage identifiers and the five
-data-space names are constants (`plugin_api::stages`, `plugin_api::spaces`), and `pipeline` has a test
-that its definition equals them.
+data-space names are constants (`plugin_api::stages`, `plugin_api::spaces`), which `pipeline`'s definition is made of
+(a test holds that it covers them).
 
 ### 8.4 GPU operations [decided, D-077; the descriptor's data form at M3, D-142]
 
