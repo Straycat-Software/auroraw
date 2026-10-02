@@ -51,6 +51,15 @@ TestCase {
         delegate: Label { required property int index; text: "row " + index } } }
     Component { id: recordComboComponent; AppComboBox { width: 200; model: [{ path: "Animals" }, { path: "Animals / Birds" }]; textRole: "path" } }
 
+    // Waits until `read()` gives `expected`, reading again at each poll, and says what it read when the wait ends (this suite is a
+    // plain TestCase: the same as `AppTestCase.tryRead`, which says why not `tryCompare` on an item taken once).
+    function tryRead(read, expected) {
+        const deadline = Date.now() + 5000
+        while (read() !== expected && Date.now() < deadline)
+            wait(20)
+        compare(read(), expected)
+    }
+
     function make(component, properties) {
         const item = createTemporaryObject(component, tc, properties || {})
         verify(item, "made: " + component.errorString())
@@ -286,7 +295,10 @@ TestCase {
             shown += l.runItems.itemAt(i).width
         verify(shown <= l.width + 1, "the runs fit the width: " + shown + " in " + l.width)
         l.width = full
-        tryCompare(l.runItems.itemAt(2).item, "text", " cdefghijklmn")
+        tryRead(() => {
+            const run = l.runItems.itemAt(2)
+            return run && run.item ? run.item.text : undefined
+        }, " cdefghijklmn")
     }
 
     function test_a_rating_mark_is_a_number_and_a_star_and_reads_as_stars() {

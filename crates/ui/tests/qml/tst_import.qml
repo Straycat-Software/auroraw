@@ -18,6 +18,13 @@ AppTestCase {
         d = app.importDialog
     }
 
+    // The application on a machine whose workspace opens again, once it has: the screen is waited for, not read after a fixed
+    // pause (issue #100).
+    function reopenApp(machine) {
+        launchOn(machine, "workspace")
+        d = app.importDialog
+    }
+
     // A new workspace, and a "Card" folder of the template's photos; `Archive` is where they go.
     function begin(template) {
         const machine = freshMachine()
@@ -74,8 +81,7 @@ AppTestCase {
         waitForTheImport()
         waitForTheScan()
         // The next launch reopens it, on the grid, because it now has photos.
-        launchApp(m.machine)
-        compare(app.launcher.screen, "workspace")
+        reopenApp(m.machine)
         compare(app.currentTask, "cull")
         tryCompare(app.photos, "count", 2)
         compare(app.library.status, "2 photos")
@@ -162,8 +168,7 @@ AppTestCase {
         click(d.importButton)
         waitForTheImport()
 
-        launchApp(m.machine)
-        compare(app.launcher.screen, "workspace")
+        reopenApp(m.machine)
         compare(d.destinationField.text, files.canonical(m.archive))
         compare(d.sourceField.text, files.canonical(m.card))
     }
@@ -302,8 +307,7 @@ AppTestCase {
         const en = left(d.backupField)
         compare(left(d.sourceField), en, "every field starts in the same column")
         compare(left(d.destinationField), en)
-        app.launcher.chooseLanguage("fr")
-        wait(300)
+        useLanguage("fr")
         const fr = left(d.backupField)
         verify(fr > en, "the label column follows the widest label: " + fr + " in French, " + en + " in English")
         compare(left(d.sourceField), fr)

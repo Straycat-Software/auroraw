@@ -30,7 +30,7 @@ are compiled at build time).
 cargo build --workspace
 cargo test --workspace        # or: cargo nextest run --workspace
 cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
-cargo xtask check             # SPDX headers and the allowed dependencies between crates
+cargo xtask check             # SPDX headers, the allowed dependencies between crates, the QML waits (see below)
 ```
 
 Sample RAW files for the tests come from `tools/fetch-samples.sh` (CC0 files, about 225 MB, kept

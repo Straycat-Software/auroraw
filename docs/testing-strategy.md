@@ -205,6 +205,13 @@ translation can fail unnoticed. What is checked:
   With `AUR_SNAPSHOT_DIR=<folder>` every view is also drawn to a PNG, in English and in French
   (CI keeps them as artifacts), which is how layout, clipping and French text are looked at without
   touching anyone's desktop.
+- **A test waits on what it asserts.** `wait(300)` followed by `compare(grid.columns, 8)` says that the grid has laid
+  out after 300 ms, and nothing waits for it to have: on a slow runner it fails (issues #27, #63, #72). The line that
+  reads is a `tryCompare`, or a `tryVerify` with a message made when the wait ends; a delegate is read again at each
+  poll (`itemAtIndex()` is `null` until the next layout); a click waits for a drawn frame (`drawn()`). `cargo xtask check`
+  refuses a new `wait(N)` followed by a bare `compare` or `verify`; the sites that exist are listed in
+  `crates/ui/tests/qml/waits-to-remove.txt`, and the list only shrinks (a site that is fixed must leave it:
+  `cargo xtask waits --shrink`).
 - **What only a real machine shows**, checked by a person before a release: GPU rendering, the
   platform's input methods (ibus, IME), real fonts and scaling, frame rate, AT-SPI/NVDA/VoiceOver.
   **An automated session never drives a person's own desktop with synthetic input**: on
@@ -288,9 +295,13 @@ path, the format code and the plugin host, where a gap is expensive.
 - **Flaky tests.** A test that fails without a change is quarantined the same day (marked, kept
   running but not blocking), an issue is opened, and it is fixed or deleted within a week. A
   quarantine list that grows is a process failure, reported at each release.
-  The quarantine list (a test ignored on one platform, or for good, until it is fixed) is empty. A quarantined
+  The quarantine list (a test ignored on one platform, or for good, until it is fixed). A quarantined
   test gets a row here: the test, since when, where, the issue, why, and the date it is due. The QA
   group keeps the list and finds the cause of each entry (D-152).
+
+  | Test | Since | Where | Issue | Why |
+  | --- | --- | --- | --- | --- |
+  | `a_photo_that_no_thumbnail_can_be_made_for_says_so` (`crates/ui/tests/qml.rs`, suite `tst_thumbnails.qml`) | 2026-10-01 | Windows only (`#[cfg_attr(windows, ignore)]`) | #70 | The eleven thumbnails take 14 s at the median on the Windows runner (3 s elsewhere) and the 20 s wait runs out in about 2 % of the jobs; the cause is not known. Ignored, not retried: a retry would hide it. Due: 2026-10-08. |
 - **No test depends on another's result or order.**
 - **Tooling.** `cargo nextest` (faster, isolates each test), `proptest`, `cargo-fuzz`, `insta` or a
   small in-house comparison for golden files, `cargo-llvm-cov`, `cargo-deny` (which also covers the advisory database).

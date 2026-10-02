@@ -7,13 +7,18 @@ on:
   push:
     branches: [dev, main]
   pull_request:
+  # The merge queue (docs/continuous-integration.md §2): the same jobs run on the merge of a pull request with what is
+  # already in the queue, and the checks the ruleset requires are those of that run.
+  merge_group:
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request replaces its run; a push to `dev` does not: the run that finishes is the one that
+  # writes `dev`'s caches, and a merge after another within the half hour would cancel it every time.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,6 +36,15 @@ jobs:
           workspaces: |
             .
             plugins
+          # Only `dev` writes the Rust caches. A pull request or a queue entry has a ref of its own that no other run
+          # reads, and the four caches of a run are about 4 GB of the repository's 10: saved from there, they evicted
+          # the caches of `dev`, which every run reads. A run reads `dev`'s, and builds what its change adds on top.
+          save-if: ${{ github.ref == 'refs/heads/dev' }}
+          # The action's key holds the toolchain, the environment, the lock file and the manifests of the workspace
+          # members, not the root manifests (virtual ones, of `.` and of `plugins`): a change of `[profile]` there
+          # leaves it as it is, `dev` finds its cache under the same key and saves nothing, and every run rebuilds
+          # what the old profile built.
+          key: ${{ hashFiles('Cargo.toml', 'plugins/Cargo.toml') }}
       - name: Install Qt (the Qt Quick interface crate, D-094)
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
@@ -62,6 +76,15 @@ jobs:
           - { name: windows-x64, os: windows-2025, arch: win64_msvc2022_64 }
           - { name: macos-arm64, os: macos-15 }
     steps:
+      # The tests make their machines and files in the temporary folder, which is on the runner's C: drive, slower than
+      # the D: drive the workspace is on: the engine's tests took 107 s with it on D: against 227 s (issue #77).
+      - name: The temporary folder on D:, as the workspace is
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p /d/tmp
+          echo "TEMP=D:\\tmp" >> "$GITHUB_ENV"
+          echo "TMP=D:\\tmp" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install the pinned toolchain
         run: rustup show
@@ -70,6 +93,15 @@ jobs:
           workspaces: |
             .
             plugins
+          # Only `dev` writes the Rust caches. A pull request or a queue entry has a ref of its own that no other run
+          # reads, and the four caches of a run are about 4 GB of the repository's 10: saved from there, they evicted
+          # the caches of `dev`, which every run reads. A run reads `dev`'s, and builds what its change adds on top.
+          save-if: ${{ github.ref == 'refs/heads/dev' }}
+          # The action's key holds the toolchain, the environment, the lock file and the manifests of the workspace
+          # members, not the root manifests (virtual ones, of `.` and of `plugins`): a change of `[profile]` there
+          # leaves it as it is, `dev` finds its cache under the same key and saves nothing, and every run rebuilds
+          # what the old profile built.
+          key: ${{ hashFiles('Cargo.toml', 'plugins/Cargo.toml') }}
       - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: nextest
@@ -97,14 +129,24 @@ jobs:
       - name: Install the software Vulkan adapter (lavapipe) for the image engine's tests
         if: runner.os == 'Linux'
         run: sudo apt-get install -y mesa-vulkan-drivers libvulkan1
-      - name: Cache RAW samples (testing strategy §5)
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restored by every run, saved by `dev` only (as the Rust caches above): `actions/cache` alone saves on a miss from any
+      # ref, and the key is the hash of the script, so each change of the list of files made every pull request and every
+      # merge-queue entry download the files again and keep their own copy, which no other run reads.
+      - name: Restore the RAW samples (testing strategy §5)
+        id: samples
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: testdata/samples
           key: raw-samples-${{ hashFiles('tools/fetch-samples.sh') }}
       - name: Fetch RAW samples
         shell: bash
         run: tools/fetch-samples.sh
+      - name: Save the RAW samples (a run on `dev`, when the key was not found)
+        if: github.ref == 'refs/heads/dev' && steps.samples.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: testdata/samples
+          key: raw-samples-${{ hashFiles('tools/fetch-samples.sh') }}
       - name: Build the WebAssembly plugins (WP6)
         shell: bash
         run: tools/build-plugins.sh
@@ -131,8 +173,13 @@ jobs:
       - run: cargo test --workspace --doc --locked
       - name: Say which graphics adapter this runner offered, and run the engine's smoke test on it
         run: cargo run --locked --package auroraw-pipeline --example adapters
+      # The binary that `cargo build --workspace` made above, not `cargo run --package auroraw-app`: that one resolves the
+      # features of the application alone, which are not the workspace's (`hashbrown`, `bytemuck`, `half`, `num-traits`
+      # have more of them across the workspace), so it builds the application a second time: 79 crates, 4 minutes on a
+      # cold cache and 1.4 to 2.8 at the median, to run something that answers in under a second (issue #77).
       - name: Launch test
-        run: cargo run --locked --package auroraw-app -- --self-test
+        shell: bash
+        run: target/debug/auroraw --self-test
 
   dependencies:
     name: dependencies

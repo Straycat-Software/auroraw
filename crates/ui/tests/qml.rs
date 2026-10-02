@@ -94,7 +94,13 @@ fn the_grid_on_a_machine_with_photos() {
 
 /// A photo whose file has gone (an unplugged card, a deleted picture) is listed but has no thumbnail
 /// to make: its cell says so, and the others show theirs.
+///
+/// **Quarantined on Windows** (issue #70, `docs/testing-strategy.md` §10): the eleven thumbnails take 14 s at the
+/// median on the Windows runner against 3 s on the other two, and the test's 20 s wait runs out in about 2 % of the
+/// jobs. The cause is not known (probably the runner's file work, issue #77). Ignored there so that it does not block
+/// the pull requests; it still runs on Linux and macOS.
 #[test]
+#[cfg_attr(windows, ignore = "too slow on the Windows runner, see issue #70")]
 fn a_photo_that_no_thumbnail_can_be_made_for_says_so() {
     let home = temp_dir();
     support::machine_with_photos(home.path(), 12);

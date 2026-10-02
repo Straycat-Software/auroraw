@@ -259,9 +259,10 @@ AppTestCase {
         tryVerify(() => lib.canResolve, 5000)
         keyClick(Qt.Key_R)
         tryCompare(app.photos, "count", 34, 10000, "the four rejected frames are not listed")
-        const one = cell(burstRow)
+        cell(burstRow) // (scrolls the view to the row and checks that the cell is made: `delegateValue` needs it there)
         // The badge says: resolved (a tick), closed (the series' icon), and 1 of 5 listed.
-        tryCompare(one, "badgeCount", "1/5", 5000)
+        tryRead(() => delegateValue(grid, burstRow, "badgeCount"), "1/5", 5000)
+        const one = cell(burstRow)
         verify(one.seriesResolved && !one.seriesOpen)
         compare(one.seriesSize, 1)
         compare(one.seriesTotal, 5)
@@ -400,8 +401,7 @@ AppTestCase {
     }
 
     function test_the_series_speak_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.library.seriesName(2), "Séries non résolues")
         click(burstRow)
         keyClick(Qt.Key_X)
