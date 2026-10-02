@@ -259,7 +259,7 @@ AppTestCase {
         tryVerify(() => lib.canResolve, 5000)
         keyClick(Qt.Key_R)
         tryCompare(app.photos, "count", 34, 10000, "the four rejected frames are not listed")
-        cell(burstRow)
+        cell(burstRow) // (scrolls the view to the row and checks that the cell is made: `delegateValue` needs it there)
         // The badge says: resolved (a tick), closed (the series' icon), and 1 of 5 listed.
         tryRead(() => delegateValue(grid, burstRow, "badgeCount"), "1/5", 5000)
         const one = cell(burstRow)

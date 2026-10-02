@@ -316,6 +316,10 @@ AppTestCase {
         // A selection that a resize pushed out of view is brought back.
         app.library.select(60)
         app.width = 1400 + panelWidth
+        // The rows re-flow first (the content is as high as eight columns make it); before that the photo is still where the
+        // eleven columns of the step before put it, `select(60)` has just brought it into view there, and "in view" would be
+        // said of the old layout: a check that is true before the thing it checks has happened (Django's review of #93).
+        tryCompare(grid, "contentHeight", Math.ceil(grid.count / 8) * grid.cellHeight)
         tryRead(() => whereIs(60), "in view", 5000, "the selected photo is in view after the columns changed")
     }
 
