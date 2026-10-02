@@ -70,7 +70,9 @@ reads: the Rust cache was not found on 2, 4 and 13 jobs in 100 (Linux, macOS, Wi
 minutes longer than a warm one (issue #77). A run on `dev` is not cancelled by the next push (`concurrency` in
 `ci.yml`): it is the run that writes the cache, and a cancelled run writes nothing (14 of the last 60 runs on `dev`
 were cancelled). A cache is rewritten only when its key changes, that is when a manifest, the lock file or the
-toolchain does.
+toolchain does, **or the root `Cargo.toml`** (its hash is added to the key in `ci.yml`): the action's own key leaves out
+that manifest, which holds the `[profile]` sections, so that `dev` kept a cache built with the profile before #87 and
+every run rebuilt the dependencies with the new one.
 
 **The runners.** GitHub-hosted `ubuntu-24.04`, `windows-2025` (or the current `windows-latest`),
 and `macos-15` on Apple silicon, pinned by name rather than `latest` so an image update does not

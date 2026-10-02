@@ -40,6 +40,10 @@ jobs:
           # reads, and the four caches of a run are about 4 GB of the repository's 10: saved from there, they evicted
           # the caches of `dev`, which every run reads. A run reads `dev`'s, and builds what its change adds on top.
           save-if: ${{ github.ref == 'refs/heads/dev' }}
+          # The action's key holds the toolchain, the environment, the lock file and the manifests of the workspace
+          # members, not the root manifest (a virtual one): a change of `[profile]` there leaves it as it is, `dev`
+          # finds its cache under the same key and saves nothing, and every run rebuilds what the old profile built.
+          key: ${{ hashFiles('Cargo.toml') }}
       - name: Install Qt (the Qt Quick interface crate, D-094)
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
@@ -83,6 +87,10 @@ jobs:
           # reads, and the four caches of a run are about 4 GB of the repository's 10: saved from there, they evicted
           # the caches of `dev`, which every run reads. A run reads `dev`'s, and builds what its change adds on top.
           save-if: ${{ github.ref == 'refs/heads/dev' }}
+          # The action's key holds the toolchain, the environment, the lock file and the manifests of the workspace
+          # members, not the root manifest (a virtual one): a change of `[profile]` there leaves it as it is, `dev`
+          # finds its cache under the same key and saves nothing, and every run rebuilds what the old profile built.
+          key: ${{ hashFiles('Cargo.toml') }}
       - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: nextest
