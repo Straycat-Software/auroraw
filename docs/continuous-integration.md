@@ -72,6 +72,12 @@ minutes longer than a warm one (issue #77). A run on `dev` is not cancelled by t
 were cancelled). A cache is rewritten only when its key changes, that is when a manifest, the lock file or the
 toolchain does.
 
+**The RAW samples** (`testdata/samples`, 490 MB for the seventeen files) are cached the same way: every run restores the cache
+whose key is the hash of `tools/fetch-samples.sh`, and **only a run on `dev` saves it**, when it did not find the key
+(`actions/cache/restore` and `actions/cache/save` in `ci.yml`). The script is the key, so a change of the list of files is a
+new key; with the one-step `actions/cache`, which saves on a miss from any ref, every pull request and every queue entry
+that ran before `dev` had the new key downloaded the files and kept a copy of its own that no other run reads.
+
 **The runners.** GitHub-hosted `ubuntu-24.04`, `windows-2025` (or the current `windows-latest`),
 and `macos-15` on Apple silicon, pinned by name rather than `latest` so an image update does not
 change the result unannounced, and moved forward deliberately. Linux needs the packages the spikes
