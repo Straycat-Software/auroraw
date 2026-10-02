@@ -8,8 +8,22 @@ import org.auroraw.ui
 // written the way the platform writes it (Ctrl+N, ⌘N).
 MenuItem {
     id: item
-    leftPadding: 8
+    // A row that chooses a filter says whether it is the choice in force (`FilterAction.marked`, D-153): a check mark at
+    // the front, and room for it in the rows that have one and in those only. A screen reader is told it is checked.
+    readonly property bool markable: item.action !== null && item.action.marked !== undefined
+    readonly property bool marked: markable && item.action.marked === true
+    leftPadding: markable ? 30 : 8
     rightPadding: 8
+    Accessible.checkable: markable
+    Accessible.checked: marked
+
+    indicator: AppIcon {
+        x: 8
+        y: (item.height - height) / 2
+        name: "check"
+        size: 14
+        visible: item.marked
+    }
 
     // D-129: a soft rounded fill on hover, the interface's one motion exception — replacing
     // Fusion's own square, edge-to-edge highlight.

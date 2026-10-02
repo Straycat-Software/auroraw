@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! The command set (spec §3: "every action is a command reachable by keyboard, menu and later a
-//! palette"): a small, explicit table so "every command has a keyboard shortcut" is something a
-//! test can check by listing the table, rather than something only a person clicking through the
-//! interface could notice was missing (testing strategy §6). The QML side is `qml/AppActions.qml`
+//! palette"): a small, explicit table so "every command has a keyboard shortcut, or a place in the
+//! menu" is something a test can check by listing the table, rather than something only a person
+//! clicking through the interface could notice was missing (testing strategy §6, D-153: a menu
+//! command may have no key of its own, the menu is reached by `Alt` and a letter). The QML side is `qml/AppActions.qml`
 //! (one `Action` per menu command, with its `commandId`) and `qml/AppMenu.qml`; the tests below hold
 //! the two together. The grid's keys (rating, moving the selection) are the library view's own and
 //! join the cross-check with it (milestone Q3).
@@ -16,7 +17,7 @@ pub struct CommandSpec {
     pub id: &'static str,
     /// A name, for a future palette.
     pub name: &'static str,
-    /// The keyboard shortcut, as shown to a person (not parsed).
+    /// The keyboard shortcut, as shown to a person (not parsed). Empty only for a command of the menu (D-153).
     pub shortcut: &'static str,
     /// Whether the hamburger menu lists it (`qml/AppMenu.qml`).
     pub menu: bool,
@@ -148,6 +149,113 @@ pub const COMMANDS: &[CommandSpec] = &[
         "Ctrl+Shift+I",
         true,
     ),
+    // The View section (D-153): each filter of the library's bar, and what its other buttons do, is a command, so that a
+    // person without a mouse reaches them. They have their place in the menu and no key of their own, but Clear all filters.
+    command("filter.rating-0", "Show photos with any rating", "", true),
+    command(
+        "filter.rating-1",
+        "Show photos rated 1 star or more",
+        "",
+        true,
+    ),
+    command(
+        "filter.rating-2",
+        "Show photos rated 2 stars or more",
+        "",
+        true,
+    ),
+    command(
+        "filter.rating-3",
+        "Show photos rated 3 stars or more",
+        "",
+        true,
+    ),
+    command(
+        "filter.rating-4",
+        "Show photos rated 4 stars or more",
+        "",
+        true,
+    ),
+    command("filter.rating-5", "Show photos rated 5 stars", "", true),
+    command(
+        "filter.flags-0",
+        "Show the photos that are not rejected",
+        "",
+        true,
+    ),
+    command(
+        "filter.flags-1",
+        "Show every photo, rejected ones included",
+        "",
+        true,
+    ),
+    command("filter.flags-2", "Show the picked photos", "", true),
+    command("filter.flags-3", "Show the rejected photos", "", true),
+    command(
+        "filter.colour-red",
+        "Show the photos with the red label",
+        "",
+        true,
+    ),
+    command(
+        "filter.colour-yellow",
+        "Show the photos with the yellow label",
+        "",
+        true,
+    ),
+    command(
+        "filter.colour-green",
+        "Show the photos with the green label",
+        "",
+        true,
+    ),
+    command(
+        "filter.colour-blue",
+        "Show the photos with the blue label",
+        "",
+        true,
+    ),
+    command(
+        "filter.colour-purple",
+        "Show the photos with the purple label",
+        "",
+        true,
+    ),
+    command(
+        "filter.colour-any",
+        "Show the photos whatever their colour label",
+        "",
+        true,
+    ),
+    command(
+        "filter.series-0",
+        "Show the photos whether or not they are in a series",
+        "",
+        true,
+    ),
+    command(
+        "filter.series-1",
+        "Show the photos that are in a series",
+        "",
+        true,
+    ),
+    command(
+        "filter.series-2",
+        "Show the photos of series that are not resolved",
+        "",
+        true,
+    ),
+    command(
+        "filter.series-3",
+        "Show the photos of resolved series",
+        "",
+        true,
+    ),
+    command("filter.series-open-all", "Open every series", "", true),
+    command("filter.series-close-all", "Close every series", "", true),
+    command("filter.clear", "Clear all filters", "Ctrl+Shift+X", true),
+    command("view.refresh", "Refresh the list", "", true),
+    command("view.export-list", "Export the list", "", true),
     command("edit.delete", "Delete", "Del", true),
     command("help.about", "About", "F1", true),
 ];
@@ -188,6 +296,7 @@ mod tests {
             "file.import" => "\"Ctrl+I\"",
             "file.export-xmp" => "\"Ctrl+Shift+E\"",
             "file.find-place-names" => "\"Ctrl+Shift+L\"",
+            "filter.clear" => "\"Ctrl+Shift+X\"",
             other => panic!("{other} has no shortcut spelled in the test yet"),
         }
     }
@@ -217,6 +326,15 @@ mod tests {
                 .iter()
                 .find(|(id, _)| id == command.id)
                 .unwrap_or_else(|| panic!("{}: no Action in AppActions.qml", command.id));
+            if command.shortcut.is_empty() {
+                // A command of the menu with no key of its own (D-153): its Action says none either.
+                assert!(
+                    !block.contains("shortcut:"),
+                    "{}: the table gives no shortcut and AppActions.qml gives one",
+                    command.id
+                );
+                continue;
+            }
             let expected = format!("shortcut: {}", qml_shortcut(command.id));
             assert!(
                 block.contains(&expected),
@@ -273,12 +391,14 @@ mod tests {
         }
     }
 
+    /// A command is reached by a key or from the menu (spec §3: keyboard first; D-153): the menu opens with `Alt` and a
+    /// letter, so a command that is in it needs no key of its own, and one that is not in a menu needs one.
     #[test]
-    fn every_command_has_a_keyboard_shortcut() {
+    fn every_command_has_a_shortcut_or_a_place_in_the_menu() {
         for command in COMMANDS {
             assert!(
-                !command.shortcut.is_empty(),
-                "{} has no keyboard shortcut (spec §3: keyboard first)",
+                !command.shortcut.is_empty() || command.menu,
+                "{} has no keyboard shortcut and is not in the menu (spec §3: keyboard first)",
                 command.name
             );
         }
@@ -288,11 +408,14 @@ mod tests {
     fn no_two_commands_share_a_shortcut_or_an_id() {
         for (i, a) in COMMANDS.iter().enumerate() {
             for b in &COMMANDS[i + 1..] {
-                assert_ne!(
-                    a.shortcut, b.shortcut,
-                    "{} and {} both claim {:?}",
-                    a.name, b.name, a.shortcut
-                );
+                // (Commands of the menu with no key of their own all have the empty shortcut.)
+                if !a.shortcut.is_empty() {
+                    assert_ne!(
+                        a.shortcut, b.shortcut,
+                        "{} and {} both claim {:?}",
+                        a.name, b.name, a.shortcut
+                    );
+                }
                 assert_ne!(a.id, b.id);
             }
         }
@@ -307,7 +430,7 @@ mod tests {
                 .join("../../docs/manual/keyboard-shortcuts.md"),
         )
         .expect("the manual has a keyboard page");
-        for command in COMMANDS {
+        for command in COMMANDS.iter().filter(|c| !c.shortcut.is_empty()) {
             assert!(
                 page.contains(&format!("`{}`", command.shortcut)),
                 "{} ({}): docs/manual/keyboard-shortcuts.md does not mention `{}`",

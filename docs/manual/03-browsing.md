@@ -58,6 +58,15 @@ they list.
 - **Keyword**: choose *Show the photos with this keyword* in the keyword panel's menu; a chip *Keyword: Peru ×*
   appears, and its × removes the filter.
 
+Every control of the bar is also a command of the **View** menu (`Alt`+`V`), so the grid can be filtered with the
+keyboard alone: **Filter by rating**, **Filter by flag**, **Filter by colour** and **Filter by series** each open the
+list of their choices, with a check mark on the one in force; **Clear all filters** (`Ctrl+Shift+X`) lifts every filter
+at once (the rating, the colour, the series, the keyword and the collection, and the flags back to *Not rejected*);
+**Open all series**, **Close all series**, **Refresh the list** and **Export the list…** do what their buttons do.
+In a menu the arrows move, `Right` opens a list, `Return` chooses and `Escape` goes back.
+
+![The View menu](images/menu-view.png)
+
 A photo you reject **stays where it is, dimmed**, until the list is next read (a filter change or **Refresh**), so
 the grid does not shift under you while you cull. **Refresh** reads the list again: photos that arrived, rejected
 photos that were left in place.

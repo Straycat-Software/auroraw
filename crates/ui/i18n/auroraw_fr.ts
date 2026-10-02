@@ -767,6 +767,131 @@
         <translation>Inverser la sélection</translation>
     </message>
     <message>
+        <location filename="../qml/AppActions.qml" line="257"/>
+        <source>Any rating</source>
+        <translation>Toutes les notes</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="264"/>
+        <source>1 star or more</source>
+        <translation>1 étoile ou plus</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="271"/>
+        <source>2 stars or more</source>
+        <translation>2 étoiles ou plus</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="278"/>
+        <source>3 stars or more</source>
+        <translation>3 étoiles ou plus</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="285"/>
+        <source>4 stars or more</source>
+        <translation>4 étoiles ou plus</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="292"/>
+        <source>5 stars</source>
+        <translation>5 étoiles</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="299"/>
+        <source>Not rejected</source>
+        <translation>Non refusées</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="306"/>
+        <source>All photos</source>
+        <translation>Toutes les photos</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="313"/>
+        <source>Picked</source>
+        <translation>Retenue</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="320"/>
+        <source>Rejected</source>
+        <translation>Refusée</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="327"/>
+        <source>Red</source>
+        <translation>Rouge</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="334"/>
+        <source>Yellow</source>
+        <translation>Jaune</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="341"/>
+        <source>Green</source>
+        <translation>Vert</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="348"/>
+        <source>Blue</source>
+        <translation>Bleu</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="355"/>
+        <source>Purple</source>
+        <translation>Violet</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="362"/>
+        <source>Any colour</source>
+        <translation>Toutes les couleurs</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="369"/>
+        <source>Any photo</source>
+        <translation>Avec ou sans série</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="376"/>
+        <source>Photos in a series</source>
+        <translation>Photos dans une série</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="383"/>
+        <source>Unresolved series</source>
+        <translation>Séries non résolues</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="390"/>
+        <source>Resolved series</source>
+        <translation>Séries résolues</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="398"/>
+        <source>Open all series</source>
+        <translation>Ouvrir toutes les séries</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="404"/>
+        <source>Close all series</source>
+        <translation>Fermer toutes les séries</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="410"/>
+        <source>Clear all filters</source>
+        <translation>Effacer tous les filtres</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="417"/>
+        <source>Refresh the list</source>
+        <translation>Actualiser la liste</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="423"/>
+        <source>Export the list…</source>
+        <translation>Exporter la liste&#xa0;…</translation>
+    </message>
+    <message>
         <location filename="../qml/AppActions.qml" line="236"/>
         <source>About Auroraw</source>
         <translation>À propos d&apos;Auroraw</translation>
@@ -783,6 +908,31 @@
         <location filename="../qml/AppMenu.qml" line="37"/>
         <source>&amp;Edit</source>
         <translation>&amp;Édition</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="54"/>
+        <source>&amp;View</source>
+        <translation>Affic&amp;hage</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="57"/>
+        <source>Filter by rating</source>
+        <translation>Filtrer par note</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="66"/>
+        <source>Filter by flag</source>
+        <translation>Filtrer par drapeau</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="73"/>
+        <source>Filter by colour</source>
+        <translation>Filtrer par couleur</translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="83"/>
+        <source>Filter by series</source>
+        <translation>Filtrer par série</translation>
     </message>
     <message>
         <location filename="../qml/AppMenu.qml" line="51"/>

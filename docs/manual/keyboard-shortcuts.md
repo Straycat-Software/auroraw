@@ -20,11 +20,30 @@ The keys of the grid and of the image view apply to the selected photos, or to t
 | `Ctrl+A` | Select all (all photos in the grid, all the text in a field) |
 | `Ctrl+Shift+A` | Select none |
 | `Ctrl+Shift+I` | Invert the selection |
+| `Ctrl+Shift+X` | Clear all filters |
 | `Ctrl+K` | Go to the keyword field |
 | `Ctrl+D` | Duplicate photos… |
 | `Ctrl+X`, `Ctrl+C`, `Ctrl+V`, `Del` | Cut, copy, paste and delete in a text field |
 
-`Alt` with a section's underlined letter (File, Edit, Help) opens that menu.
+`Alt` with a section's underlined letter (File, Edit, View, Tools, Help) opens that menu. In a menu the arrows move,
+`Right` opens a list, `Return` chooses and `Escape` goes back.
+
+## The filters, from the keyboard
+
+The filter bar above the grid is not reached by `Tab`; every one of its controls is a command of the **View** menu
+(`Alt`+`V`; in French `Alt`+`H`, **Affichage**), with its state shown by a check mark. They have no key of their own,
+except **Clear all filters** (`Ctrl+Shift+X`, above).
+
+| Menu | What it does |
+| --- | --- |
+| View ▸ Filter by rating | Any rating, 1 star or more … 5 stars |
+| View ▸ Filter by flag | Not rejected, All photos, Picked, Rejected |
+| View ▸ Filter by colour | Red, yellow, green, blue or purple label, or any colour |
+| View ▸ Filter by series | Any photo, in a series, unresolved series, resolved series |
+| View ▸ Clear all filters | Lifts every filter (`Ctrl+Shift+X`) |
+| View ▸ Open all series, Close all series | Opens or closes every series |
+| View ▸ Refresh the list | Reads the list again |
+| View ▸ Export the list… | Writes the file of every listed photo to a text file |
 
 ## In the grid
 

@@ -767,6 +767,131 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../qml/AppActions.qml" line="257"/>
+        <source>Any rating</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="264"/>
+        <source>1 star or more</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="271"/>
+        <source>2 stars or more</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="278"/>
+        <source>3 stars or more</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="285"/>
+        <source>4 stars or more</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="292"/>
+        <source>5 stars</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="299"/>
+        <source>Not rejected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="306"/>
+        <source>All photos</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="313"/>
+        <source>Picked</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="320"/>
+        <source>Rejected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="327"/>
+        <source>Red</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="334"/>
+        <source>Yellow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="341"/>
+        <source>Green</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="348"/>
+        <source>Blue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="355"/>
+        <source>Purple</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="362"/>
+        <source>Any colour</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="369"/>
+        <source>Any photo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="376"/>
+        <source>Photos in a series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="383"/>
+        <source>Unresolved series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="390"/>
+        <source>Resolved series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="398"/>
+        <source>Open all series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="404"/>
+        <source>Close all series</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="410"/>
+        <source>Clear all filters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="417"/>
+        <source>Refresh the list</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppActions.qml" line="423"/>
+        <source>Export the list…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../qml/AppActions.qml" line="236"/>
         <source>About Auroraw</source>
         <translation type="unfinished"></translation>
@@ -782,6 +907,31 @@
     <message>
         <location filename="../qml/AppMenu.qml" line="37"/>
         <source>&amp;Edit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="54"/>
+        <source>&amp;View</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="57"/>
+        <source>Filter by rating</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="66"/>
+        <source>Filter by flag</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="73"/>
+        <source>Filter by colour</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/AppMenu.qml" line="83"/>
+        <source>Filter by series</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
