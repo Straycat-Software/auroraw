@@ -309,9 +309,12 @@ AppTestCase {
         compare(aland.children.map(node => node.label + " " + node.count).sort(), ["East 2", "West 4"])
         const west = aland.children.find(node => node.label === "West")
         compare(west.children.map(node => node.label + " " + node.count), ["Westville 4"])
-        // Choosing West lists its four photos, and the tree stays one to move around in: East is still there.
+        // Choosing West lists its four photos, and the tree stays one to move around in: East is still there. A new filter is a
+        // new list: the six photos of the run were selected, and nothing of the old list stays selected (Django's review of #90).
+        compare(app.photos.selectedCount, 6)
         app.photos.setPlaceFilter(JSON.stringify(west.filter))
         tryCompare(app.photos, "count", 4)
+        tryCompare(app.photos, "selectedCount", 0, 5000, "a new place filter clears the selection, as the other filters do")
         compare(JSON.parse(app.photos.placeFilter), west.filter, "the filter in force is what was given back")
         compare(menu.choiceText, "West")
         verify(menu.button.highlighted)
@@ -352,6 +355,36 @@ AppTestCase {
         compare(field("IMG_0000", "country"), "")
         tryVerify(() => menu.facets.placed === 1, 5000, "the tree was read again after Undo")
         compare(menu.facets.countries.length, 0)
+    }
+
+    // "The counts are those of the photos the *other* filters list" (the manual): a photo of the West is rejected, the default
+    // filter lists the photos that are not rejected, and the tree counts those (a tree made with an empty filter would say 4).
+    function test_the_trees_counts_are_those_of_the_other_filters() {
+        const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
+        const menu = app.library.placeMenu
+        selectOnly(...six)
+        const dialog = openDialog()
+        runFind(dialog)
+        dialog.close()
+        const westCount = () => {
+            const aland = menu.facets.countries.length > 0 ? menu.facets.countries[0] : null
+            const west = aland ? aland.children.find(node => node.label === "West") : null
+            return west ? west.count : undefined
+        }
+        tryVerify(() => westCount() === 4, 5000, "the tree has the four photos of the West")
+        selectOnly("IMG_0000")
+        compare(app.photos.flagSelection("reject"), 1)
+        tryVerify(() => westCount() === 3, 5000, "the tree counts the photos the other filters list: the rejected one is not")
+        // And with another flag filter than the default (a tree made with the default filter would still say 3): only the
+        // rejected photos are listed, and the tree counts those.
+        app.photos.filterFlags(3)
+        tryCompare(app.photos, "count", 1)
+        tryVerify(() => westCount() === 1, 5000, "the tree counts the rejected photos when only those are listed")
+        app.photos.filterFlags(0)
+        tryCompare(app.photos, "count", 11)
+        tryVerify(() => westCount() === 3, 5000, "and the other photos again when the filter is lifted")
+        undoAll("IMG_0000", "country")
+        compare(field("IMG_0000", "country"), "")
     }
 
     function test_the_no_country_row_is_said_in_the_interfaces_language() {

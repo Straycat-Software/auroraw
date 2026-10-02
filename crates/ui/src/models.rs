@@ -1296,6 +1296,8 @@ impl qobject::PhotoGrid {
     }
 
     pub fn place_facets(&self) -> QString {
+        // (An error, no session or a catalogue that cannot be read, gives an empty tree, so the button is greyed as when no
+        // photo has a place: the right degradation for a menu, and on purpose.)
         // (`self.filter()` holds the place filter: the catalogue leaves it out of the tree itself, so that Ontario is
         // still there, with its count, when Québec is chosen.)
         let facets = session::current()
