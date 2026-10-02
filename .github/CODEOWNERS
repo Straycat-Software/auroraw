@@ -1,0 +1,65 @@
+# Code owners (docs/governance.md §1, D-152): who is asked to review a change to a part of the code.
+#
+# - The first name of a line is who writes the area; the others review it. Every area has at least two, so that the
+#   author of a pull request is never its only owner (GitHub does not count an author's approval of their own pull
+#   request).
+# - The last pattern that matches a file decides its owners, so the general lines come first and the specific ones
+#   after. A more specific line replaces the general one for its paths.
+# - The repository's ruleset `main` (the default branch and `dev`) requires, for every pull request, an approval from
+#   a code owner of each path it touches ("Require review from Code Owners"): ONE approval from ANY owner of the
+#   line is enough. It also requires the QA group's approval of every pull request, as a required reviewer of the
+#   ruleset: that is not a line here, and the group is named below only for the parts of the code that are QA's own.
+#
+# Alice: architecture, direction, the organisation and management tools. Bob: UI, UX, Qt. Charlie: image processing
+# and the GPU. The owner (Patrick) is on the lines of what the governance reserves to him (formats, the plugin API,
+# the pipeline definition, the write path and the sandbox, docs/governance.md §3), so he is asked to review it; he is
+# not required to, since one approval of any owner of a line is enough.
+
+# Everything not named below: the documents, the root files, the decision log, the build; Alice and the owner.
+*                                       @straycat-alice-cc @patrickfournier
+
+# Alice: the data layer, the engine, import, places, the plugin surface, the repository's own tools.
+/crates/types/                          @straycat-alice-cc @patrickfournier
+/crates/format/                         @straycat-alice-cc @patrickfournier
+/crates/workspace/                      @straycat-alice-cc @patrickfournier
+/crates/catalogue/                      @straycat-alice-cc @patrickfournier
+/crates/engine/                         @straycat-alice-cc @patrickfournier
+/crates/sources/                        @straycat-alice-cc @patrickfournier
+/crates/import/                         @straycat-alice-cc @patrickfournier
+/crates/places/                         @straycat-alice-cc @patrickfournier
+/crates/cli/                            @straycat-alice-cc @patrickfournier
+/crates/plugin-api/                     @straycat-alice-cc @patrickfournier
+/crates/plugin-host/                    @straycat-alice-cc @patrickfournier
+/xtask/                                 @straycat-alice-cc @patrickfournier
+/tools/fetch-places.sh                  @straycat-alice-cc @patrickfournier
+
+# Bob: the Qt Quick interface, the application that starts it, the manual and the icons.
+/crates/ui/                             @straycat-bob-cc @straycat-alice-cc
+/crates/app/                            @straycat-bob-cc @straycat-alice-cc
+/docs/manual/                           @straycat-bob-cc @straycat-alice-cc
+/docs/ui-parity-checklist.md            @straycat-bob-cc @straycat-alice-cc
+/tools/icons/                           @straycat-bob-cc @straycat-alice-cc
+/tools/layout-bench.rs                  @straycat-bob-cc @straycat-alice-cc
+
+# Charlie: the image engine and what feeds it (decoders, previews, thumbnails), the WebAssembly plugins, the notes
+# about them.
+/crates/pipeline/                       @straycat-charlie-cc @straycat-alice-cc
+/crates/imaging/                        @straycat-charlie-cc @straycat-alice-cc
+/plugins/                               @straycat-charlie-cc @straycat-alice-cc
+/tools/build-plugins.sh                 @straycat-charlie-cc @straycat-alice-cc
+/docs/design/005-*.md                   @straycat-charlie-cc @straycat-alice-cc
+# The pipeline definition is one of the things the governance reserves to the owner: he is asked, not required.
+/crates/pipeline/src/definition.rs      @straycat-charlie-cc @straycat-alice-cc @patrickfournier
+/docs/design/006-*.md                   @straycat-charlie-cc @straycat-alice-cc @patrickfournier
+
+# QA: the tests, the CI and what it runs, the template that holds the checklist, the quarantine list.
+/.github/workflows/                     @Straycat-Software/qa
+/.github/PULL_REQUEST_TEMPLATE.md       @Straycat-Software/qa
+/.config/                               @Straycat-Software/qa
+/deny.toml                              @Straycat-Software/qa
+/fuzz/                                  @Straycat-Software/qa
+/crates/testkit/                        @Straycat-Software/qa
+/tools/fetch-samples.sh                 @Straycat-Software/qa
+/tools/a11y-check.py                    @Straycat-Software/qa
+/docs/testing-strategy.md               @Straycat-Software/qa
+/docs/continuous-integration.md         @Straycat-Software/qa
