@@ -34,7 +34,7 @@ per-change workflow again on that result (the `merge_group` event) and keeps the
 costs one run of the workflow for everyone in the queue. The queue merges by **merge commit**: history stays readable,
 and the sign-off check (`dco.yml`) skips merge commits, which a squash would not (the commit GitHub makes carries no
 `Signed-off-by` of its own). A queue entry reads the Rust caches of `dev`, the default branch, and writes none
-(`save-if` in `ci.yml`): its ref is new each time and nothing would read it again.
+(see "The caches" in §3.1): its ref is new each time and nothing would read it again.
 A release: `dev` is merged into `main`, tagged, and the **release workflow** builds from the tag.
 A fix for a released version: a branch from the tag, released as a patch, merged back into `dev`
 [open: only needed once there are users to support].
@@ -60,6 +60,17 @@ parallel; the slowest sets the time.
 **Time control.** Cargo's registry and build cache are kept (`Swatinem/rust-cache` keyed on the lock
 file and the toolchain), tests run in parallel, and the smoke test uses a tiny image. The budget
 is ten minutes at the median; a job that grows past it is split or moved to the nightly run.
+
+**The caches.** The repository's Actions caches hold 10 GB, and GitHub evicts the least recently used ones when they
+pass it. A job's Rust cache is 0.6 to 1.2 GB. A cache saved on the default branch (`dev`) is read by every run; one saved on
+another ref is read only by the runs of that ref. So **only runs on `dev` write the Rust caches** (`save-if` in
+`ci.yml`): a pull request or a queue entry reads `dev`'s and builds what its change adds on top. Saved from a pull
+request, a cache is read by nobody else, and those copies (7.5 GB of the 10) evicted the ones of `dev` that every run
+reads: the Rust cache was not found on 2, 4 and 13 jobs in 100 (Linux, macOS, Windows), and a cold job takes 6 to 19
+minutes longer than a warm one (issue #77). A run on `dev` is not cancelled by the next push (`concurrency` in
+`ci.yml`): it is the run that writes the cache, and a cancelled run writes nothing (14 of the last 60 runs on `dev`
+were cancelled). A cache is rewritten only when its key changes, that is when a manifest, the lock file or the
+toolchain does.
 
 **The runners.** GitHub-hosted `ubuntu-24.04`, `windows-2025` (or the current `windows-latest`),
 and `macos-15` on Apple silicon, pinned by name rather than `latest` so an image update does not
