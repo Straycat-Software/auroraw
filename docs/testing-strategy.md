@@ -174,7 +174,8 @@ translation can fail unnoticed. What is checked:
   The property that the spike found valuable: **the model never returns an empty cell for a
   row that is on screen**, given a fake thumbnail source with delays.
 - **Accessibility tree**: the AT-SPI script of spike 2 becomes a check that every interactive
-  control on every main screen has a role and a name, and can be reached by keyboard. On Windows
+  control on every main screen has a role and a name, and can be reached by keyboard (or has a command
+  that does what it does: D-153). On Windows
   and macOS the equivalent is a manual check with NVDA and VoiceOver at each release [open:
   automation on these platforms].
 - **Translations**: a **pseudo-locale** (accented and 40 % longer text, with brackets) run
@@ -185,7 +186,9 @@ translation can fail unnoticed. What is checked:
   release candidates, to catch a layout that broke. They are not a gate on every change:
   screenshots differ across platforms and fonts, and a flaky visual test is worse than none.
 - **Keyboard**: every command is reachable by the keyboard, checked by listing the command set
-  against the shortcut table.
+  against the shortcut table. A command has a shortcut or a place in the menu, which `Alt` and an
+  underlined letter open; a control that no key can focus (the filters of the library's bar) has a
+  command in the table that does what it does, with its state read from the same place (D-153).
 - **Responsiveness**: an instrumented build reports the longest interface-thread stall; the
   interface test scenarios fail if it exceeds a frame budget with the engine under load
   (spike 2: nothing heavy on the interface thread).
@@ -268,7 +271,8 @@ A change is ready to merge when:
 3. It carries **its tests**: a new behaviour has a test, a bug fix has a regression test.
 4. If it changes a **format**, it adds a fixture and a migration, and the compatibility tests pass.
 5. If it adds a **user-visible string**, the string is translatable and the pseudo-locale check
-   passes; if it adds a **control**, the control has an accessible name and a keyboard path.
+   passes; if it adds a **control**, the control has an accessible name and a keyboard path (which may be a
+   command of the command table that does what the control does, D-153).
 6. If it adds a **dependency**, the licence is compatible with GPL-3.0 (`cargo-deny` checks the
    whole tree on every change), the dependency is justified in the change, and it has no known
    vulnerability (`cargo-deny` reads the RustSec advisories as well).
