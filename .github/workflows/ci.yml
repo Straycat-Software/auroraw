@@ -120,14 +120,24 @@ jobs:
       - name: Install the software Vulkan adapter (lavapipe) for the image engine's tests
         if: runner.os == 'Linux'
         run: sudo apt-get install -y mesa-vulkan-drivers libvulkan1
-      - name: Cache RAW samples (testing strategy §5)
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restored by every run, saved by `dev` only (as the Rust caches above): `actions/cache` alone saves on a miss from any
+      # ref, and the key is the hash of the script, so each change of the list of files made every pull request and every
+      # merge-queue entry download the files again and keep their own copy, which no other run reads.
+      - name: Restore the RAW samples (testing strategy §5)
+        id: samples
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: testdata/samples
           key: raw-samples-${{ hashFiles('tools/fetch-samples.sh') }}
       - name: Fetch RAW samples
         shell: bash
         run: tools/fetch-samples.sh
+      - name: Save the RAW samples (a run on `dev`, when the key was not found)
+        if: github.ref == 'refs/heads/dev' && steps.samples.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: testdata/samples
+          key: raw-samples-${{ hashFiles('tools/fetch-samples.sh') }}
       - name: Build the WebAssembly plugins (WP6)
         shell: bash
         run: tools/build-plugins.sh
