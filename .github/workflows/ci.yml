@@ -7,13 +7,18 @@ on:
   push:
     branches: [dev, main]
   pull_request:
+  # The merge queue (docs/continuous-integration.md §2): the same jobs run on the merge of a pull request with what is
+  # already in the queue, and the checks the ruleset requires are those of that run.
+  merge_group:
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request replaces its run; a push to `dev` does not: the run that finishes is the one that
+  # writes `dev`'s caches, and a merge after another within the half hour would cancel it every time.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,6 +36,10 @@ jobs:
           workspaces: |
             .
             plugins
+          # Only `dev` writes the Rust caches. A pull request or a queue entry has a ref of its own that no other run
+          # reads, and the four caches of a run are about 4 GB of the repository's 10: saved from there, they evicted
+          # the caches of `dev`, which every run reads. A run reads `dev`'s, and builds what its change adds on top.
+          save-if: ${{ github.ref == 'refs/heads/dev' }}
       - name: Install Qt (the Qt Quick interface crate, D-094)
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
@@ -70,6 +79,10 @@ jobs:
           workspaces: |
             .
             plugins
+          # Only `dev` writes the Rust caches. A pull request or a queue entry has a ref of its own that no other run
+          # reads, and the four caches of a run are about 4 GB of the repository's 10: saved from there, they evicted
+          # the caches of `dev`, which every run reads. A run reads `dev`'s, and builds what its change adds on top.
+          save-if: ${{ github.ref == 'refs/heads/dev' }}
       - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: nextest
@@ -131,8 +144,13 @@ jobs:
       - run: cargo test --workspace --doc --locked
       - name: Say which graphics adapter this runner offered, and run the engine's smoke test on it
         run: cargo run --locked --package auroraw-pipeline --example adapters
+      # The binary that `cargo build --workspace` made above, not `cargo run --package auroraw-app`: that one resolves the
+      # features of the application alone, which are not the workspace's (`hashbrown`, `bytemuck`, `half`, `num-traits`
+      # have more of them across the workspace), so it builds the application a second time: 79 crates, 4 minutes on a
+      # cold cache and 1.4 to 2.8 at the median, to run something that answers in under a second (issue #77).
       - name: Launch test
-        run: cargo run --locked --package auroraw-app -- --self-test
+        shell: bash
+        run: target/debug/auroraw --self-test
 
   dependencies:
     name: dependencies
