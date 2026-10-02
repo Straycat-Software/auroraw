@@ -2,7 +2,7 @@
 //! Decoders, embedded previews, thumbnails, the previews database and the preview colour
 //! (architecture §3.1, §5.7, D-075). Work package WP5.
 //!
-//! Native code, dispatching by extension itself ([`format::is_standard`]), and stays that way:
+//! Native code, dispatching by extension itself (`format::is_standard`), and stays that way:
 //! WP6 added `plugin_api::Decoder`, but for the sensor's own mosaic (architecture §8.1, "Import:
 //! pixels (linear)"), a full RAW decode this crate never needs for a cheap embedded-preview
 //! thumbnail. The two are separate on purpose, not a promotion of this crate's own code.

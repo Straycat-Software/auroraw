@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The `Decoder` family's interface (architecture §8.1, row "Import": "pixels (linear), metadata,
-//! embedded preview; RAW decoders"). WP6 gives this the same treatment WP4 gave [`crate::Source`]:
+//! embedded preview; RAW decoders"). WP6 gives this the same treatment WP4 gave `sources::Source`:
 //! a plain trait a native implementation and a sandboxed WebAssembly one both satisfy, so the
 //! host and its callers do not know which they are holding.
 //!
