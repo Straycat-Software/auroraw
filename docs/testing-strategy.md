@@ -205,6 +205,13 @@ translation can fail unnoticed. What is checked:
   With `AUR_SNAPSHOT_DIR=<folder>` every view is also drawn to a PNG, in English and in French
   (CI keeps them as artifacts), which is how layout, clipping and French text are looked at without
   touching anyone's desktop.
+- **A test waits on what it asserts.** `wait(300)` followed by `compare(grid.columns, 8)` says that the grid has laid
+  out after 300 ms, and nothing waits for it to have: on a slow runner it fails (issues #27, #63, #72). The line that
+  reads is a `tryCompare`, or a `tryVerify` with a message made when the wait ends; a delegate is read again at each
+  poll (`itemAtIndex()` is `null` until the next layout); a click waits for a drawn frame (`drawn()`). `cargo xtask check`
+  refuses a new `wait(N)` followed by a bare `compare` or `verify`; the sites that exist are listed in
+  `crates/ui/tests/qml/waits-to-remove.txt`, and the list only shrinks (a site that is fixed must leave it:
+  `cargo xtask waits --shrink`).
 - **What only a real machine shows**, checked by a person before a release: GPU rendering, the
   platform's input methods (ibus, IME), real fonts and scaling, frame rate, AT-SPI/NVDA/VoiceOver.
   **An automated session never drives a person's own desktop with synthetic input**: on
