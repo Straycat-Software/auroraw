@@ -234,14 +234,14 @@ AppTestCase {
         wait(300)
         click(30) // the selection is somewhere else when the undo comes
         key(Qt.Key_Z, Qt.ControlModifier)
-        tryCompare(grid.itemAtIndex(2), "rating", 0)
+        tryRead(() => delegateValue(grid, 2, "rating"), 0)
         for (let i = 2; i <= 5; i++)
             compare(app.photos.rowOf(app.photos.idAt(i)), i)
         tryCompare(app.photos, "selectedCount", 4)
         compare(selectedRows(), range(2, 5), "what the undo touched is what is selected")
         tryVerify(() => app.actions.undo.enabled === false, 5000, "one step undid all four")
         key(Qt.Key_Y, Qt.ControlModifier)
-        tryCompare(grid.itemAtIndex(4), "rating", 4)
+        tryRead(() => delegateValue(grid, 4, "rating"), 4)
     }
 
     function test_the_selection_survives_a_reload_and_a_new_filter_clears_it() {
