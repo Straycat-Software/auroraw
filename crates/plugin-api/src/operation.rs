@@ -52,6 +52,10 @@ impl fmt::Display for OperationId {
 }
 
 /// A typed parameter value: what a version stores for a parameter and what the pipeline renders with.
+///
+/// `-0.0` and `0.0` are equal here and both are allowed wherever zero is; the canonical encoding that the cache keys
+/// are hashes of writes them alike (the pipeline's `put_float`), so two equal values never make two keys. This crate
+/// does not normalise a value: it says whether it is allowed.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum ParamValue {
@@ -155,10 +159,32 @@ pub enum ParamKind {
     },
 }
 
+/// The longest key a parameter may have.
+pub const MAX_KEY_LEN: usize = 64;
+
+/// What is wrong with a parameter's key, if anything (see [`ParamSpec::key`]).
+fn key_problem(key: &str) -> Option<&'static str> {
+    if key.len() > MAX_KEY_LEN {
+        return Some("is longer than 64 characters");
+    }
+    let mut chars = key.chars();
+    if !matches!(chars.next(), Some('a'..='z')) {
+        return Some("must start with a lowercase ASCII letter");
+    }
+    if !chars.all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_')) {
+        return Some("may hold only lowercase ASCII letters, digits and `_`");
+    }
+    None
+}
+
 /// A parameter of an operation: its key, the key of its label, and what it may be.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ParamSpec {
-    /// The key the version stores the value under: stable, unique among the operation's parameters.
+    /// The key the version stores the value under: stable, unique among the operation's parameters. It starts with a
+    /// lowercase ASCII letter and holds only lowercase ASCII letters, digits and `_`, in at most [`MAX_KEY_LEN`]
+    /// characters, so that it is a name in every format that stores it (the sidecar's JSON, an XMP property, a cache
+    /// key) without escaping, and `ev`, `ev ` and `EV` cannot be three parameters. The rule is the narrowest one:
+    /// loosening it later breaks no plugin, tightening it would.
     pub key: String,
     /// The key of the label the interface translates for the control.
     pub label: String,
@@ -210,6 +236,12 @@ pub enum ParamError {
     #[error("the limits are inconsistent: {what}")]
     BadLimits {
         /// What is wrong.
+        what: &'static str,
+    },
+    /// A parameter's key is not one this API allows (see [`ParamSpec::key`]).
+    #[error("the key {what}")]
+    BadKey {
+        /// What is wrong with it.
         what: &'static str,
     },
     /// The default of a spec is not a value the spec allows.
@@ -421,6 +453,9 @@ impl ParamSpec {
     pub fn validate(&self) -> Result<(), ParamError> {
         if self.key.trim().is_empty() || self.label.trim().is_empty() {
             return Err(ParamError::EmptyKeyOrLabel);
+        }
+        if let Some(what) = key_problem(&self.key) {
+            return Err(ParamError::BadKey { what });
         }
         self.kind.validate()
     }

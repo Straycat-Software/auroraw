@@ -19,5 +19,7 @@ pub mod stages;
 
 pub use declaration::{Declaration, DeclarationError, Family, HOST_API_VERSION, Placement};
 pub use decoder::{Decoder, DecoderError, RawImage};
-pub use operation::{CostClass, OperationId, ParamError, ParamKind, ParamSpec, ParamValue};
+pub use operation::{
+    CostClass, MAX_KEY_LEN, OperationId, ParamError, ParamKind, ParamSpec, ParamValue,
+};
 pub use permissions::Permissions;

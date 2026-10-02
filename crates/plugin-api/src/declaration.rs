@@ -56,6 +56,12 @@ pub struct Placement {
 
 /// What every plugin declares (architecture §8.3, D-078, D-142), shown to the person before
 /// installation and read by the host before it is trusted with anything.
+///
+/// **A field this API does not know is ignored when a declaration is read**, not refused: the fields of a newer API
+/// version arrive with its `api_version`, which the host checks, and a typo in an optional field (`step`, a misspelt
+/// `cost`) is the plugin author's to catch with the required ones, whose absence is an error. Refusing unknown fields
+/// is a decision for the stable API (M5), when the format stops moving; `serde` cannot do it for the flattened
+/// parameter specs in any case.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Declaration {
     /// A stable identifier for this plugin, unique in the index (architecture §8.7).
@@ -112,6 +118,12 @@ pub enum DeclarationError {
     #[error("operation {operation:?} cannot be constrained relative to itself")]
     SelfConstrainedPlacement {
         /// The operation that names itself.
+        operation: String,
+    },
+    /// A placement names one operation in both `after` and `before`: it can never be ordered.
+    #[error("operation {operation:?} is in both `after` and `before`, and cannot be ordered")]
+    ContradictoryPlacement {
+        /// The operation that is named twice.
         operation: String,
     },
     /// An ordering constraint names nothing.
@@ -190,6 +202,16 @@ impl Declaration {
                         operation: name.clone(),
                     });
                 }
+            }
+            // Needs no definition to see: a constraint that asks for both orders.
+            if let Some(name) = placement
+                .after
+                .iter()
+                .find(|a| placement.before.contains(a))
+            {
+                return Err(DeclarationError::ContradictoryPlacement {
+                    operation: name.clone(),
+                });
             }
         }
         if self.family == Family::Operation {
@@ -439,6 +461,24 @@ mod tests {
         let mut d = exposure();
         d.placement.as_mut().unwrap().after.push("".into());
         assert_eq!(d.validate(), Err(DeclarationError::EmptyConstraint));
+    }
+
+    #[test]
+    fn an_operation_cannot_be_asked_to_run_both_before_and_after_another() {
+        let mut d = exposure();
+        let placement = d.placement.as_mut().unwrap();
+        placement.after = vec!["auroraw.tone".into(), "auroraw.curve".into()];
+        placement.before = vec!["auroraw.tone".into()];
+        assert_eq!(
+            d.validate(),
+            Err(DeclarationError::ContradictoryPlacement {
+                operation: "auroraw.tone".into()
+            })
+        );
+        // The same names on one side, or different names on the two, are fine.
+        let placement = d.placement.as_mut().unwrap();
+        placement.before = vec!["auroraw.vignette".into()];
+        assert_eq!(d.validate(), Ok(()));
     }
 
     #[test]

@@ -427,6 +427,16 @@ Layer 1 is in `plugin-api` as D-142 and D-146 decided it. What the decisions lef
 - **Old declarations still read.** The new fields are optional in the serialised form and absent when empty,
   so a source or an import plugin's declaration is unchanged, and one that gives an operation's field is
   refused (`NotAnOperation`) instead of ignored.
+- **Decided in the review of the pull request (Django's questions).** *A parameter's key* starts with a lowercase ASCII
+  letter and holds lowercase ASCII letters, digits and `_`, in at most 64 characters: it is the name a value is stored
+  under in the sidecar, in an XMP property and in a cache key, so `ev`, `ev ` and `EV` cannot be three parameters, and
+  it is the narrowest rule, since loosening it later breaks no plugin and tightening it would (the label key only has to
+  say something). *The same operation in `after` and in `before`* is refused by the declaration (`ContradictoryPlacement`):
+  it can never be ordered and it needs no definition to see it. *`-0.0`*: `check` allows it wherever zero is, and the
+  canonical encoding writes it as `+0.0` (the pipeline's `put_float`, held by a test there), so two equal values make one
+  cache key; this crate does not normalise a value. *Unknown fields* in a declaration are ignored, not refused: a newer
+  API's fields arrive with its `api_version`, which the host checks, and the required fields fail loudly; refusing the
+  rest is for the stable API (M5), and `serde` cannot do it through the flattened parameter specs anyway.
 - **The stand-ins in `pipeline`** (`OperationId`, `ParamValue`, the names in `definition::names`) remain until
   Charlie's follow-up (WP14) replaces them with these types. `ParamValue::encode` cannot become a method of
   the `plugin-api` type (the canonical encoding is the pipeline's contract and the type is not in its crate),
