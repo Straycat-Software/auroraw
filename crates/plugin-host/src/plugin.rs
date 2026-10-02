@@ -201,7 +201,9 @@ impl Instance {
             .instance
             .get_typed_func::<P, R>(&mut self.store, name)
             .map_err(|e| HostError::Call(format!("no `{name}` export: {e}")))?;
+        // `{:#}`: the trap's reason ("interrupt", "out of bounds memory access", ...) is the error's cause, and
+        // the plain text is only the backtrace, which cannot tell a timeout from a crash.
         func.call(&mut self.store, params)
-            .map_err(|e| HostError::Call(e.to_string()))
+            .map_err(|e| HostError::Call(format!("{e:#}")))
     }
 }

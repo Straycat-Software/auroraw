@@ -89,9 +89,15 @@ AppTestCase {
     // Takes back what the runs of a test did.
     function undoAll(name, key) {
         for (let n = 0; n < 4 && field(name, key) !== ""; n++) {
+            const was = field(name, key)
             tryVerify(() => app.actions.undo.enabled)
             app.actions.undo.trigger()
-            wait(150)
+            // The engine takes a step back photo by photo, so the field changes some time after the Undo, not at once: wait
+            // for it to change (a step that is not about this field leaves it as it is: that costs the whole wait, and the
+            // next Undo is the one that takes it).
+            const deadline = Date.now() + 5000
+            while (field(name, key) === was && Date.now() < deadline)
+                wait(10)
         }
     }
 
@@ -155,9 +161,11 @@ AppTestCase {
         verify(app.actions.undo.text.indexOf("place names") > 0, app.actions.undo.text)
         app.actions.undo.trigger()
         tryCompare(app.photos, "count", 12)
+        // (The engine takes the step back one photo after the other: each photo the test reads is waited for, and not only the
+        // first, which is not the last: the failure of the queue entry of #79 read IMG_0004 while its region was still there.)
         tryVerify(() => field("IMG_0000", "country") === "", 5000, "undone for the first photo")
-        compare(field("IMG_0002", "city"), "")
-        compare(field("IMG_0004", "region"), "")
+        tryVerify(() => field("IMG_0002", "city") === "", 5000, "undone for IMG_0002")
+        tryVerify(() => field("IMG_0004", "region") === "", 5000, "undone for IMG_0004, the last photo the run filled")
         compare(field("IMG_0004", "city"), "Mine")
     }
 
@@ -181,8 +189,7 @@ AppTestCase {
     }
 
     function test_the_names_are_in_the_interfaces_language_and_a_refresh_follows_them() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly("IMG_0006")
         let dialog = openDialog()
         runFind(dialog)
@@ -191,8 +198,7 @@ AppTestCase {
         compare(field("IMG_0006", "city"), "Westville", "the city is as the place spells it")
         dialog.close()
         // Without a refresh, what Auroraw found is left as it is, in whatever language it was found.
-        app.launcher.chooseLanguage("en")
-        wait(250)
+        useLanguage("en")
         selectOnly("IMG_0006")
         dialog = openDialog()
         runFind(dialog)
@@ -214,15 +220,13 @@ AppTestCase {
 
     function test_a_refresh_is_shown_grouped_before_it_is_done_and_applied_on_request() {
         const six = ["IMG_0000", "IMG_0001", "IMG_0002", "IMG_0006", "IMG_0007", "IMG_0008"]
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly(...six)
         let dialog = openDialog()
         runFind(dialog)
         compare(dialog.report.filled, 6, "a first fill goes straight to the run: there is nothing to decide")
         dialog.close()
-        app.launcher.chooseLanguage("en")
-        wait(250)
+        useLanguage("en")
         selectOnly(...six)
         dialog = openDialog()
         previewRefresh(dialog)
@@ -446,8 +450,7 @@ AppTestCase {
     }
 
     function test_the_dialog_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         selectOnly("IMG_0008")
         const dialog = openDialog()
         compare(dialog.title, "Trouver les noms de lieux")

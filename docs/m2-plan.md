@@ -163,6 +163,26 @@ test that lifts the float-samples refusal on the float DNG, and the orientation 
 Done when: every sample decodes (or is refused cleanly) into the new `RawImage` through the sandbox,
 native and WebAssembly agree byte for byte, and the parser survives the fuzzer.
 
+**Status: the RawImage layer is built (first pull request, 2026-10-01).** Built: the new
+`RawImage` and the block in `plugin-api`, the plugin writing it with the same crate (and decoding float samples), the
+host reading it, **one decoder test for each of the seventeen sample files** against `rawler` called independently and
+against a fixture (`crates/plugin-host/tests/fixtures/decoder/`), the fuzz target `raw_block` seeded with the block of
+each file, and the orientation finding as a test in `imaging`. Findings: `rawler` 0.8.0 does not surface a DNG's
+`NoiseProfile` on a decoded image, so the tag is defined and tested in the block and the plugin does not emit it; the
+ISO comes from the EXIF in a second pass; the Parrot Bebop DNG is not refused by `rawler` inside the sandbox but stopped by
+its memory ceiling (a size read from the file is allocated before it is checked), so the caller sees `Failed` and not
+`Invalid`. The pull request changes the shape of the work in two ways the plan did not say: the three layers are one
+pull request (they cannot be green apart), and the decoder tests run in a dev profile with the dependencies optimised
+(issue #77, lever 2). The declaration layer is the second pull request (below).
+
+**Status: the declaration layer is built (second pull request, 2026-10-01).** In `plugin-api`: `Family::Operation`,
+`OperationId`, `ParamSpec`/`ParamKind`, `ParamValue`, `CostClass`, the declaration's new fields and their
+validation, and the stage and space constants; `pipeline` depends on `plugin-api` (and `xtask`'s table says so),
+with the equality test of D-146. **WP14, first pull request (Charlie): `pipeline`'s stand-ins (`OperationId`,
+`ParamValue`, `definition::names`) are replaced by the shared types, and `OperationInfo::from_declaration` reads a
+declaration into the registry, whose load-time checks (the stage exists, `after` and `before` name operations of the same
+stage) were already there (note 005 §5.3).** The render API, the stage caches and the rest of WP14 follow.
+
 ### WP14 The pipeline crate: the render API and the engine around it (L). Needs #37, WP13. Lead: Charlie
 
 From the foundation to a service: `Pipeline::open(config, registry)`, `render(request)` and its handle

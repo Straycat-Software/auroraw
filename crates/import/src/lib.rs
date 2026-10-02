@@ -3,7 +3,7 @@
 //! §5.2). Work package WP7.
 //!
 //! A pure, catalogue-agnostic crate, like `sources` and `imaging` beside it (architecture §3.2):
-//! [`pair_files`] and [`plan`] take a plain `Vec` of already-discovered files and return where
+//! [`pair_files`] and [`plan`](fn@plan) take a plain `Vec` of already-discovered files and return where
 //! things should go, with no I/O of their own; [`copy_verified`] is the one place that touches
 //! disk, reading a source and writing a destination. Assembling a `PhotoSidecar`, registering the
 //! result in the catalogue, resolving keyword paths against the vocabulary, and reading each
@@ -15,7 +15,7 @@
 //! Series detection is explicitly **not** here despite this crate's very first (WP0) doc comment
 //! once saying so: the M1 plan's own WP7 paragraph never lists it, and WP9 ("Culling") does
 //! (architecture §5.3). What is here: import profiles ([`Profile`], D-029), pairing
-//! ([`pair_files`], D-032), planning a destination and a unique name for every file ([`plan`], M1
+//! ([`pair_files`], D-032), planning a destination and a unique name for every file ([`plan`](fn@plan), M1
 //! plan §6 item 6), verified copy ([`copy_verified`], design note 004 §6.3 items 4-5), resumable
 //! per-job progress ([`ImportState`]), and GPX matching ([`parse_gpx`], [`position_at`]).
 

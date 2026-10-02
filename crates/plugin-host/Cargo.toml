@@ -21,3 +21,4 @@ wasmtime-wasi = "48"
 [dev-dependencies]
 auroraw-testkit = { path = "../testkit" }
 rawler = "0.8"
+blake3.workspace = true

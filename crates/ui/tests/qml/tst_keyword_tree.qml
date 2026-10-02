@@ -371,8 +371,7 @@ AppTestCase {
         const a = make("Faune")
         make("Oiseaux", a)
         make("Séquoia")
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
 
         const properties = app.keywordPanel.propertiesDialog
         properties.openFor(rowOf("Séquoia"), "Séquoia")

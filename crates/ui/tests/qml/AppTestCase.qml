@@ -33,6 +33,25 @@ TestCase {
         return app
     }
 
+    // The application on `machine`, once the launcher is on `screen` (`"workspace"` when the machine's last workspace opens).
+    // The launcher gets there by reading the disk, on a machine that has just closed a workspace: after `launch()`'s 400 ms the
+    // window may still be on `welcome`, so a test that reads the screen once at that moment fails on a slow runner (issue #100,
+    // the grid suite's `init()` on Windows). As `launchWithPhotos` does, it waits on what it asserts, and a window that opens
+    // nothing is closed and made again. Not for `"welcome"`: the window is on it before it has opened anything.
+    function launchOn(machine, screen) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+            launch(machine)
+            const deadline = Date.now() + 12000
+            while (app.launcher.screen !== screen && Date.now() < deadline)
+                wait(100)
+            if (app.launcher.screen === screen)
+                return
+            quit()
+            wait(1000)
+        }
+        compare(app.launcher.screen, screen, "the window reached its screen")
+    }
+
     // The application on the shared machine, with the window widened for the keyword panel, once its grid lists
     // `photos` photos. A slow runner (Windows) sometimes has not let go of the workspace of the window before, and
     // the new one opens nothing: it is then closed and made again.
@@ -123,6 +142,17 @@ TestCase {
         verify(waitForRendering(item), "a frame was drawn with " + item + " in it")
     }
 
+    // Chooses the interface's language and returns once it is on the screen. The launcher retranslates at once (`language`
+    // says which is chosen), but what the new texts do to the layout (a label that needs more room, a row that wraps)
+    // happens at the next frame: a test that measures it reads after a frame has been drawn, not after a duration. (Issue
+    // #73: of the 26 pauses that followed a change of language, 24 held nothing up and 2 held up a measure of the layout,
+    // the width of the Collections panel's tabs and that of the Import dialog's label column.)
+    function useLanguage(code) {
+        app.launcher.chooseLanguage(code)
+        tryCompare(app.launcher, "language", code)
+        drawn(app.contentItem)
+    }
+
     // Waits until the review of external changes lists `count` photos. (Not `tryCompare(app.externalDialog.entries,
     // "length", count)`: `entries` is a new array at each refresh, and `tryCompare` reads the array once, when it is
     // called, so it keeps waiting on a list nobody updates; the test passed whenever the engine answered within the
@@ -133,6 +163,23 @@ TestCase {
         while (app.externalDialog.entries.length !== count && Date.now() < deadline)
             wait(20)
         compare(app.externalDialog.entries.length, count, "the review lists the wrong number of photos")
+    }
+
+    // The property of the delegate at `index` of `view`, read now: `undefined` while the view has not made that delegate.
+    function delegateValue(view, index, property) {
+        const item = view.itemAtIndex(index)
+        return item ? item[property] : undefined
+    }
+
+    // Waits until `read()` gives `expected`, and reads again at each poll. Not `tryCompare(grid.itemAtIndex(2), "rating", v)`
+    // (nor `tryCompare(cell(3), …)`): `tryCompare(obj, property, v)` takes `obj` once, when it is called, so it waits on a
+    // delegate the view may make again, or on `null` while it has not made it (issues #63 and #68). Nor `tryVerify` with a
+    // message: the message is made before the wait. The failure says what was read when the wait ended.
+    function tryRead(read, expected, timeout, message) {
+        const deadline = Date.now() + (timeout === undefined ? 5000 : timeout)
+        while (read() !== expected && Date.now() < deadline)
+            wait(20)
+        compare(read(), expected, message)
     }
 
     // Clicks the centre of an item as a person would.

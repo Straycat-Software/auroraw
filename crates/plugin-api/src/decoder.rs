@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 //! The `Decoder` family's interface (architecture §8.1, row "Import": "pixels (linear), metadata,
-//! embedded preview; RAW decoders"). WP6 gives this the same treatment WP4 gave [`crate::Source`]:
+//! embedded preview; RAW decoders"). WP6 gives this the same treatment WP4 gave `sources::Source`:
 //! a plain trait a native implementation and a sandboxed WebAssembly one both satisfy, so the
 //! host and its callers do not know which they are holding.
 //!
@@ -8,29 +8,12 @@
 //! small JPEG preview a camera already wrote, cheaply, for thumbnails. [`Decoder::decode`] is the
 //! full decode to the sensor's own mosaic that spike 4 measured (`rawler`, native and as a
 //! WebAssembly plugin, bit-identical): the source data a future develop pipeline demosaics and
-//! renders (M2). The two live in different crates on purpose: `imaging` never needs a full decode
+//! renders (M2); what it returns is [`RawImage`], and how its metadata crosses the sandbox is the block of [`crate::block`].
+//! The two live in different crates on purpose: `imaging` never needs a full decode
 //! for a thumbnail, and this trait never needs `imaging`'s preview or colour handling.
 
+use crate::raw::RawImage;
 use thiserror::Error;
-
-/// A RAW file decoded to its sensor's own mosaic: not yet demosaiced, not yet colour-managed
-/// (architecture §8.1). Mirrors what spike 4's `rawimport` plugin returned across the sandbox
-/// boundary (width, height, components per pixel, samples, black and white level).
-#[derive(Debug, Clone, PartialEq)]
-pub struct RawImage {
-    /// Width in pixels.
-    pub width: u32,
-    /// Height in pixels.
-    pub height: u32,
-    /// Samples per pixel (1 for a Bayer mosaic, `rawler`'s own `cpp`).
-    pub components_per_pixel: u32,
-    /// The mosaic's samples, `width * height * components_per_pixel` of them, row-major.
-    pub samples: Vec<u16>,
-    /// The sensor's black level, averaged across the Bayer pattern.
-    pub black_level: f32,
-    /// The sensor's white level, averaged across the Bayer pattern.
-    pub white_level: f32,
-}
 
 /// What went wrong decoding a file.
 #[derive(Debug, Error)]

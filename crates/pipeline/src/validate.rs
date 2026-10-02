@@ -328,9 +328,10 @@ pub fn validate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::definition::{DataSpace, V1, names};
+    use crate::definition::{DataSpace, V1};
     use crate::recipe::ParamValue;
     use crate::registry::OperationInfo;
+    use auroraw_plugin_api::stages;
 
     pub(crate) fn registry() -> OperationRegistry {
         OperationRegistry::new(&V1, vec![]).expect("the built-ins are valid")
@@ -391,13 +392,13 @@ mod tests {
         assert_eq!(
             stages,
             [
-                names::CAMERA_RGB,
-                names::INPUT_COLOUR,
-                names::INPUT_COLOUR,
-                names::SCENE_LINEAR,
-                names::GEOMETRY,
-                names::DETAIL,
-                names::DISPLAY
+                stages::CAMERA_RGB,
+                stages::INPUT_COLOUR,
+                stages::INPUT_COLOUR,
+                stages::SCENE_LINEAR,
+                stages::GEOMETRY,
+                stages::DETAIL,
+                stages::DISPLAY
             ]
         );
     }
@@ -469,8 +470,8 @@ mod tests {
             errors,
             vec![RecipeError::OutOfStageOrder {
                 operation: OperationId::from("auroraw.exposure"),
-                stage: names::SCENE_LINEAR.to_string(),
-                after_stage: names::DETAIL.to_string(),
+                stage: stages::SCENE_LINEAR.to_string(),
+                after_stage: stages::DETAIL.to_string(),
             }]
         );
     }
@@ -486,7 +487,7 @@ mod tests {
         assert_eq!(
             errors,
             vec![RecipeError::BreaksCanonicalOrder {
-                stage: names::INPUT_COLOUR.to_string(),
+                stage: stages::INPUT_COLOUR.to_string(),
                 operation: OperationId::from("auroraw.white-balance"),
                 must_come_after: OperationId::from("auroraw.highlight-reconstruction"),
             }]
@@ -503,7 +504,7 @@ mod tests {
         .expect_err("refused");
         assert!(
             matches!(errors.as_slice(), [RecipeError::OutOfStageOrder { stage, after_stage, .. }]
-            if stage == names::CAMERA_RGB && after_stage == names::INPUT_COLOUR),
+            if stage == stages::CAMERA_RGB && after_stage == stages::INPUT_COLOUR),
             "{errors:?}"
         );
     }
@@ -524,7 +525,7 @@ mod tests {
 
         let mut several = plugin(
             "acme.grain",
-            names::DETAIL,
+            stages::DETAIL,
             DataSpace::WorkingLinear,
             &[],
             &[],
@@ -538,7 +539,7 @@ mod tests {
     fn a_plugins_constraints_hold_only_between_operations_that_are_both_there() {
         let p = plugin(
             "acme.x",
-            names::INPUT_COLOUR,
+            stages::INPUT_COLOUR,
             DataSpace::CameraLinear,
             &["auroraw.white-balance"],
             &["auroraw.highlight-reconstruction"],
@@ -587,7 +588,7 @@ mod tests {
     fn a_constraint_is_checked_against_every_copy_of_an_operation_that_may_appear_several_times() {
         let mut grain = plugin(
             "acme.grain",
-            names::DETAIL,
+            stages::DETAIL,
             DataSpace::WorkingLinear,
             &[],
             &[],
@@ -595,14 +596,14 @@ mod tests {
         grain.allows_several = true;
         let after_all = plugin(
             "acme.y",
-            names::DETAIL,
+            stages::DETAIL,
             DataSpace::WorkingLinear,
             &["acme.grain"],
             &[],
         );
         let before_all = plugin(
             "acme.z",
-            names::DETAIL,
+            stages::DETAIL,
             DataSpace::WorkingLinear,
             &[],
             &["acme.grain"],
@@ -652,8 +653,8 @@ mod tests {
         let exposure = OperationId::from("auroraw.exposure");
         let out_of_order = RecipeError::OutOfStageOrder {
             operation: exposure.clone(),
-            stage: names::SCENE_LINEAR.to_string(),
-            after_stage: names::DETAIL.to_string(),
+            stage: stages::SCENE_LINEAR.to_string(),
+            after_stage: stages::DETAIL.to_string(),
         };
         assert_eq!(
             errors,

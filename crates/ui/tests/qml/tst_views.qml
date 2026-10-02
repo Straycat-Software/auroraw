@@ -14,8 +14,7 @@ AppTestCase {
     readonly property var languages: ["en", "fr"]
 
     function inLanguage(code, view) {
-        app.launcher.chooseLanguage(code)
-        wait(250)
+        useLanguage(code)
         view(code)
     }
 

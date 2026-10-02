@@ -74,7 +74,7 @@ fn wasm_decode_ms(host: &PluginHost, plugin: &CompiledPlugin, bytes: &[u8]) -> (
     let mut instance = host.instantiate(plugin, &grants).unwrap();
     let at = instance.alloc(bytes.len()).unwrap();
     instance.write(at, bytes).unwrap();
-    let out_at = instance.alloc(28).unwrap();
+    let out_at = instance.alloc(16).unwrap();
 
     let decode_start = Instant::now();
     let rc: i32 = instance
@@ -87,11 +87,12 @@ fn wasm_decode_ms(host: &PluginHost, plugin: &CompiledPlugin, bytes: &[u8]) -> (
     let decode_ms = decode_start.elapsed().as_secs_f64() * 1000.0;
     assert_eq!(rc, 0, "the decoder plugin refused this file (code {rc})");
 
-    let mut header = [0u8; 28];
-    instance.read(out_at, &mut header).unwrap();
-    let samples_len = u32::from_le_bytes(header[16..20].try_into().unwrap()) as usize;
-    let mut samples = vec![0u8; samples_len * 2];
-    let samples_ptr = u32::from_le_bytes(header[12..16].try_into().unwrap());
+    // Four words: the block's address and length, then the samples' address and length in bytes.
+    let mut out = [0u8; 16];
+    instance.read(out_at, &mut out).unwrap();
+    let samples_ptr = u32::from_le_bytes(out[8..12].try_into().unwrap());
+    let samples_len = u32::from_le_bytes(out[12..16].try_into().unwrap()) as usize;
+    let mut samples = vec![0u8; samples_len];
     instance.read(samples_ptr, &mut samples).unwrap();
     let round_trip_ms = round_trip_start.elapsed().as_secs_f64() * 1000.0;
 

@@ -152,12 +152,25 @@ AppTestCase {
         verify(right <= tabs.width + 1, "the last tab ends at " + right + " of " + tabs.width)
     }
 
+    // Issue #20: the tab listed nothing, on a workspace that already had collections, until one was made. A collection is
+    // made, the window is closed and made again on the same machine: the list is read as the workspace opens, with no
+    // scan, no step of the history and no collection made (what read it again, until now).
+    function test_the_collections_a_workspace_has_are_listed_when_it_opens() {
+        make("Listed at once")
+        const had = collections().count
+        verify(had > 0)
+        launchWithPhotos(40)
+        grid = app.library.grid
+        app.keywordPanel.tabs.currentIndex = 3
+        tryRead(() => collections().count, had, 5000, "the collections the workspace had are listed as it opens")
+        verify(rowOf("Listed at once") >= 0, "the one made before is in the list")
+    }
+
     function test_the_four_tabs_fit_in_the_panel_in_both_languages_and_when_it_is_narrowed() {
         const tabs = app.keywordPanel.tabs
         compare(tabs.itemAt(3).text, "Collections")
         checkTabs(false)
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(tabs.itemAt(1).text, "Métadonnées")
         checkTabs(false)
         app.keywordPanel.panelWidth = app.keywordPanel.minimumWidth
@@ -439,8 +452,7 @@ AppTestCase {
         selectFirst(2)
         const a = make("Faune")
         make("Oiseaux", a)
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.keywordPanel.tabs.itemAt(3).text, "Collections")
         const dialog = panel().deleteDialog
         dialog.openFor(a)

@@ -6,11 +6,14 @@
 //!   permissively licensed crate depends on nothing under the GPL (decision D-080). A
 //!   dev-dependency (test-only, never linked into a shipped artifact) is unrestricted: a crate's
 //!   tests may set up fixtures with any sibling crate.
-//! - `check`: both of the above.
+//! - `waits [--list | --shrink]`: no new fixed pause followed by one read in the interface's QML tests (issue #73): a
+//!   ratchet over the list of the sites that exist (`crates/ui/tests/qml/waits-to-remove.txt`).
+//! - `check`: the three above.
 //! - `manual-images`: redraws the pictures of the user manual (`docs/manual/images/`) from the interface's own tests.
 //! - `translations [<ref>]`: updates the interface's `.ts` files with `lupdate`, keeping the locations the
 //!   committed messages already had, so that the diff is the new messages and nothing else.
 
+mod qml_waits;
 mod translations;
 
 use std::path::{Path, PathBuf};
@@ -39,7 +42,7 @@ const ALLOWED: &[(&str, &[&str])] = &[
     // The image engine. Its edges are added when the code first needs them (D-140 writes the ones
     // design note 005 §2.2 names: `plugin-api` for `RawImage`, `imaging`): an allowed edge that is
     // unused is a hole in this check, which only refuses what is not in the table.
-    ("auroraw-pipeline", &[]),
+    ("auroraw-pipeline", &["auroraw-plugin-api"]),
     (
         "auroraw-import",
         &[
@@ -95,15 +98,19 @@ fn main() -> ExitCode {
     let ok = match std::env::args().nth(1).as_deref() {
         Some("spdx") => spdx(),
         Some("layers") => layers(),
+        Some("waits") => qml_waits::run(std::env::args().nth(2)),
         Some("check") => {
             let a = spdx();
             let b = layers();
-            a && b
+            let c = qml_waits::run(None);
+            a && b && c
         }
         Some("manual-images") => manual_images(),
         Some("translations") => translations::run(std::env::args().nth(2)),
         _ => {
-            eprintln!("usage: cargo xtask <spdx|layers|check|manual-images|translations [<ref>]>");
+            eprintln!(
+                "usage: cargo xtask <spdx|layers|waits [--list|--shrink]|check|manual-images|translations [<ref>]>"
+            );
             return ExitCode::from(2);
         }
     };

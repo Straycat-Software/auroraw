@@ -194,8 +194,7 @@ AppTestCase {
     }
 
     function test_the_panel_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         click(rowOf("IMG_0000"))
         keyClick(Qt.Key_M)
         look("IMG_0000", 2)

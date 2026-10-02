@@ -188,6 +188,9 @@ ApplicationWindow {
             cardBanner.rememberCurrent()
             externalBanner.count = externalChanges.pending()
             libraryView.filterBy(0)
+            // (`filterBy` reads the keywords again, and nothing else read the collections: the tab stayed empty until a
+            // collection was made, a scan ended or a step was done, issue #20.)
+            libraryView.collections.refresh()
             window.currentTask = photoGrid.count === 0 ? "catalogue" : "cull"
         }
         function onScreenChanged() {

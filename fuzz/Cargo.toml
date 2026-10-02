@@ -11,6 +11,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 auroraw-format = { path = "../crates/format" }
+auroraw-plugin-api = { path = "../crates/plugin-api" }
 
 # Not part of the main workspace: it needs a nightly compiler and is built by `cargo fuzz`.
 [workspace]
@@ -30,5 +31,11 @@ doc = false
 [[bin]]
 name = "state_files"
 path = "fuzz_targets/state_files.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "raw_block"
+path = "fuzz_targets/raw_block.rs"
 test = false
 doc = false

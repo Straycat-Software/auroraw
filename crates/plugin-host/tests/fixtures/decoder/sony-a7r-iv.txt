@@ -1,0 +1,15 @@
+file: DSC00396.ARW
+readout: 9600 x 6376
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: U16 x 61209600, blake3 1c78435896679e7b15494680101365111cc38d208ea1b7e15ea42eb775d8b53e
+black: 2 rows x 2 columns x 1 components [512.0, 512.0, 512.0, 512.0]
+white: [15360.0]
+white balance: Some([3.0703125, 1.0, 1.5])
+colour matrix: illuminant 17 (3 rows) [0.9054, -0.4504, 0.0215, -0.4751, 1.2611, 0.2388, -0.0296, 0.0802, 0.6816]
+colour matrix: illuminant 21 (3 rows) [0.7662, -0.2686, -0.066, -0.524, 1.2965, 0.253, -0.0796, 0.1508, 0.6167]
+crop: Some(Rect { x: 32, y: 20, width: 9504, height: 6336 })
+active area: Some(Rect { x: 0, y: 0, width: 9600, height: 6376 })
+orientation: Normal
+camera: Sony ILCE-7RM4
+iso: Some(50)
+noise profile: None

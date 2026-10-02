@@ -225,6 +225,7 @@ dependencies = [
 name = "auroraw-pipeline"
 version = "0.0.0"
 dependencies = [
+ "auroraw-plugin-api",
  "blake3",
  "png",
  "pollster",
@@ -248,6 +249,7 @@ dependencies = [
 name = "auroraw-plugin-api"
 version = "0.0.0"
 dependencies = [
+ "proptest",
  "serde",
  "serde_json",
  "thiserror 2.0.20",

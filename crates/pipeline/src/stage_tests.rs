@@ -17,6 +17,7 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use proptest::prelude::*;
 
@@ -26,7 +27,7 @@ use crate::gpu::GpuError;
 use crate::reference;
 use crate::scenes::{self, BLACK, Scene, WHITE};
 use crate::stages::{self, BayerPattern, Develop, Kernels, Levels};
-use crate::thread::{Config, Pipeline};
+use crate::thread::{Config, OpenError, Pipeline};
 
 const PATTERNS: [BayerPattern; 4] = [
     BayerPattern::Rggb,
@@ -55,25 +56,64 @@ fn gpu_develop(
 }
 
 /// Every engine of the machine, one per adapter, or none (a skip locally, a failure under
-/// `AUR_REQUIRE_GPU`).
-fn engines() -> Vec<Pipeline> {
-    let adapters = list_adapters();
-    if adapters.is_empty() {
-        assert!(
-            std::env::var_os("AUR_REQUIRE_GPU").is_none(),
-            "AUR_REQUIRE_GPU is set but the machine has no graphics adapter"
-        );
-        eprintln!("skipped: no graphics adapter");
-    }
-    adapters
-        .iter()
-        .map(|info| {
-            Pipeline::open(Config {
-                adapter: AdapterChoice::Named(format!("{} {}", info.backend, info.name)),
+/// `AUR_REQUIRE_GPU`), **shared by all the tests of the process**.
+///
+/// A device costs about 165 MiB of GPU memory just by being open (measured with `nvidia-smi` on the
+/// development machine's GTX 1650 SUPER, issue #69: six devices took 983 and 986 MiB in two runs), so one
+/// engine per test, with eight tests running at once, took about four fifths of what the desktop left free
+/// of its 4 GiB. The tests only run stages on the device (a job at a time, queued on its thread); the ones
+/// that must create or lose a device themselves (`tests.rs`, `tests/smoke.rs`) open their own.
+///
+/// This shares nothing under `cargo nextest`, which runs every test in a process of its own: each test then
+/// opens its engines, as before. The CI has no discrete GPU, so it does not matter there.
+fn engines() -> &'static [Pipeline] {
+    static ENGINES: OnceLock<Vec<Pipeline>> = OnceLock::new();
+    ENGINES.get_or_init(|| {
+        let adapters = list_adapters();
+        if adapters.is_empty() {
+            assert!(
+                std::env::var_os("AUR_REQUIRE_GPU").is_none(),
+                "AUR_REQUIRE_GPU is set but the machine has no graphics adapter"
+            );
+            eprintln!("skipped: no graphics adapter");
+        }
+        adapters
+            .iter()
+            .map(|info| {
+                Pipeline::open(Config {
+                    adapter: AdapterChoice::Named(format!("{} {}", info.backend, info.name)),
+                })
+                .unwrap_or_else(|e| panic!("cannot open {}: {e}{}", info.describe(), explained(&e)))
             })
-            .unwrap_or_else(|e| panic!("cannot open {}: {e}", info.describe()))
-        })
-        .collect()
+            .collect()
+    })
+}
+
+/// What a refusal to give a device means when it is about memory, said where the test fails, so that nobody
+/// reads it as a result about the change under test.
+fn explained(error: &OpenError) -> &'static str {
+    match error {
+        OpenError::Device { reason, .. } if reason.to_lowercase().contains("memory") => {
+            "\nthe GPU is out of memory: other processes hold it (see nvidia-smi), and a device costs about \
+             165 MiB on the development machine; this is not a result about the change under test"
+        }
+        _ => "",
+    }
+}
+
+#[test]
+fn a_device_refused_for_memory_is_explained_and_other_refusals_are_left_alone() {
+    let device = |reason: &str| OpenError::Device {
+        adapter: "an adapter".into(),
+        reason: reason.into(),
+    };
+    let memory = explained(&device("Not enough memory left."));
+    assert!(memory.contains("out of memory"), "{memory}");
+    assert!(memory.contains("nvidia-smi"), "{memory}");
+    assert!(memory.contains("165 MiB"), "{memory}");
+    // Another reason, or another kind of refusal, gets no explanation it did not earn.
+    assert_eq!(explained(&device("The feature is not supported.")), "");
+    assert_eq!(explained(&OpenError::Thread("memory".into())), "");
 }
 
 /// The difference between two 8-bit images: the largest, how many channels are over one level, and how
@@ -337,8 +377,8 @@ fn the_gpu_matches_the_golden_renders_on_every_adapter() {
             let (mosaic, p) = case.inputs();
             let reference_render = reference::develop(&mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p);
             let golden = golden_of(case, &reference_render);
-            let got = gpu_develop(&engine, &mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p)
-                .unwrap_or_else(|e| {
+            let got =
+                gpu_develop(engine, &mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p).unwrap_or_else(|e| {
                     panic!("{} on {}: {e}", case.name, engine.adapter().describe())
                 });
             assert_within_output_tolerance(
@@ -368,9 +408,9 @@ fn the_same_input_gives_byte_identical_output_twice() {
     for engine in engines() {
         let (mosaic, p) = GOLDEN[4].inputs();
         let first =
-            gpu_develop(&engine, &mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p).expect("a render");
+            gpu_develop(engine, &mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p).expect("a render");
         let second =
-            gpu_develop(&engine, &mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p).expect("a render");
+            gpu_develop(engine, &mosaic, GOLDEN_WIDTH, GOLDEN_HEIGHT, &p).expect("a render");
         assert_eq!(
             first,
             second,
@@ -400,7 +440,7 @@ fn tiny_and_odd_sizes_agree_with_the_reference_in_every_pattern() {
                 let scene = scenes::zone_plate(width, height);
                 let mosaic = scenes::mosaic_of(&scene, pattern, BLACK, WHITE);
                 let p = scenes::neutral(pattern);
-                let got = gpu_develop(&engine, &mosaic, width, height, &p)
+                let got = gpu_develop(engine, &mosaic, width, height, &p)
                     .unwrap_or_else(|e| panic!("{width}x{height} {pattern:?}: {e}"));
                 let want = reference::develop(&mosaic, width, height, &p);
                 let (max, over, total) = compare_words(&got, &want);
@@ -422,12 +462,12 @@ fn a_black_frame_is_black_and_a_white_frame_is_white() {
             let black = scenes::mosaic_of(&scenes::flat(20, 12, [0.0; 3]), pattern, BLACK, WHITE);
             let white = scenes::mosaic_of(&scenes::flat(20, 12, [1.0; 3]), pattern, BLACK, WHITE);
             let p = scenes::neutral(pattern);
-            let dark = gpu_develop(&engine, &black, 20, 12, &p).expect("a render");
+            let dark = gpu_develop(engine, &black, 20, 12, &p).expect("a render");
             assert!(
                 dark.iter().all(|&w| w & 0x00ff_ffff == 0),
                 "a black frame must be black, in {pattern:?}"
             );
-            let light = gpu_develop(&engine, &white, 20, 12, &p).expect("a render");
+            let light = gpu_develop(engine, &white, 20, 12, &p).expect("a render");
             for w in light {
                 for shift in [0, 8, 16] {
                     let c = (w >> shift) & 255;
@@ -449,7 +489,7 @@ fn extreme_exposures_agree_with_the_reference_and_clamp() {
             let mosaic = scenes::mosaic_of(&scene, BayerPattern::Rggb, BLACK, WHITE);
             let mut p = scenes::neutral(BayerPattern::Rggb);
             p.exposure_ev = ev;
-            let got = gpu_develop(&engine, &mosaic, 40, 24, &p).expect("a render");
+            let got = gpu_develop(engine, &mosaic, 40, 24, &p).expect("a render");
             let want = reference::develop(&mosaic, 40, 24, &p);
             assert_within_output_tolerance(
                 &format!("{ev} EV on {}", engine.adapter().describe()),

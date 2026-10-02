@@ -507,6 +507,14 @@ productized): the component model's canonical-ABI copies cost real time on exact
 buffers a decoder or an operation plugin moves every call, for typed interfaces this crate does
 not need yet. It lives behind `plugin-api` and the API stays experimental until M5.
 
+**What crosses it for a decoder (WP13, D-141).** `import(ptr, len, out)` fills four little-endian `u32` words at `out`
+(the address and the length of a **block**, the address and the length in bytes of the **samples**). The samples are
+written into the plugin's memory and read back as before; everything else about the image is the block, a versioned,
+little-endian sequence of tagged sections (tag, length, payload) specified in `auroraw_plugin_api::block`: a reader skips
+a tag it does not know, so that new data (a DNG's forward matrices, a linearisation table) is a new tag and not a new
+ABI, and no float in it may be NaN or infinite. `plugin-api` is the one implementation of the block in Rust (the
+plugin writes it, the host reads it with the same code); a plugin in another language implements it from the table, and
+the fuzz target `raw_block` and the decoder fixtures of `plugin-host` are its conformance tests.
 ### 8.3 The declaration [decided, D-078, D-142]
 
 Identifier, version, API version, family, panel, pipeline stage and ordering constraints,
@@ -523,6 +531,22 @@ is what only the pipeline reads: halo as a function of the parameters and the vi
 buffers, a draft variant, the shader, its CPU twin and tolerance, the portable WGSL subset. For the
 built-in operations of M2 it is a Rust trait; its data form is defined when the first external GPU
 operation arrives (M3, with the safety check of §8.4).
+
+**As built (WP13, second pull request).** Layer 1 is `auroraw_plugin_api::Declaration`: `Family::Operation`;
+`parameters: Vec<ParamSpec>` (key, label key, and a `ParamKind` that carries the limits and the default);
+`input_space` and `output_space` (names from `plugin_api::spaces`); `cost: Option<CostClass>`. Every new
+field is `#[serde(default)]`, so a declaration written before them still reads. `validate()` knows the
+operation family: an operation must have a placement with a stage, both spaces (known names), a cost class,
+parameters with distinct keys whose limits and defaults hold together (`ParamSpec::validate`), and `after`
+and `before` that are not empty and do not name the operation itself; a declaration of another family that
+gives one of these fields is refused. Whether a stage exists, and whether an `after` or `before` names an
+operation of **the same stage**, depend on the pipeline definition, so `develop` checks them at load time
+(note 006 §3.5), not this crate. `ParamValue` is the eight variants of D-142; `ParamSpec::check` says whether
+a value fits its spec (type, limits, enum range, list length, curve points strictly increasing in x), and
+no declaration admits a NaN. The canonical binary encoding that the cache keys are hashes of stays in
+`pipeline` (it is the pipeline's contract, not the plugin's). The eight stage identifiers and the five
+data-space names are constants (`plugin_api::stages`, `plugin_api::spaces`), and `pipeline` has a test
+that its definition equals them.
 
 ### 8.4 GPU operations [decided, D-077; the descriptor's data form at M3, D-142]
 

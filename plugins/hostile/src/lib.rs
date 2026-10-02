@@ -151,3 +151,26 @@ pub extern "C" fn do_clock_ms() -> i64 {
         .map(|d| d.as_millis() as i64)
         .unwrap_or(-1)
 }
+
+/// A decoder that lies about what it returns, so that the host's checks of `WasmDecoder::decode` run against a real
+/// sandbox (the real decoder plugin is honest, and nothing else could make them run). It exports `import` as the
+/// decoder does and returns what its *input* says: the input is two little-endian words, the block length and the
+/// samples length it claims, and then the bytes of a block, which stay where the host wrote them. The four words of
+/// `out` point at them, with the claimed lengths; the samples' address is the start of the input, readable for as
+/// many bytes as the input is long.
+///
+/// # Safety
+///
+/// `ptr` must be valid for `len` reads (at least 8) and `out` for 4 writes of `u32`: true of any address this
+/// instance's own `alloc` returned, which is the only address the host passes.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn import(ptr: *const u8, len: u32, out: *mut u32) -> i32 {
+    let bytes = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
+    let word = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+    let header = unsafe { std::slice::from_raw_parts_mut(out, 4) };
+    header[0] = ptr as u32 + 8;
+    header[1] = word(0);
+    header[2] = ptr as u32;
+    header[3] = word(1);
+    0
+}

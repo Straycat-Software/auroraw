@@ -15,8 +15,20 @@
 | --- | --- | --- |
 | **Owner** | Patrick Fournier | Holds the repository, the signing accounts and the name. Takes the final decision. |
 | **Collaborator** | Claude Code | Works on the project at the owner's request, in the owner's repository, on `dev`, under the owner's review. Commits are authored as "Claude Code". |
+| **QA group** | Django (Claude Code), who answers for quality, and the owner; from 2026-10-01 (D-152) | Django answers for everything that touches quality: the tests, the CI, the unreliable tests and the quarantine list. The group reviews **every pull request** for how it is tested and whether it will keep working; **an approval from the group is required before a pull request is merged**. |
 | **Maintainers** | Added by the owner when there are contributors who are reliable and active | Review and merge changes, triage issues. |
 | **Contributors** | Anyone | Propose changes, report problems, translate, write plugins, provide samples. |
+
+**Code owners.** `.github/CODEOWNERS` says who is asked to review a change to each part of the code (D-152): **Alice**
+(the data layer, the engine, import, places, the plugin surface, the repository's own tools), **Bob** (the interface, the
+application that starts it, the manual, the icons), **Charlie** (the image engine and what feeds it: decoders, previews,
+thumbnails, the WebAssembly plugins) and the **QA group** (the tests, the CI and what it runs). Every area lists a second
+reviewer, so that the author of a pull request is never its only owner; the owner is on the areas that §3 reserves to
+him, who is *asked* there and not required. The last pattern that matches a file decides its owners. The repository's
+ruleset `main` (the default branch and `dev`) requires an approval from a code owner of each part a pull request
+touches, and **one approval from any owner of the line is enough**: an area's second reviewer can approve alone, and
+requiring the owner on the areas §3 reserves to him would be another required reviewer in the ruleset, the owner's
+decision.
 
 How decisions are made:
 
@@ -122,6 +134,7 @@ Files to add at the root of the repository, all short:
 | `SECURITY.md` | §7 |
 | `.github/ISSUE_TEMPLATE/` | Bug report, feature proposal, camera or file that does not decode (with a sample), translation |
 | `.github/PULL_REQUEST_TEMPLATE.md` | The checklist of the testing strategy §9 |
+| `.github/CODEOWNERS` | Who is asked to review each part of the code (§1, D-152) |
 | `PLUGIN-EXCEPTION` | §2.3, once approved |
 
 **Working rules:**
@@ -135,7 +148,12 @@ Files to add at the root of the repository, all short:
   **describes in the user manual (`docs/manual/`) any change a photographer can see** (D-102), and
   justifies a new dependency (testing strategy §9).
 - **Reviews** are by a maintainer other than the author; the owner reviews changes to formats,
-  the plugin API, the pipeline definition, the write path and the sandbox.
+  the plugin API, the pipeline definition, the write path and the sandbox. **An approval from the QA group is needed on every pull
+  request before it is merged** (D-152), in addition to these: the other reviews look at the design, the QA
+  review at how the change is shown to work. That requirement is the ruleset `main` of the repository, which the owner has
+  set: a required reviewer (the QA group, at least one approval, for every file), on top of the approval of a code
+  owner of each touched path (§1); it is not a line of `.github/CODEOWNERS`. It covers the pull requests **against `dev`
+  or `main`**; a stacked pull request against a feature branch is covered when that branch is merged into `dev`.
 - **Language.** Code, comments, commit messages, documents, issues, pull requests and
   discussions are **all in English**, with no exception (D-082).
 - **Commit messages**: a short imperative title, then a body that says why. History is

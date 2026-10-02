@@ -48,7 +48,7 @@ pub struct Profile {
     /// This profile's display name.
     pub name: String,
     /// Where files are copied, as a path template rendered relative to the destination source's
-    /// root ([`crate::template`]).
+    /// root (`crate::template`).
     pub destination_template: String,
     /// Extra verified copies, as path templates rendered relative to their own roots (a caller
     /// supplies the roots at import time: a backup destination is not necessarily a registered

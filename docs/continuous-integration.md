@@ -23,11 +23,18 @@
 | Branch | Role | Rules |
 | --- | --- | --- |
 | `main` | The last release. | Updated only by a merge at release time; every commit on it is a released state; tags `vX.Y.Z` point at it. Protected: no direct push, the release checks must pass. |
-| `dev` | Integration. | The default branch for work. Protected once outside contributors arrive: a pull request, the per-change checks green, one review. Until then, maintainers may push. |
+| `dev` | Integration. | The default branch for work. Protected by the repository's ruleset: a pull request, the per-change checks green, a review, the QA group's approval (D-152), and, once the owner switches the rule on, the merge goes through the **merge queue** (below). |
 | `feature/...`, `fix/...` | One change each, from `dev`. | Short-lived; deleted after the merge. |
 
-A change: branch from `dev`, push, the **per-change workflow** runs, review, merge into `dev` by a
-squash or a merge commit as the reviewer prefers (history stays readable either way).
+A change: branch from `dev`, push, the **per-change workflow** runs, review, and the pull request is put in the
+**merge queue**, once the owner has switched on the ruleset's rule "Require merge queue" (until then the owner merges
+by hand, and the rule "the branch is up to date with `dev`" sends each pull request back through a run after every
+merge, 15 to 45 minutes each, issue #77). The queue merges the pull request with the ones ahead of it, runs the
+per-change workflow again on that result (the `merge_group` event) and keeps the merge only if it is green. A merge then
+costs one run of the workflow for everyone in the queue. The queue merges by **merge commit**: history stays readable,
+and the sign-off check (`dco.yml`) skips merge commits, which a squash would not (the commit GitHub makes carries no
+`Signed-off-by` of its own). A queue entry reads the Rust caches of `dev`, the default branch, and writes none
+(see "The caches" in §3.1): its ref is new each time and nothing would read it again.
 A release: `dev` is merged into `main`, tagged, and the **release workflow** builds from the tag.
 A fix for a released version: a branch from the tag, released as a patch, merged back into `dev`
 [open: only needed once there are users to support].
@@ -36,11 +43,12 @@ A fix for a released version: a branch from the tag, released as a patch, merged
 
 ### 3.1 Per change: `ci.yml`
 
-Runs on every push to `dev` and to a pull request. Jobs run in parallel; the slowest sets the time.
+Runs on every push to `dev` and `main`, on every pull request and in the merge queue (`merge_group`). Jobs run in
+parallel; the slowest sets the time.
 
 | Job | What | Platforms |
 | --- | --- | --- |
-| **Lint** | `rustfmt --check`, `clippy` with warnings as errors, `cargo xtask check` (SPDX headers, the allowed dependencies between crates), and later the repository's own checks (links between documents resolve) | Linux |
+| **Lint** | `rustfmt --check`, `clippy` with warnings as errors, `cargo doc` with warnings as errors (the public documentation, then with the private items, and the plugins' workspace: a link to a private or missing item fails, issue #75), `cargo xtask check` (SPDX headers, the allowed dependencies between crates, and that no QML test gains a fixed pause followed by one read, issue #73), and later the repository's own checks (links between documents resolve) | Linux |
 | **Build and test** | `cargo build --locked`, `cargo nextest run` (unit, property with few cases, format, catalogue, engine scenarios, plugin host and hostile plugins, crash consistency short) | Linux x64, Windows x64, macOS arm64 |
 | **Plugins** | Build the plugins for `wasm32-wasip1` (the spike's step) and run the conformance tests against them | Linux, Windows, macOS |
 | **GPU reference** | The smoke test (`auroraw-pipeline`: every shader compiled and run against its CPU reference) on the adapter each runner offers: lavapipe, WARP, the runner's Metal adapter (reported as integrated). **Blocking.** The stage-against-reference tests join it with the stages. Part of the `test` jobs: Linux installs lavapipe, `AUR_REQUIRE_GPU=1` makes a missing adapter a failure instead of a skip, and `cargo run -p auroraw-pipeline --example adapters` prints which adapter the runner offered and runs the smoke test on it, since the output of passing tests is hidden | All three |
@@ -53,6 +61,27 @@ Runs on every push to `dev` and to a pull request. Jobs run in parallel; the slo
 file and the toolchain), tests run in parallel, and the smoke test uses a tiny image. The budget
 is ten minutes at the median; a job that grows past it is split or moved to the nightly run.
 
+**The caches.** The repository's Actions caches hold 10 GB, and GitHub evicts the least recently used ones when they
+pass it. A job's Rust cache is 0.6 to 1.8 GB. A cache saved on the default branch (`dev`) is read by every run; one saved on
+another ref is read only by the runs of that ref. So **only runs on `dev` write the Rust caches** (`save-if` in
+`ci.yml`): a pull request or a queue entry reads `dev`'s and builds what its change adds on top. Saved from a pull
+request, a cache is read by nobody else, and those copies (7.5 GB of the 10) evicted the ones of `dev` that every run
+reads: the Rust cache was not found on 2, 4 and 13 jobs in 100 (Linux, macOS, Windows), and a cold job takes 6 to 19
+minutes longer than a warm one (issue #77). A run on `dev` is not cancelled by the next push (`concurrency` in
+`ci.yml`): it is the run that writes the cache, and a cancelled run writes nothing (14 of the last 60 runs on `dev`
+were cancelled). A cache is rewritten only when its key changes, that is when a manifest, the lock file or the
+toolchain does, **or a root `Cargo.toml`** (`Cargo.toml` and `plugins/Cargo.toml`, whose hash is added to the key in
+`ci.yml`): the action's own key leaves out those manifests, which hold the `[profile]` sections, so that `dev` kept a
+cache built with the profile before #87 and every run rebuilt the dependencies with the new one. The root holds more
+than profiles (`[workspace.dependencies]`, `[workspace.lints]`, the list of members): any change of it is a cold run
+until `dev` has written the new key.
+
+**The RAW samples** (`testdata/samples`, 490 MB for the seventeen files) are cached the same way: every run restores the cache
+whose key is the hash of `tools/fetch-samples.sh`, and **only a run on `dev` saves it**, when it did not find the key
+(`actions/cache/restore` and `actions/cache/save` in `ci.yml`). The script is the key, so a change of the list of files is a
+new key; with the one-step `actions/cache`, which saves on a miss from any ref, every pull request and every queue entry
+that ran before `dev` had the new key downloaded the files and kept a copy of its own that no other run reads.
+
 **The runners.** GitHub-hosted `ubuntu-24.04`, `windows-2025` (or the current `windows-latest`),
 and `macos-15` on Apple silicon, pinned by name rather than `latest` so an image update does not
 change the result unannounced, and moved forward deliberately. Linux needs the packages the spikes
@@ -62,7 +91,11 @@ part of this plan (the repository is public).
 
 ### 3.2 Nightly: `nightly.yml`
 
-Runs once a night on `dev`, and on demand. Failures open an issue automatically.
+Runs once a night on `dev`, on demand (`workflow_dispatch`, from any branch: that is how a change of the workflow or of a
+measurement is tried before it is merged), and on a push to `dev` that changes the workflow or a measurement. Failures open
+an issue automatically. It does **not** run on the push of any other branch: the `paths` filter alone does not keep a `push`
+trigger from starting on the first push of a branch, so without `branches: [dev]` every pull request's branch and every
+merge-queue entry made a full run and saved its own caches.
 
 | Job | What |
 | --- | --- |
@@ -231,7 +264,7 @@ crates/               types, format, catalogue, workspace, sources, imaging, imp
                       plugin-api (MIT OR Apache-2.0), plugin-host, engine, ui, cli, app,
                       testkit (tests only)     (architecture §3.1; pipeline, develop,
                       export and publish are added with M2 and M4)
-xtask/                developer commands: cargo xtask check (SPDX headers, crate layers)
+xtask/                developer commands: cargo xtask check (SPDX headers, crate layers, QML waits)
 tools/                scripts: fetch-samples.sh, a11y-check.py
 testdata/             fixtures per format version, golden images (small); samples/ is fetched
                       and ignored by git

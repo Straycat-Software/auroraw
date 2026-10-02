@@ -119,3 +119,45 @@ fn a_truncated_sample_fails_cleanly_not_a_panic() {
         );
     }
 }
+
+/// The two Sony files whose orientation `rawler`'s decode does not report (note 005 §3.3b, item 3; D-141): the EXIF
+/// of the Sony DSLR-A450 says 6 (turn 90 degrees clockwise) and that of the SLT-A58 says 8 (270), and `rawler::decode`
+/// says `Normal` for both, while it reports `Rotate90` for the Eyedeas DNG. This is why the orientation of an image comes
+/// from the EXIF that this crate reads, with the decoder's own as the fallback. It is a finding written as a test, not a
+/// wish: if it fails because `rawler` now reports the rotation, that is good news, and the rule of D-141 can be looked at
+/// again.
+#[test]
+fn the_exif_orientation_of_two_sony_files_is_not_the_one_rawlers_decode_reports() {
+    let Some(dir) = samples_dir() else { return };
+    for (name, exif) in [
+        ("Sony_-_DSLR-A450_-_12bit_12bit_compressed_(3x2).ARW", 6),
+        ("Sony_-_SLT-A58_-_12bit_12bit_compressed_(3x2).ARW", 8),
+    ] {
+        let path = dir.join(name);
+        if !path.is_file() {
+            if std::env::var_os("AUR_REQUIRE_SAMPLES").is_some() {
+                panic!("testdata/samples/{name} is required here; run tools/fetch-samples.sh");
+            }
+            eprintln!("testdata/samples/{name} not found: skipping");
+            continue;
+        }
+        let metadata =
+            auroraw_imaging::read_metadata(&path).unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert_eq!(
+            metadata.orientation,
+            Some(exif),
+            "{name}: the EXIF orientation this crate reads"
+        );
+        let bytes = std::fs::read(&path).unwrap();
+        let decoded = rawler::decode(
+            &rawler::rawsource::RawSource::new_from_slice(&bytes),
+            &rawler::decoders::RawDecodeParams::default(),
+        )
+        .unwrap_or_else(|e| panic!("{name}: {e}"));
+        assert_eq!(
+            decoded.orientation.to_u16(),
+            1,
+            "{name}: rawler's decode reports Normal (the finding of note 005 §3.3b)"
+        );
+    }
+}

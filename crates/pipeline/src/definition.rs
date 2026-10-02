@@ -13,54 +13,14 @@
 //! version.
 //!
 //! The identifiers of the stages and of the data spaces are part of the plugin surface (a declaration names
-//! them), so they move to `plugin-api` as constants with work package 13, and a test then checks that this
-//! table equals them. They are here for now, in [`names`].
+//! them), so they are `plugin-api`'s constants (`stages`, `spaces`), which this module is made of: the
+//! definition and its fingerprint are made of the same strings a plugin writes, and there is no second table to
+//! keep equal. What a test still holds is the **order**: the definition's stages are `stages::ALL`, and its
+//! [`DataSpace`]s are `spaces::ALL`.
 
 use std::fmt;
 
-/// The identifiers of the stages and of the data spaces, as text.
-///
-/// These are a plugin's vocabulary (`Placement.stage`, an operation's input space), so they belong in
-/// `plugin-api` (note 006 §3.2, review of the note); they are here until work package 13 moves them.
-pub mod names {
-    /// Stage 1: the black and white levels, and the operations on the mosaic.
-    pub const RAW_LINEAR: &str = "raw-linear";
-    /// Stage 2: the demosaic.
-    pub const DEMOSAIC: &str = "demosaic";
-    /// Stage 3: the operations on camera RGB that do not need the colour interpretation.
-    pub const CAMERA_RGB: &str = "camera-rgb";
-    /// Stage 4: the white balance and the camera-to-working step.
-    pub const INPUT_COLOUR: &str = "input-colour";
-    /// Stage 5: the operations on scene-linear values in the working space.
-    pub const SCENE_LINEAR: &str = "scene-linear";
-    /// Stage 6: orientation, crop and straighten.
-    pub const GEOMETRY: &str = "geometry";
-    /// Stage 7: sharpening.
-    pub const DETAIL: &str = "detail";
-    /// Stage 8: the tone map and the output transform.
-    pub const DISPLAY: &str = "display";
-
-    /// The stages of definition v1, in order.
-    pub const STAGES: [&str; 8] = [
-        RAW_LINEAR,
-        DEMOSAIC,
-        CAMERA_RGB,
-        INPUT_COLOUR,
-        SCENE_LINEAR,
-        GEOMETRY,
-        DETAIL,
-        DISPLAY,
-    ];
-
-    /// The data spaces, in the order the chain passes through them.
-    pub const SPACES: [&str; 5] = [
-        "sensor-raw",
-        "mosaic-linear",
-        "camera-linear",
-        "working-linear",
-        "display-referred",
-    ];
-}
+use auroraw_plugin_api::{spaces, stages};
 
 /// A working space: linear RGB with these primaries and this white, as CIE 1931 `xy` chromaticities.
 ///
@@ -130,11 +90,11 @@ impl DataSpace {
     /// The identifier a declaration uses.
     pub const fn name(self) -> &'static str {
         match self {
-            DataSpace::SensorRaw => "sensor-raw",
-            DataSpace::MosaicLinear => "mosaic-linear",
-            DataSpace::CameraLinear => "camera-linear",
-            DataSpace::WorkingLinear => "working-linear",
-            DataSpace::DisplayReferred => "display-referred",
+            DataSpace::SensorRaw => spaces::SENSOR_RAW,
+            DataSpace::MosaicLinear => spaces::MOSAIC_LINEAR,
+            DataSpace::CameraLinear => spaces::CAMERA_LINEAR,
+            DataSpace::WorkingLinear => spaces::WORKING_LINEAR,
+            DataSpace::DisplayReferred => spaces::DISPLAY_REFERRED,
         }
     }
 
@@ -181,7 +141,7 @@ pub struct SpineStep {
 /// A stage of the definition.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stage {
-    /// The stage's identifier ([`names`]).
+    /// The stage's identifier (one of [`auroraw_plugin_api::stages`]).
     pub id: &'static str,
     /// The space the stage receives.
     pub input: DataSpace,
@@ -228,14 +188,14 @@ const fn spine(name: &'static str, runs: Runs) -> SpineStep {
 
 const V1_STAGES: &[Stage] = &[
     Stage {
-        id: names::RAW_LINEAR,
+        id: stages::RAW_LINEAR,
         input: DataSpace::SensorRaw,
         output: DataSpace::MosaicLinear,
         spine: &[spine("levels", Runs::BeforeOperations)],
         operations: &["auroraw.hot-pixels"],
     },
     Stage {
-        id: names::DEMOSAIC,
+        id: stages::DEMOSAIC,
         input: DataSpace::MosaicLinear,
         output: DataSpace::CameraLinear,
         // The operations of this stage, none in M2, would be on the mosaic before the interpolation; the
@@ -244,21 +204,21 @@ const V1_STAGES: &[Stage] = &[
         operations: &[],
     },
     Stage {
-        id: names::CAMERA_RGB,
+        id: stages::CAMERA_RGB,
         input: DataSpace::CameraLinear,
         output: DataSpace::CameraLinear,
         spine: &[],
         operations: &["auroraw.noise-reduction"],
     },
     Stage {
-        id: names::INPUT_COLOUR,
+        id: stages::INPUT_COLOUR,
         input: DataSpace::CameraLinear,
         output: DataSpace::WorkingLinear,
         spine: &[spine("camera-to-working", Runs::AfterOperations)],
         operations: &["auroraw.white-balance", "auroraw.highlight-reconstruction"],
     },
     Stage {
-        id: names::SCENE_LINEAR,
+        id: stages::SCENE_LINEAR,
         input: DataSpace::WorkingLinear,
         output: DataSpace::WorkingLinear,
         spine: &[],
@@ -272,21 +232,21 @@ const V1_STAGES: &[Stage] = &[
         ],
     },
     Stage {
-        id: names::GEOMETRY,
+        id: stages::GEOMETRY,
         input: DataSpace::WorkingLinear,
         output: DataSpace::WorkingLinear,
         spine: &[spine("orientation-and-crop", Runs::BeforeOperations)],
         operations: &["auroraw.crop", "auroraw.straighten"],
     },
     Stage {
-        id: names::DETAIL,
+        id: stages::DETAIL,
         input: DataSpace::WorkingLinear,
         output: DataSpace::WorkingLinear,
         spine: &[],
         operations: &["auroraw.sharpening"],
     },
     Stage {
-        id: names::DISPLAY,
+        id: stages::DISPLAY,
         input: DataSpace::WorkingLinear,
         output: DataSpace::DisplayReferred,
         spine: &[spine("output-transform", Runs::AfterOperations)],
@@ -438,9 +398,24 @@ mod tests {
         let ids: Vec<&str> = V1.stages.iter().map(|s| s.id).collect();
         assert_eq!(
             ids,
-            names::STAGES,
-            "the definition's stage list equals the identifiers (plugin-api's, from WP13)"
+            stages::ALL,
+            "the definition's stage list is the identifiers of plugin-api, in order"
         );
+    }
+
+    /// D-146: a declaration names a stage and a space with `plugin-api`'s constants, and the definition is made of those
+    /// same constants (there is no second table), so what is left to hold is that the definition **covers** them: it
+    /// has every stage a plugin can name and understands every space, in the order the chain passes through them.
+    #[test]
+    fn the_definition_has_every_stage_and_space_plugin_api_names() {
+        for stage in stages::ALL {
+            assert!(V1.stage_index(stage).is_some(), "{stage}");
+        }
+        let space_names: Vec<&str> = DataSpace::ALL.iter().map(|s| s.name()).collect();
+        assert_eq!(space_names, spaces::ALL, "the definition's spaces");
+        for name in spaces::ALL {
+            assert!(DataSpace::from_name(name).is_some(), "{name}");
+        }
     }
 
     #[test]
@@ -462,7 +437,7 @@ mod tests {
     #[test]
     fn the_five_spaces_are_named_as_the_constants_and_refine_d142s_three() {
         let names: Vec<&str> = DataSpace::ALL.iter().map(|s| s.name()).collect();
-        assert_eq!(names, super::names::SPACES);
+        assert_eq!(names, spaces::ALL);
         for space in DataSpace::ALL {
             assert_eq!(DataSpace::from_name(space.name()), Some(space));
         }
@@ -483,9 +458,9 @@ mod tests {
     #[test]
     fn a_stage_and_a_space_never_share_a_name() {
         // "an operation in camera-linear" must say one thing (review of note 006).
-        for stage in names::STAGES {
+        for stage in stages::ALL {
             assert!(
-                !names::SPACES.contains(&stage),
+                !spaces::ALL.contains(&stage),
                 "{stage} is both a stage and a space"
             );
         }
@@ -530,14 +505,14 @@ mod tests {
         // matrix and the output transform run after the operations of their stages, which read what the
         // stage receives.
         let expected = [
-            (names::RAW_LINEAR, DataSpace::MosaicLinear),
-            (names::DEMOSAIC, DataSpace::MosaicLinear),
-            (names::CAMERA_RGB, DataSpace::CameraLinear),
-            (names::INPUT_COLOUR, DataSpace::CameraLinear),
-            (names::SCENE_LINEAR, DataSpace::WorkingLinear),
-            (names::GEOMETRY, DataSpace::WorkingLinear),
-            (names::DETAIL, DataSpace::WorkingLinear),
-            (names::DISPLAY, DataSpace::WorkingLinear),
+            (stages::RAW_LINEAR, DataSpace::MosaicLinear),
+            (stages::DEMOSAIC, DataSpace::MosaicLinear),
+            (stages::CAMERA_RGB, DataSpace::CameraLinear),
+            (stages::INPUT_COLOUR, DataSpace::CameraLinear),
+            (stages::SCENE_LINEAR, DataSpace::WorkingLinear),
+            (stages::GEOMETRY, DataSpace::WorkingLinear),
+            (stages::DETAIL, DataSpace::WorkingLinear),
+            (stages::DISPLAY, DataSpace::WorkingLinear),
         ];
         for (id, space) in expected {
             let stage = V1.stages[V1.stage_index(id).expect("a stage")];
