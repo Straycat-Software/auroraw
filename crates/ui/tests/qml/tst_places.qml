@@ -88,9 +88,15 @@ AppTestCase {
     // Takes back what the runs of a test did.
     function undoAll(name, key) {
         for (let n = 0; n < 4 && field(name, key) !== ""; n++) {
+            const was = field(name, key)
             tryVerify(() => app.actions.undo.enabled)
             app.actions.undo.trigger()
-            wait(150)
+            // The engine takes a step back photo by photo, so the field changes some time after the Undo, not at once: wait
+            // for it to change (a step that is not about this field leaves it as it is: that costs the whole wait, and the
+            // next Undo is the one that takes it).
+            const deadline = Date.now() + 5000
+            while (field(name, key) === was && Date.now() < deadline)
+                wait(10)
         }
     }
 
@@ -154,9 +160,11 @@ AppTestCase {
         verify(app.actions.undo.text.indexOf("place names") > 0, app.actions.undo.text)
         app.actions.undo.trigger()
         tryCompare(app.photos, "count", 12)
+        // (The engine takes the step back one photo after the other: each photo the test reads is waited for, and not only the
+        // first, which is not the last: the failure of the queue entry of #79 read IMG_0004 while its region was still there.)
         tryVerify(() => field("IMG_0000", "country") === "", 5000, "undone for the first photo")
-        compare(field("IMG_0002", "city"), "")
-        compare(field("IMG_0004", "region"), "")
+        tryVerify(() => field("IMG_0002", "city") === "", 5000, "undone for IMG_0002")
+        tryVerify(() => field("IMG_0004", "region") === "", 5000, "undone for IMG_0004, the last photo the run filled")
         compare(field("IMG_0004", "city"), "Mine")
     }
 
