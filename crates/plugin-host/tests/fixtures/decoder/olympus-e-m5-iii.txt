@@ -1,0 +1,15 @@
+file: PB290154.ORF
+readout: 5240 x 3912
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: U16 x 20498880, blake3 ab0c76cbdbaad3ac8bfb0319a17172ade03ad4b48d0c1e29160d99d42e383bfd
+black: 2 rows x 2 columns x 1 components [253.0, 253.0, 253.0, 253.0]
+white: [4000.0]
+white balance: Some([2.1875, 1.0, 1.640625])
+colour matrix: illuminant 17 (3 rows) [1.3782, -0.7726, 0.0645, -0.3366, 1.2336, 0.1103, -0.0082, 0.0624, 0.5955]
+colour matrix: illuminant 21 (3 rows) [1.1896, -0.511, -0.1076, -0.3181, 1.1378, 0.2048, -0.0519, 0.1224, 0.5166]
+crop: Some(Rect { x: 12, y: 12, width: 5184, height: 3888 })
+active area: Some(Rect { x: 0, y: 0, width: 5240, height: 3912 })
+orientation: Normal
+camera: Olympus E-M5 Mark III
+iso: Some(200)
+noise profile: None

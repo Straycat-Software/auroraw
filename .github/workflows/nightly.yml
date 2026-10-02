@@ -62,7 +62,7 @@ jobs:
       - name: Each target for two minutes
         run: |
           failed=0
-          for target in xmp_reader sidecars state_files; do
+          for target in xmp_reader sidecars state_files raw_block; do
             cargo +nightly fuzz run --target x86_64-unknown-linux-gnu "$target" -- -max_total_time=120 || failed=1
           done
           exit $failed

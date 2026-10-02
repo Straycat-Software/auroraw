@@ -1,0 +1,14 @@
+file: Canon_-_EOS_5D_Mark_III_-_32bit_32bit_RAW.dng
+readout: 5920 x 3950
+layout: cfa 2x2 [0, 1, 1, 2]
+samples: F32 x 23384000, blake3 7c3f481babc5967037d5dff895973f3a9ba1ff68efc8845fc76d38d418acde95
+black: 2 rows x 2 columns x 1 components [2047.0, 2047.0, 2048.0, 2047.0]
+white: [15488.0]
+white balance: Some([1.6494138, 1.0, 2.165041])
+colour matrix: illuminant 21 (3 rows) [0.6722, -0.0635, -0.0963, -0.4287, 1.246, 0.2028, -0.0908, 0.2162, 0.5668]
+crop: Some(Rect { x: 122, y: 80, width: 5796, height: 3870 })
+active area: Some(Rect { x: 122, y: 80, width: 5796, height: 3870 })
+orientation: Normal
+camera: Canon EOS 5D Mark III
+iso: Some(200)
+noise profile: None

@@ -163,6 +163,19 @@ test that lifts the float-samples refusal on the float DNG, and the orientation 
 Done when: every sample decodes (or is refused cleanly) into the new `RawImage` through the sandbox,
 native and WebAssembly agree byte for byte, and the parser survives the fuzzer.
 
+**Status: the RawImage layer is built (first pull request, 2026-10-01); the declaration layer is next.** Built: the new
+`RawImage` and the block in `plugin-api`, the plugin writing it with the same crate (and decoding float samples), the
+host reading it, **one decoder test for each of the seventeen sample files** against `rawler` called independently and
+against a fixture (`crates/plugin-host/tests/fixtures/decoder/`), the fuzz target `raw_block` seeded with the block of
+each file, and the orientation finding as a test in `imaging`. Findings: `rawler` 0.8.0 does not surface a DNG's
+`NoiseProfile` on a decoded image, so the tag is defined and tested in the block and the plugin does not emit it; the
+ISO comes from the EXIF in a second pass; the Parrot Bebop DNG is not refused by `rawler` inside the sandbox but stopped by
+its memory ceiling (a size read from the file is allocated before it is checked), so the caller sees `Failed` and not
+`Invalid`. The pull request changes the shape of the work in two ways the plan did not say: the three layers are one
+pull request (they cannot be green apart), and the decoder tests run in a dev profile with the dependencies optimised
+(issue #77, lever 2). The declaration layer (`Family::Operation`, `ParamSpec`, `ParamValue`, `OperationId`, the stage and
+space constants, the edge `pipeline` to `plugin-api`) is the second pull request.
+
 ### WP14 The pipeline crate: the render API and the engine around it (L). Needs #37, WP13. Lead: Charlie
 
 From the foundation to a service: `Pipeline::open(config, registry)`, `render(request)` and its handle

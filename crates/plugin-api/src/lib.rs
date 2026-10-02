@@ -9,11 +9,18 @@
 //! host (`plugin-host`) that loads the first real sandboxed plugin. Experimental until milestone
 //! M5 (architecture §8.2b): everything in this crate can change without a deprecation period.
 
+pub mod block;
 pub mod declaration;
 pub mod decoder;
 pub mod permissions;
+pub mod raw;
 pub mod source;
 
+pub use block::BlockError;
 pub use declaration::{Declaration, DeclarationError, Family, HOST_API_VERSION, Placement};
-pub use decoder::{Decoder, DecoderError, RawImage};
+pub use decoder::{Decoder, DecoderError};
 pub use permissions::Permissions;
+pub use raw::{
+    BlackLevel, CameraId, ColourMatrix, Illuminant, InputProfile, Levels, NamedProfile,
+    NoiseProfile, Orientation, RawImage, Rect, SampleKind, Samples, SensorLayout,
+};
