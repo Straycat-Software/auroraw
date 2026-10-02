@@ -29,7 +29,7 @@
 //! | 2 | layout (required) | `kind:u8` (0 Cfa, 1 LinearRgb, 2 Mono); Cfa: `width:u8 height:u8 colours:u8[width*height]`; LinearRgb: `components:u8` |
 //! | 3 | samples (required) | `kind:u8` (0 u16, 1 f32) `count:u64`: what the sample buffer holds |
 //! | 4 | levels (required) | black: `rows:u16 columns:u16 components:u8 values:f32[rows*columns*components]`; white: `count:u8 values:f32[count]` |
-//! | 5 | white balance | `f32 x 3`: R G B |
+//! | 5 | white balance | `f32 x 3`: the gains for R G B, green `1` (see [`RawImage::white_balance`]) |
 //! | 6 | colour matrix (repeatable) | `illuminant:u8 rows:u8 (3 or 4) values:f32[rows*3]` |
 //! | 7 | crop | `x:u32 y:u32 width:u32 height:u32` |
 //! | 8 | active area | the same |

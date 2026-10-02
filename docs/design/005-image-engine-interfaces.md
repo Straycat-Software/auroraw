@@ -257,6 +257,23 @@ write it without our table); a colour matrix has 3 or 4 rows of 3 (four-colour s
 green, `2` blue, `3` a fourth colour, and a pattern with another colour (a CMY sensor) is refused for now; the orientation
 has an `Unknown` of its own, which is not `Normal`; the white balance is three values or nothing.
 
+**What the pipeline may rely on, settled with the pipeline's author (WP15a; the doc comments of `RawImage` say the same).**
+*The white balance is gains*, the factors that multiply the camera's red, green and blue so that the as-shot light comes
+out neutral, **with green 1**: `rawler` gives gains in RGBE order (a DNG's `AsShotNeutral`, the camera's response to a
+neutral, it has already inverted), green is exactly 1.0 on all thirteen sample files that have a balance, and the plugin
+now divides by green so that the block's promise does not rest on that observation. A file without a balance (the Leica
+monochrome) has none, and the pipeline then derives gains from the chosen colour matrix for a D65 white. *Which matrix*:
+the D65 one, else the nearest to D65 in colour temperature (D75, D55, D50, then A), the first when the light is not
+said; no interpolation in v1 (it would change the image, so it is a new definition version if it arrives after the
+freeze); a matrix whose light the file does not say is labelled `Unknown`, never a guess; no matrix means a camera that
+sees what the working space sees. *The colour `3`* is a true fourth colour (an RGBE sensor's emerald) and goes with
+four-row matrices; **both greens of a three-colour sensor are `1`**, as `rawler` already gives them (it has no value for
+a second green: its `CFAColor` has `3` cyan, which the 'E' of an RGBE pattern maps to, then magenta, yellow, white and
+a Fujifilm green, and the block refuses above `3`). None of the seventeen files has a `3`, so no test file shows two
+labelled greens: the fixtures pin the patterns of the seventeen (`0`, `1`, `2` only), and a sample with a fourth colour
+(a Sony DSC-F828, for instance) is the file to add when a four-colour demosaic is planned. A pipeline refuses a
+four-colour sensor with a typed "not supported", not a panic.
+
 **Findings from the seventeen files.** All fourteen files `rawler` decodes pass through the sandbox bit for bit, the float
 DNG included (a float *mosaic* with a black pattern of 2047, 2047, 2048, 2047). `rawler` 0.8.0 does **not** surface a DNG's
 `NoiseProfile` on a decoded image (its `dng_tags` are for its own DNG writer), so the tag is defined and tested in the

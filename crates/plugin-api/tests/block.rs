@@ -117,6 +117,26 @@ fn an_image_with_nothing_optional_comes_back_exactly() {
 }
 
 #[test]
+fn a_fourth_colour_and_its_four_row_matrix_come_back_exactly() {
+    // An RGBE sensor: `3` is the emerald, and the matrix has a row for each of the four colours. (Both greens of a
+    // three-colour sensor are `1`, so the pattern of `bayer()` has no `3`: see `SensorLayout::Cfa`.)
+    let image = RawImage {
+        layout: SensorLayout::Cfa {
+            width: 2,
+            height: 2,
+            colours: vec![0, 1, 3, 2],
+        },
+        colour: vec![ColourMatrix {
+            illuminant: Illuminant::D65,
+            rows: 4,
+            xyz_to_camera: (0..12).map(|i| i as f32 / 10.0).collect(),
+        }],
+        ..bayer()
+    };
+    assert_eq!(round_trip(&image), image);
+}
+
+#[test]
 fn pixels_that_have_their_channels_carry_the_colours_they_are_in() {
     for profile in [
         InputProfile::Unspecified,

@@ -164,7 +164,14 @@ pub enum SensorLayout {
         /// The pattern's height.
         height: u8,
         /// The colour at each place of the pattern, row-major, `width * height` of them: `0` red, `1` green, `2` blue,
-        /// `3` a fourth colour (emerald, or a second green).
+        /// `3` a **fourth colour** (the emerald of an RGBE sensor).
+        ///
+        /// **Both greens of a three-colour sensor are `1`**: a decoder whose format labels its two greens apart writes
+        /// `1` for both, because for the demosaic they are one colour. `3` means a colour that is neither red, green
+        /// nor blue, and goes with four-row colour matrices ([`ColourMatrix::rows`]); a pipeline that cannot demosaic
+        /// four colours refuses such a file, and one that finds a `3` with only three-row matrices (or the reverse) has
+        /// a malformed image. A sensor whose colours are not red, green, blue and a fourth (cyan, magenta, yellow) has
+        /// no number here and is refused by the block.
         colours: Vec<u8>,
     },
     /// Pixels that already have their channels (an sRAW, a scan, a PNG or a JPEG): the first stage of the pipeline is
@@ -300,9 +307,25 @@ pub struct RawImage {
     pub samples: Samples,
     /// The black and white levels.
     pub levels: Levels,
-    /// The as-shot white balance, R G B (a decoder's fourth value, a second green, is not carried), when the file has one.
+    /// The as-shot white balance, when the file has one, as **gains**: the factors that multiply the camera's red, green
+    /// and blue channels (linear, after the black level is taken off) so that the light the photo was taken in comes
+    /// out neutral. **Green is `1`**, so red and blue are what a neutral object lacks of them (typically `1.4` to `3`
+    /// for red and `1.4` to `2.2` for blue). All three are finite and positive, or the field is absent.
+    ///
+    /// A decoder whose file stores something else converts it: a DNG's `AsShotNeutral` is the camera's *response* to
+    /// a neutral, so the gains are its inverse; a file that stores gains with another green than `1` is divided by its
+    /// green. A decoder's fourth value (a second green, the emerald) is not carried.
     pub white_balance: Option<[f32; 3]>,
-    /// The camera's colour matrices, one for each illuminant the file has (possibly none).
+    /// The camera's colour matrices, one for each illuminant the file has (possibly none), each labelled with the light
+    /// it was made for ([`Illuminant`]; a matrix whose light the file does not say is [`Illuminant::UNKNOWN`], never a
+    /// guess: a matrix labelled `D65` is the one the pipeline prefers).
+    ///
+    /// **Which one the pipeline uses** (definition v1; the rule is the pipeline's, written here because a plugin
+    /// author decides what it finds): the `D65` matrix when there is one; otherwise the one whose light is nearest
+    /// to `D65` in colour temperature (`D75`, `D55`, `D50`, then `A`), and the first of them when the file does not say
+    /// which light; **no interpolation between two matrices** (the way a DNG reader does, by the colour temperature
+    /// of the as-shot neutral, is a later improvement and would change the image, so a new definition version). A
+    /// file with **no** matrix is read as a camera that sees what the working space sees.
     pub colour: Vec<ColourMatrix>,
     /// The crop the camera recommends, in sensor pixels.
     pub crop: Option<Rect>,

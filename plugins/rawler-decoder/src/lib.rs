@@ -117,12 +117,14 @@ fn map(image: Decoded, iso: Option<u32>) -> Option<api::RawImage> {
             image.whitelevel.0.iter().map(|w| *w as f32).collect()
         },
     };
-    // `rawler`'s fourth value is NaN on every sample file, and a file without a balance has all NaN or all zero:
-    // three finite, positive values or nothing.
+    // `rawler`'s coefficients are gains in RGBE order (green is 1.0 on every sample file, DNG ones included, where
+    // `rawler` has already inverted the `AsShotNeutral`); the fourth value is NaN on every sample file, and a file without
+    // a balance has all NaN or all zero. The block says green is 1, so it is made so here instead of assumed: three
+    // finite, positive gains with green 1, or nothing.
     let [r, g, b, _] = image.wb_coeffs;
     let white_balance =
         (r.is_finite() && g.is_finite() && b.is_finite() && r > 0.0 && g > 0.0 && b > 0.0)
-            .then_some([r, g, b]);
+            .then_some([r / g, 1.0, b / g]);
     // In the order of the EXIF light source code, so that the block is the same on every run (a HashMap is not).
     let mut colour: Vec<api::ColourMatrix> = image
         .color_matrix

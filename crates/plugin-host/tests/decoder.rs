@@ -225,7 +225,8 @@ fn expected(native: &rawler::rawimage::RawImage) -> Expected {
             && r > 0.0
             && g > 0.0
             && bl > 0.0)
-            .then_some([r, g, bl]),
+            // The gains with green 1, as the block says (a second mapping on purpose: no shared code with the plugin).
+            .then_some([r / g, 1.0, bl / g]),
         matrices,
         crop: native
             .crop_area
