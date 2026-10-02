@@ -295,8 +295,12 @@ path, the format code and the plugin host, where a gap is expensive.
 - **Flaky tests.** A test that fails without a change is quarantined the same day (marked, kept
   running but not blocking), an issue is opened, and it is fixed or deleted within a week. A
   quarantine list that grows is a process failure, reported at each release.
-  The quarantine list (a test ignored on one platform, or for good, until it is fixed) is empty. A quarantined
+  The quarantine list (a test ignored on one platform, or for good, until it is fixed). A quarantined
   test gets a row here: the test, since when, where, the issue, why, and the date it is due.
+
+  | Test | Since | Where | Issue | Why |
+  | --- | --- | --- | --- | --- |
+  | `a_photo_that_no_thumbnail_can_be_made_for_says_so` (`crates/ui/tests/qml.rs`, suite `tst_thumbnails.qml`) | 2026-10-01 | Windows only (`#[cfg_attr(windows, ignore)]`) | #70 | The eleven thumbnails take 14 s at the median on the Windows runner (3 s elsewhere) and the 20 s wait runs out in about 2 % of the jobs; the cause is not known. Ignored, not retried: a retry would hide it. Due: 2026-10-08. |
 - **No test depends on another's result or order.**
 - **Tooling.** `cargo nextest` (faster, isolates each test), `proptest`, `cargo-fuzz`, `insta` or a
   small in-house comparison for golden files, `cargo-llvm-cov`, `cargo-deny` (which also covers the advisory database).

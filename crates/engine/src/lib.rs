@@ -319,20 +319,35 @@ mod tests {
         (engine, events, dir)
     }
 
+    /// How long a test waits for the engine to finish an import. A deadline and not a claim: how long an import takes
+    /// is not what these tests check, and a Windows runner takes four to five times as long as the other two over the
+    /// same twenty files, with a tail past ten seconds (issue #71).
+    const IMPORT_DEADLINE: Duration = Duration::from_secs(60);
+
+    /// Waits for an event that `matches`, and says, when none comes, how long it waited and what it saw instead (the
+    /// last few events), so that a slow machine can be told apart from a job that never ends.
     fn wait_for(
         events: &EventReceiver,
         mut matches: impl FnMut(&Event) -> bool,
         timeout: Duration,
     ) -> Event {
-        let deadline = std::time::Instant::now() + timeout;
+        let started = std::time::Instant::now();
+        let deadline = started + timeout;
+        let mut seen: Vec<String> = Vec::new();
         loop {
             let remaining = deadline.saturating_duration_since(std::time::Instant::now());
-            let event = events
-                .recv_timeout(remaining)
-                .expect("event before timeout");
+            let Some(event) = events.recv_timeout(remaining) else {
+                let last: Vec<&String> = seen.iter().rev().take(5).rev().collect();
+                panic!(
+                    "no matching event in {:?} (asked to wait {timeout:?}); {} other events came, the last: {last:?}",
+                    started.elapsed(),
+                    seen.len()
+                );
+            };
             if matches(&event) {
                 return event;
             }
+            seen.push(format!("{event:?}").chars().take(80).collect());
         }
     }
 
@@ -963,7 +978,7 @@ mod tests {
         wait_for(
             events,
             |e| matches!(e, Event::ImportFinished { job: j, .. } if *j == job),
-            Duration::from_secs(10),
+            IMPORT_DEADLINE,
         )
     }
 
@@ -1203,7 +1218,7 @@ mod tests {
         wait_for(
             &events,
             |e| matches!(e, Event::ImportFinished { job: j, .. } if *j == job),
-            Duration::from_secs(10),
+            IMPORT_DEADLINE,
         );
     }
 
@@ -1222,7 +1237,7 @@ mod tests {
         wait_for(
             events,
             |e| matches!(e, Event::ImportFinished { job: j, .. } if *j == job),
-            Duration::from_secs(10),
+            IMPORT_DEADLINE,
         )
     }
 

@@ -157,12 +157,12 @@ AppTestCase {
         verify(!app.actions.redo.enabled)
 
         undo()
-        tryCompare(grid.itemAtIndex(2), "rating", 0)
+        tryRead(() => delegateValue(grid, 2, "rating"), 0)
         tryVerify(() => app.actions.redo.enabled)
         compare(app.actions.redo.text, "Redo rating")
         verify(!app.actions.undo.enabled, "back where it began")
         redo()
-        tryCompare(grid.itemAtIndex(2), "rating", 4)
+        tryRead(() => delegateValue(grid, 2, "rating"), 4)
         tryVerify(() => app.library.summary.indexOf("★★★★") >= 0)
         app.menu.openSection(1)
         wait(250)
@@ -178,18 +178,18 @@ AppTestCase {
         tryVerify(() => app.actions.undo.enabled)
         wait(300)
         undo()
-        tryCompare(grid.itemAtIndex(0), "rating", 0)
+        tryRead(() => delegateValue(grid, 0, "rating"), 0)
         tryVerify(() => !app.actions.undo.enabled, 5000, "the second press was not a step")
 
         rateSelected(1)
         rateSelected(2)
-        tryCompare(grid.itemAtIndex(0), "rating", 2)
+        tryRead(() => delegateValue(grid, 0, "rating"), 2)
         wait(300) // the engine's word that both steps are in the history reaches the menu
         undo()
-        tryCompare(grid.itemAtIndex(0), "rating", 1)
+        tryRead(() => delegateValue(grid, 0, "rating"), 1)
         wait(300)
         undo()
-        tryCompare(grid.itemAtIndex(0), "rating", 0)
+        tryRead(() => delegateValue(grid, 0, "rating"), 0)
     }
 
     function test_undo_shows_the_photo_it_undid() {
@@ -220,8 +220,7 @@ AppTestCase {
     }
 
     function test_undo_and_redo_are_named_in_the_language() {
-        app.launcher.chooseLanguage("fr")
-        wait(200)
+        useLanguage("fr")
         clickCell(0)
         rateSelected(2)
         tryVerify(() => app.actions.undo.enabled)
@@ -265,8 +264,7 @@ AppTestCase {
     }
 
     function test_the_sentences_follow_the_language_with_their_plural_forms() {
-        app.launcher.chooseLanguage("fr")
-        wait(200)
+        useLanguage("fr")
         compare(app.library.filterButtons.itemAt(0).text, "Tout")
         compare(app.library.status, "80 photos")
         app.library.filterBy(5)
@@ -277,39 +275,49 @@ AppTestCase {
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 1 étoile")
         rateSelected(2)
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 2 étoiles")
-        app.launcher.chooseLanguage("en")
-        wait(200)
+        useLanguage("en")
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 2 stars")
         grid.forceActiveFocus()
         rateSelected(1)
         compare(grid.itemAtIndex(0).Accessible.name, "Photo, 1 star")
     }
 
+    // "in view" when the cell at `index` is made and inside the visible part of the grid, else where it is and where the view is.
+    function whereIs(index) {
+        const item = grid.itemAtIndex(index)
+        if (!item)
+            return "no cell is made at " + index
+        const top = item.y
+        const bottom = item.y + item.height
+        return bottom > grid.contentY && top < grid.contentY + grid.height
+            ? "in view"
+            : "the cell is at " + top + " to " + bottom + ", the view at " + grid.contentY + " for " + grid.height
+    }
+
+    // (Each step waits for what it asserts, reading it again at each poll: a fixed pause and one read failed once on a slow
+    // macOS runner, when the layout and then the scroll took longer than the pause, issue #72.)
     function test_a_resized_window_shows_as_many_columns_as_fit_and_keeps_the_selected_photo() {
         app.width = 1400 + panelWidth
-        wait(300)
-        compare(grid.columns, 8)
+        tryCompare(grid, "columns", 8)
         clickCell(3)
         // 1100 wide holds six cells.
         app.width = 1100 + panelWidth
-        wait(300)
-        compare(grid.columns, 6)
-        compare(grid.currentIndex, 3, "the selection stays on its photo")
+        tryCompare(grid, "columns", 6)
+        tryCompare(grid, "currentIndex", 3, 5000, "the selection stays on its photo")
         // Narrower than one cell would still show one column; the window's minimum shows three.
         app.width = 640 + panelWidth
-        wait(300)
-        compare(grid.columns, 3)
+        tryCompare(grid, "columns", 3)
         app.width = 1900 + panelWidth
-        wait(300)
-        compare(grid.columns, 11)
-        compare(grid.currentIndex, 3)
+        tryCompare(grid, "columns", 11)
+        tryCompare(grid, "currentIndex", 3)
         // A selection that a resize pushed out of view is brought back.
         app.library.select(60)
         app.width = 1400 + panelWidth
-        wait(300)
-        const item = grid.itemAtIndex(60)
-        verify(item && item.y + item.height > grid.contentY && item.y < grid.contentY + grid.height,
-               "the selected photo is in view after the columns changed")
+        // The rows re-flow first (the content is as high as eight columns make it); before that the photo is still where the
+        // eleven columns of the step before put it, `select(60)` has just brought it into view there, and "in view" would be
+        // said of the old layout: a check that is true before the thing it checks has happened (Django's review of #93).
+        tryCompare(grid, "contentHeight", Math.ceil(grid.count / 8) * grid.cellHeight)
+        tryRead(() => whereIs(60), "in view", 5000, "the selected photo is in view after the columns changed")
     }
 
     // The grid sits in the middle of its panel (D-144): what the columns leave over is shared by the two sides.

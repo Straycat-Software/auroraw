@@ -254,11 +254,11 @@ AppTestCase {
     function test_a_colour_key_in_the_grid_shows_on_the_cell_at_once() {
         click(3)
         keyClick(Qt.Key_6)
-        tryCompare(cell(3), "colourLabel", "red")
+        tryRead(() => delegateValue(grid, 3, "colourLabel"), "red")
         keyClick(Qt.Key_6)
-        tryCompare(cell(3), "colourLabel", "", 5000, "the same colour takes it off")
+        tryRead(() => delegateValue(grid, 3, "colourLabel"), "", 5000, "the same colour takes it off")
         keyClick(Qt.Key_9)
-        tryCompare(cell(3), "colourLabel", "blue")
+        tryRead(() => delegateValue(grid, 3, "colourLabel"), "blue")
     }
 
     function test_the_context_menu_gives_purple_and_the_flags_to_what_is_under_the_pointer() {
@@ -281,8 +281,8 @@ AppTestCase {
         purple.triggered()
         reject.triggered()
         menu.close()
-        tryCompare(cell(5), "colourLabel", "purple")
-        tryCompare(cell(5), "flag", 2)
+        tryRead(() => delegateValue(grid, 5, "colourLabel"), "purple")
+        tryRead(() => delegateValue(grid, 5, "flag"), 2)
     }
 
     function test_the_grid_can_be_filtered_by_colour() {
@@ -364,8 +364,7 @@ AppTestCase {
 
     function test_the_view_speaks_french() {
         openOn(1)
-        app.launcher.chooseLanguage("fr")
-        wait(300)
+        useLanguage("fr")
         keyClick(Qt.Key_8)
         tryVerify(() => app.actions.undo.text === "Annuler l’étiquette", 5000, app.actions.undo.text)
         compare(app.photos.labelAt(1), "green")

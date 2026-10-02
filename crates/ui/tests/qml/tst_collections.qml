@@ -156,8 +156,7 @@ AppTestCase {
         const tabs = app.keywordPanel.tabs
         compare(tabs.itemAt(3).text, "Collections")
         checkTabs(false)
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(tabs.itemAt(1).text, "Métadonnées")
         checkTabs(false)
         app.keywordPanel.panelWidth = app.keywordPanel.minimumWidth
@@ -439,8 +438,7 @@ AppTestCase {
         selectFirst(2)
         const a = make("Faune")
         make("Oiseaux", a)
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.keywordPanel.tabs.itemAt(3).text, "Collections")
         const dialog = panel().deleteDialog
         dialog.openFor(a)

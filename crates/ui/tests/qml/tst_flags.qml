@@ -84,11 +84,11 @@ AppTestCase {
         compare(app.actions.undo.text, "Undo flag")
         wait(300)
         keyClick(Qt.Key_Z, Qt.ControlModifier)
-        tryCompare(cell(3), "flag", 0)
+        tryRead(() => delegateValue(grid, 3, "flag"), 0)
         tryVerify(() => app.actions.redo.enabled)
         compare(app.actions.redo.text, "Redo flag")
         keyClick(Qt.Key_Y, Qt.ControlModifier)
-        tryCompare(cell(3), "flag", 1)
+        tryRead(() => delegateValue(grid, 3, "flag"), 1)
     }
 
     function test_a_rejected_photo_stays_dimmed_until_the_list_is_read_again() {
@@ -141,8 +141,7 @@ AppTestCase {
 
     function test_the_flags_are_named_in_the_language() {
         compare(app.library.flagName(0), "Not rejected")
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compare(app.library.flagName(0), "Non refusées")
         compare(app.library.flagName(2), "Retenues")
         compare(app.library.flagName(3), "Refusées")

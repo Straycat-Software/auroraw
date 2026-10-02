@@ -336,8 +336,7 @@ AppTestCase {
     // Clicks the middle of the cell that is on screen where it is (no scrolling to it first), and says which photo is
     // selected: it must be that cell's.
     function test_the_comparison_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         compareBurst()
         compare(cmp.toolbar.children.length > 0, true)
         snapshot("compare-fr")

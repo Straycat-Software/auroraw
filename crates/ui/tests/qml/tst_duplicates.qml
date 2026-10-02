@@ -104,8 +104,7 @@ AppTestCase {
     }
 
     function test_the_dialog_speaks_french() {
-        app.launcher.chooseLanguage("fr")
-        wait(250)
+        useLanguage("fr")
         keyClick(Qt.Key_D, Qt.ControlModifier)
         tryVerify(() => app.duplicatesDialog.visible)
         snapshot("duplicates-fr")
