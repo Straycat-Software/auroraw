@@ -23,12 +23,15 @@
 //! - the **recipe** ([`recipe`]) with the canonical encoding of its typed parameters, the **registry** of
 //!   the operations the engine knows ([`registry`]), the **validation** of a recipe against both
 //!   ([`validate`]), and the **stage cache keys** with the model of what a change reruns ([`plan`]).
+//! - the **state digest** ([`digest`]): the hash of a version's state as stored, by key, that the sidecar, `develop` and
+//!   the catalogue share (design note 007 §4.4).
 //!
 //! The render API (views, bands, the stage caches themselves, reports) comes next, following design note 005.
 
 pub mod adapter;
 mod colour;
 pub mod definition;
+pub mod digest;
 mod gpu;
 pub mod plan;
 pub mod recipe;
