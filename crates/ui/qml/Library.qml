@@ -123,10 +123,42 @@ FocusScope {
 
     // Lists only the photos with this colour label; the same colour again lists them all.
     function filterLabel(name) {
-        photoGrid.filterLabel(photoGrid.labelFilter === name ? "" : name)
+        setLabelFilter(photoGrid.labelFilter === name ? "" : name)
+    }
+
+    // Lists only the photos with this colour label (`""`: whatever their colour).
+    function setLabelFilter(name) {
+        photoGrid.filterLabel(name)
         grid.currentIndex = -1
         grid.positionViewAtBeginning()
         updateSummary()
+    }
+
+    // Some filter is in force: the list is not the one a workspace opens on (the rejected photos hidden, nothing else).
+    readonly property bool filtered: photoGrid.minRating !== 0 || photoGrid.flagFilter !== 0
+                                     || photoGrid.labelFilter !== "" || photoGrid.seriesFilter !== 0
+                                     || photoGrid.keywordFilter !== "" || photoGrid.collectionFilter !== ""
+
+    // Every filter back to what a workspace opens with (D-153): only those that are in force are touched, each through the
+    // function the bar's control calls, so the list is read once for each and the chips and names follow.
+    function clearFilters() {
+        if (photoGrid.minRating !== 0)
+            filterBy(0)
+        if (photoGrid.flagFilter !== 0)
+            filterFlags(0)
+        if (photoGrid.labelFilter !== "")
+            setLabelFilter("")
+        if (photoGrid.seriesFilter !== 0)
+            filterSeries(0)
+        if (photoGrid.keywordFilter !== "")
+            filterKeyword("", "")
+        if (photoGrid.collectionFilter !== "")
+            filterCollection("", "")
+    }
+
+    // Writes the file of every listed photo to a text file the person picks (the bar's "Export the list…").
+    function exportList() {
+        exportDialog.pick()
     }
 
     function seriesName(index) {

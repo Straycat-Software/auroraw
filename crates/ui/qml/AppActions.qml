@@ -247,6 +247,184 @@ QtObject {
         onTriggered: root.host.selectPhotos("invert")
     }
 
+    // The View section (D-153): each filter of the library's bar, and what its other buttons do. The state is the
+    // grid's (`PhotoGrid` keeps it; the bar and these commands call the same methods), so the check marks are read
+    // from it and nothing is kept here.
+    readonly property var grid: root.host.library.photoGrid
+
+    readonly property Action ratingAny: FilterAction {
+        commandId: "filter.rating-0"
+        text: qsTr("Any rating")
+        marked: root.grid.minRating === 0
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterRating(0)
+    }
+    readonly property Action rating1: FilterAction {
+        commandId: "filter.rating-1"
+        text: qsTr("1 star or more")
+        marked: root.grid.minRating === 1
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterRating(1)
+    }
+    readonly property Action rating2: FilterAction {
+        commandId: "filter.rating-2"
+        text: qsTr("2 stars or more")
+        marked: root.grid.minRating === 2
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterRating(2)
+    }
+    readonly property Action rating3: FilterAction {
+        commandId: "filter.rating-3"
+        text: qsTr("3 stars or more")
+        marked: root.grid.minRating === 3
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterRating(3)
+    }
+    readonly property Action rating4: FilterAction {
+        commandId: "filter.rating-4"
+        text: qsTr("4 stars or more")
+        marked: root.grid.minRating === 4
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterRating(4)
+    }
+    readonly property Action rating5: FilterAction {
+        commandId: "filter.rating-5"
+        text: qsTr("5 stars")
+        marked: root.grid.minRating === 5
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterRating(5)
+    }
+    readonly property Action flagsNotRejected: FilterAction {
+        commandId: "filter.flags-0"
+        text: qsTr("Not rejected")
+        marked: root.grid.flagFilter === 0
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterFlags(0)
+    }
+    readonly property Action flagsAll: FilterAction {
+        commandId: "filter.flags-1"
+        text: qsTr("All photos")
+        marked: root.grid.flagFilter === 1
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterFlags(1)
+    }
+    readonly property Action flagsPicked: FilterAction {
+        commandId: "filter.flags-2"
+        text: qsTr("Picked")
+        marked: root.grid.flagFilter === 2
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterFlags(2)
+    }
+    readonly property Action flagsRejected: FilterAction {
+        commandId: "filter.flags-3"
+        text: qsTr("Rejected")
+        marked: root.grid.flagFilter === 3
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterFlags(3)
+    }
+    readonly property Action colourRed: FilterAction {
+        commandId: "filter.colour-red"
+        text: qsTr("Red")
+        marked: root.grid.labelFilter === "red"
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterColour("red")
+    }
+    readonly property Action colourYellow: FilterAction {
+        commandId: "filter.colour-yellow"
+        text: qsTr("Yellow")
+        marked: root.grid.labelFilter === "yellow"
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterColour("yellow")
+    }
+    readonly property Action colourGreen: FilterAction {
+        commandId: "filter.colour-green"
+        text: qsTr("Green")
+        marked: root.grid.labelFilter === "green"
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterColour("green")
+    }
+    readonly property Action colourBlue: FilterAction {
+        commandId: "filter.colour-blue"
+        text: qsTr("Blue")
+        marked: root.grid.labelFilter === "blue"
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterColour("blue")
+    }
+    readonly property Action colourPurple: FilterAction {
+        commandId: "filter.colour-purple"
+        text: qsTr("Purple")
+        marked: root.grid.labelFilter === "purple"
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterColour("purple")
+    }
+    readonly property Action colourAny: FilterAction {
+        commandId: "filter.colour-any"
+        text: qsTr("Any colour")
+        marked: root.grid.labelFilter === ""
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterColour("")
+    }
+    readonly property Action seriesAny: FilterAction {
+        commandId: "filter.series-0"
+        text: qsTr("Any photo")
+        marked: root.grid.seriesFilter === 0
+        enabled: root.host.filtersActive
+        onTriggered: root.host.filterSeries(0)
+    }
+    readonly property Action seriesIn: FilterAction {
+        commandId: "filter.series-1"
+        text: qsTr("Photos in a series")
+        marked: root.grid.seriesFilter === 1
+        enabled: root.host.filtersActive && root.grid.seriesCount > 0
+        onTriggered: root.host.filterSeries(1)
+    }
+    readonly property Action seriesUnresolved: FilterAction {
+        commandId: "filter.series-2"
+        text: qsTr("Unresolved series")
+        marked: root.grid.seriesFilter === 2
+        enabled: root.host.filtersActive && root.grid.seriesCount > 0
+        onTriggered: root.host.filterSeries(2)
+    }
+    readonly property Action seriesResolved: FilterAction {
+        commandId: "filter.series-3"
+        text: qsTr("Resolved series")
+        marked: root.grid.seriesFilter === 3
+        enabled: root.host.filtersActive && root.grid.seriesCount > 0
+        onTriggered: root.host.filterSeries(3)
+    }
+
+    readonly property Action openAllSeries: Action {
+        property string commandId: "filter.series-open-all"
+        text: qsTr("Open all series")
+        enabled: root.host.filtersActive && root.grid.seriesCount > 0
+        onTriggered: root.host.expandSeries(true)
+    }
+    readonly property Action closeAllSeries: Action {
+        property string commandId: "filter.series-close-all"
+        text: qsTr("Close all series")
+        enabled: root.host.filtersActive && root.grid.seriesCount > 0
+        onTriggered: root.host.expandSeries(false)
+    }
+    readonly property Action clearFilters: Action {
+        property string commandId: "filter.clear"
+        text: qsTr("Clear all filters")
+        shortcut: "Ctrl+Shift+X"
+        enabled: root.host.filtersActive && root.host.library.filtered
+        onTriggered: root.host.clearFilters()
+    }
+    readonly property Action refreshList: Action {
+        property string commandId: "view.refresh"
+        text: qsTr("Refresh the list")
+        enabled: root.host.filtersActive
+        onTriggered: root.host.refreshList()
+    }
+    readonly property Action exportList: Action {
+        property string commandId: "view.export-list"
+        text: qsTr("Export the list…")
+        enabled: root.host.filtersActive && root.grid.count > 0
+        onTriggered: root.host.exportList()
+    }
+
     readonly property Action about: Action {
         property string commandId: "help.about"
         text: qsTr("About Auroraw")

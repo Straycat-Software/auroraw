@@ -38,6 +38,7 @@ fn main() {
         QmlFile::from("qml/AppDialogButtonBox.qml"),
         QmlFile::from("qml/AppWindow.qml"),
         QmlFile::from("qml/AppActions.qml"),
+        QmlFile::from("qml/FilterAction.qml"),
         QmlFile::from("qml/AppMenu.qml"),
         QmlFile::from("qml/AppSubMenu.qml"),
         QmlFile::from("qml/AppMenuItem.qml"),

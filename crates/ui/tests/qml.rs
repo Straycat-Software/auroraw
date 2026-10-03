@@ -269,6 +269,15 @@ fn collections_in_the_tab() {
     run_suite("collections", home.path(), None);
 }
 
+/// The filters of the library's bar as commands of the View menu (D-153): reached from the keyboard alone, with the
+/// check mark of the filter in force read from the grid, Clear all filters and its key, French.
+#[test]
+fn the_filters_are_commands_of_the_view_menu() {
+    let home = temp_dir();
+    support::machine_with_photos(home.path(), 40);
+    run_suite("filtercommands", home.path(), None);
+}
+
 /// Reorganising the vocabulary: drag and drop, the Move dialog, deleting a branch, undo.
 #[test]
 fn reorganising_the_keyword_tree() {

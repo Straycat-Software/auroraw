@@ -127,6 +127,7 @@ const MANUAL_IMAGES: &[(&str, &str)] = &[
     ("welcome-empty-en", "welcome"),
     ("new-workspace-dialog-en", "new-workspace"),
     ("menu-file-en", "menu-file"),
+    ("menu-view-en", "menu-view"),
     ("settings-dialog-en", "settings"),
     ("catalogue-with-a-source", "catalogue"),
     ("add-source-dialog", "add-source"),

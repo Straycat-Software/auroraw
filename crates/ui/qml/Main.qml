@@ -134,6 +134,19 @@ ApplicationWindow {
     function showPlaceNames() { placeNamesDialog.open() }
     // Ctrl+K: the keyboard goes to the keyword field.
     function focusKeywords() { libraryView.focusKeywords() }
+    // The View section's commands (D-153): what the filter bar's controls do, from the keyboard. They need the library
+    // shown (and not a dialog, the image view or a comparison over it); they do not need a photo in the list, since a
+    // filter that lists none is the one to change.
+    readonly property bool filtersActive: inWorkspace && currentTask === "cull" && !dialogOpen
+                                          && !libraryView.viewing && !libraryView.comparing
+    function filterRating(minRating) { libraryView.filterBy(minRating) }
+    function filterFlags(flags) { libraryView.filterFlags(flags) }
+    function filterColour(name) { libraryView.setLabelFilter(name) }
+    function filterSeries(kind) { libraryView.filterSeries(kind) }
+    function expandSeries(open) { libraryView.expandAll(open) }
+    function clearFilters() { libraryView.clearFilters() }
+    function refreshList() { libraryView.reload() }
+    function exportList() { libraryView.exportList() }
     // The grid's selection commands (`all`, `none`, `invert`).
     function selectPhotos(what) {
         if (what === "all") libraryView.selectAll()
@@ -252,7 +265,7 @@ ApplicationWindow {
 
     // Alt and a section's mnemonic open it.
     Repeater {
-        model: 4
+        model: 5
         Item {
             required property int index
             Shortcut {
