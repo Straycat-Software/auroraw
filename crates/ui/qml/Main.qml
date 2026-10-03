@@ -219,6 +219,7 @@ ApplicationWindow {
         // Photos with a change other software made to the XMP file beside the original, waiting for an answer.
         function onExternalChanges(photos) { externalBanner.count = photos }
         function onPhotoChanged(photoId) { libraryView.photoChanged(photoId) }
+        function onPlaceColumnsFilled() { libraryView.placesFilled() }
     }
     // A question that waited for a dialog is put once no dialog is open.
     onDialogOpenChanged: if (!dialogOpen) catalogueFlow.askWaitingQuestion()

@@ -145,6 +145,13 @@ pub mod qobject {
             cancelled: bool,
         );
 
+        /// The engine filled the place columns of a catalogue made before schema 6, once (design note 008 §5): the photos
+        /// have places now, though none of them "changed" (nothing is sent for them one by one), so the place menu
+        /// reads its tree again.
+        #[qsignal]
+        #[cxx_name = "placeColumnsFilled"]
+        fn place_columns_filled(self: Pin<&mut Bus>);
+
         /// A keyword branch was deleted (D-126 volet B): a small one right away, `job` empty; one past
         /// `BACKGROUND_THRESHOLD` photos once its background sweep actually ends, `job` its id.
         /// `finished` is `false` only for a sweep that was cancelled before every carrying photo was
@@ -459,6 +466,7 @@ fn dispatch(event: Event, session: &Session) {
                 )
             });
         }
+        Event::PlaceColumnsFilled { .. } => on_gui(|bus| bus.place_columns_filled()),
         // What an import registers is kept for the run of place names that may follow it (the Import dialog's
         // option): the dialog asks for it when the import has finished.
         Event::ImportItem {

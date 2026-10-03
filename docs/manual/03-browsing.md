@@ -55,6 +55,19 @@ they list.
 - **The five coloured dots**: only photos with that colour label; click the same dot again to list all.
 - **Series** (appears once the catalogue has series): all, in a series, unresolved series, resolved series; and
   **Open all / Close all** for every series.
+- **Any place**: a menu of the places the photos in view are in, as a tree **Country ▸ Region ▸ City** with the number
+  of photos at each. Click a place to list only the photos from there ("everything from Quebec": a country is all that
+  is in it, a region all its cities); the button then shows its name, and **Any place** at the top of the menu lifts the
+  filter. The small arrow before a country or a region opens it without choosing it, and Up, Down, Right, Left,
+  Return and Escape work in the open menu. The counts are those of the photos the *other* filters list, so choosing
+  Québec still shows Ontario with its count. A photo that has a city or a region but **no country** (typed by hand,
+  written by another application, or a country you emptied on purpose) is listed under **(no country)**, at the end of
+  the menu, with its regions and cities as for a country. The button is greyed out while no photo in view has a place:
+  places come from [Find place names](06-keywords.md), or from what you typed in the Metadata tab. (While Auroraw reads
+  the places of your photos for the first time, which takes a minute on a large library, the button says so.)
+
+  ![The Any place menu, with a place chosen](images/place-menu.png)
+
 - **Keyword**: choose *Show the photos with this keyword* in the keyword panel's menu; a chip *Keyword: Peru ×*
   appears, and its × removes the filter.
 

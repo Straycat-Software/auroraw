@@ -505,6 +505,10 @@ FocusScope {
         onTriggered: root.reload()
     }
 
+    // The engine filled the places of a catalogue made before they were kept, once: no photo "changed", and the places
+    // of all of them are new to the place menu.
+    function placesFilled() { photoGrid.placesChanged() }
+
     // The engine says a photo changed: its cell and, when it is what the strip describes, the strip follow.
     function photoChanged(photoId) {
         photoGrid.refreshPhoto(photoId)
